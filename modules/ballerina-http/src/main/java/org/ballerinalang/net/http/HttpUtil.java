@@ -227,9 +227,8 @@ public class HttpUtil {
 
         OutputStream messageOutputStream = new HttpMessageDataStreamer(httpCarbonMessage).getOutputStream();
         BStruct entity = (BStruct) abstractNativeFunction.getRefArgument(context, ENTITY_INDEX);
-        String baseType = getContentType(entity);
+        String baseType = MimeUtil.getContentType(entity);
         boolean isBodyAvailable;
-
         if (baseType != null) {
             switch (baseType) {
                 case org.ballerinalang.mime.util.Constants.TEXT_PLAIN:
@@ -384,7 +383,7 @@ public class HttpUtil {
         if (isEntityBodyAvailable) {
             BStruct entity = (BStruct) httpMessageStruct.getNativeData(MESSAGE_ENTITY);
             OutputStream messageOutputStream = (OutputStream) httpMessageStruct.getNativeData(MESSAGE_OUTPUT_STREAM);
-            String baseType = getContentType(entity);
+            String baseType = MimeUtil.getContentType(entity);
             if (baseType != null) {
                 switch (baseType) {
                     case org.ballerinalang.mime.util.Constants.TEXT_PLAIN:

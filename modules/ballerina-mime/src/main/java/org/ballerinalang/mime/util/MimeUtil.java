@@ -534,7 +534,7 @@ public class MimeUtil {
 
     }
 
-    private static String getContentType(BStruct entity) {
+    public static String getContentType(BStruct entity) {
         if (entity.getRefField(MEDIA_TYPE_INDEX) != null) {
             BStruct mediaType = (BStruct) entity.getRefField(MEDIA_TYPE_INDEX);
             if (mediaType != null) {
