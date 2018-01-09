@@ -18,6 +18,10 @@
 
 package org.ballerinalang.mime.util;
 
+import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.LastHttpContent;
+import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
 import org.ballerinalang.bre.Context;
 import org.ballerinalang.connector.api.ConnectorUtils;
 import org.ballerinalang.model.util.StringUtils;
@@ -46,6 +50,9 @@ import javax.activation.MimeType;
 import javax.activation.MimeTypeParameterList;
 import javax.activation.MimeTypeParseException;
 
+import static org.ballerinalang.mime.util.Constants.APPLICATION_FORM;
+import static org.ballerinalang.mime.util.Constants.APPLICATION_JSON;
+import static org.ballerinalang.mime.util.Constants.APPLICATION_XML;
 import static org.ballerinalang.mime.util.Constants.BALLERINA_BINARY_DATA;
 import static org.ballerinalang.mime.util.Constants.BALLERINA_JSON_DATA;
 import static org.ballerinalang.mime.util.Constants.BALLERINA_TEXT_DATA;
@@ -65,6 +72,7 @@ import static org.ballerinalang.mime.util.Constants.SUFFIX_INDEX;
 import static org.ballerinalang.mime.util.Constants.TEMP_FILE_EXTENSION;
 import static org.ballerinalang.mime.util.Constants.TEMP_FILE_PATH_INDEX;
 import static org.ballerinalang.mime.util.Constants.TEXT_DATA_INDEX;
+import static org.ballerinalang.mime.util.Constants.TEXT_PLAIN;
 import static org.ballerinalang.mime.util.Constants.TRUE;
 import static org.ballerinalang.mime.util.Constants.UTF_8;
 import static org.ballerinalang.mime.util.Constants.XML_DATA_INDEX;
@@ -76,6 +84,8 @@ import static org.ballerinalang.mime.util.Constants.XML_DATA_INDEX;
  */
 public class MimeUtil {
     private static final Logger LOG = LoggerFactory.getLogger(MimeUtil.class);
+
+    private static HttpPostRequestDecoder nettyRequestDecoder;
 
     /**
      * Read the string payload from input stream and set it into request or response's entity struct. If the content
@@ -490,4 +500,66 @@ public class MimeUtil {
         output.close();
         return bytes;
     }
+
+    public static boolean isMultipartRequest (HttpRequest request) {
+        nettyRequestDecoder = new HttpPostRequestDecoder(request);
+        return nettyRequestDecoder.isMultipart();
+    }
+
+    public static void handleDiscreteMediaTypeContent (Context context, BStruct entity, InputStream inputStream) {
+        String baseType = getContentType(entity);
+        long contentLength = entity.getIntField(0);
+        if (baseType != null) {
+            switch (baseType) {
+                case TEXT_PLAIN:
+                case APPLICATION_FORM:
+                    MimeUtil.readAndSetStringPayload(context, entity, inputStream, contentLength);
+                    break;
+                case APPLICATION_JSON:
+                    MimeUtil.readAndSetJsonPayload(context, entity, inputStream, contentLength);
+                    break;
+                case APPLICATION_XML:
+                    MimeUtil.readAndSetXmlPayload(context, entity, inputStream, contentLength);
+                    break;
+                default:
+                    MimeUtil.readAndSetBinaryPayload(context, entity, inputStream, contentLength);
+                    break;
+            }
+        } else {
+            MimeUtil.readAndSetBinaryPayload(context, entity, inputStream, contentLength);
+        }
+    }
+
+    public static void handleCompositeMediaTypeContent(Context context, BStruct entity) {
+
+    }
+
+    private static String getContentType(BStruct entity) {
+        if (entity.getRefField(MEDIA_TYPE_INDEX) != null) {
+            BStruct mediaType = (BStruct) entity.getRefField(MEDIA_TYPE_INDEX);
+            if (mediaType != null) {
+                return mediaType.getStringField(PRIMARY_TYPE_INDEX) + "/" + mediaType.getStringField(SUBTYPE_INDEX);
+            }
+        }
+        return null;
+    }
+
+   /* *//**
+     * Set the received multipart contents as the payload of carbon message.
+     *
+     * @param httpContent HttpContent
+     *//*
+    private void handleMultipartBody(HttpContent httpContent) {
+        requestDecoder = nettyRequestDecoder.offer(httpContent);
+        readChunkByChunk();
+        if (httpContent instanceof LastHttpContent) {
+            try {
+                sourceReqCmsg.addMultipartMessageBody(getMultipartBodyInByteBuff());
+            } catch (IOException e) {
+                log.error("Error occurred while converting multipart collection to a stream", e);
+            }
+            sourceReqCmsg.markMessageEnd();
+            resetPostRequestDecoder();
+        }
+    }*/
 }

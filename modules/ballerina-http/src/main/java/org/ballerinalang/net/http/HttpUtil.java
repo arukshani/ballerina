@@ -58,6 +58,7 @@ import org.ballerinalang.util.exceptions.BallerinaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.carbon.messaging.exceptions.ServerConnectorException;
+import org.wso2.transport.http.netty.common.Util;
 import org.wso2.transport.http.netty.config.ListenerConfiguration;
 import org.wso2.transport.http.netty.contractimpl.HttpResponseStatusFuture;
 import org.wso2.transport.http.netty.message.HTTPCarbonMessage;
@@ -279,27 +280,10 @@ public class HttpUtil {
         }
         if (entity != null && isEntityBodyRequired && !isEntityBodyAvailable) {
             HttpMessageDataStreamer httpMessageDataStreamer = new HttpMessageDataStreamer(httpCarbonMessage);
-            InputStream inputStream = httpMessageDataStreamer.getInputStream();
-            String baseType = getContentType(entity);
-            long contentLength = entity.getIntField(0);
-            if (baseType != null) {
-                switch (baseType) {
-                    case org.ballerinalang.mime.util.Constants.TEXT_PLAIN:
-                    case org.ballerinalang.mime.util.Constants.APPLICATION_FORM:
-                        MimeUtil.readAndSetStringPayload(context, entity, inputStream, contentLength);
-                        break;
-                    case org.ballerinalang.mime.util.Constants.APPLICATION_JSON:
-                        MimeUtil.readAndSetJsonPayload(context, entity, inputStream, contentLength);
-                        break;
-                    case org.ballerinalang.mime.util.Constants.APPLICATION_XML:
-                        MimeUtil.readAndSetXmlPayload(context, entity, inputStream, contentLength);
-                        break;
-                    default:
-                        MimeUtil.readAndSetBinaryPayload(context, entity, inputStream, contentLength);
-                        break;
-                }
+            if (isRequest && MimeUtil.isMultipartRequest(Util.createHttpRequest(httpCarbonMessage))) {
+                MimeUtil.handleCompositeMediaTypeContent(context, entity);
             } else {
-                MimeUtil.readAndSetBinaryPayload(context, entity, inputStream, contentLength);
+                MimeUtil.handleDiscreteMediaTypeContent(context, entity, httpMessageDataStreamer.getInputStream());
             }
             httpMessageStruct.addNativeData(MESSAGE_ENTITY, entity);
             httpMessageStruct.addNativeData(IS_ENTITY_BODY_PRESENT, true);
@@ -315,16 +299,6 @@ public class HttpUtil {
             httpMessageStruct.addNativeData(IS_ENTITY_BODY_PRESENT, false);
         }
         return abstractNativeFunction.getBValues(entity);
-    }
-
-    private static String getContentType(BStruct entity) {
-        if (entity.getRefField(MEDIA_TYPE_INDEX) != null) {
-            BStruct mediaType = (BStruct) entity.getRefField(MEDIA_TYPE_INDEX);
-            if (mediaType != null) {
-                return mediaType.getStringField(PRIMARY_TYPE_INDEX) + "/" + mediaType.getStringField(SUBTYPE_INDEX);
-            }
-        }
-        return null;
     }
 
     public static void addMessageOutputStream(BStruct struct, OutputStream messageOutputStream) {
