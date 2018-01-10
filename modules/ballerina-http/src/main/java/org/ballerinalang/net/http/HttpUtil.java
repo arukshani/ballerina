@@ -279,7 +279,9 @@ public class HttpUtil {
         }
         if (entity != null && isEntityBodyRequired && !isEntityBodyAvailable) {
             HttpMessageDataStreamer httpMessageDataStreamer = new HttpMessageDataStreamer(httpCarbonMessage);
-            if (isRequest && MimeUtil.isMultipartRequest(Util.createHttpRequest(httpCarbonMessage))) {
+            //MultipartRequestDecoder
+           // if (isRequest && MimeUtil.isMultipartRequest(Util.createHttpRequest(httpCarbonMessage))) {
+                if (isRequest) {
                 MimeUtil.handleCompositeMediaTypeContent(context, entity);
             } else {
                 MimeUtil.handleDiscreteMediaTypeContent(context, entity, httpMessageDataStreamer.getInputStream());

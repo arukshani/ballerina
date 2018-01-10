@@ -18,9 +18,6 @@
 
 package org.ballerinalang.mime.util;
 
-import io.netty.handler.codec.http.HttpContent;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
 import org.ballerinalang.bre.Context;
 import org.ballerinalang.connector.api.ConnectorUtils;
@@ -84,8 +81,6 @@ import static org.ballerinalang.mime.util.Constants.XML_DATA_INDEX;
  */
 public class MimeUtil {
     private static final Logger LOG = LoggerFactory.getLogger(MimeUtil.class);
-
-    private static HttpPostRequestDecoder nettyRequestDecoder;
 
     /**
      * Read the string payload from input stream and set it into request or response's entity struct. If the content
@@ -499,11 +494,6 @@ public class MimeUtil {
         }
     }
 
-    public static boolean isMultipartRequest (HttpRequest request) {
-        nettyRequestDecoder = new HttpPostRequestDecoder(request);
-        return nettyRequestDecoder.isMultipart();
-    }
-
     public static void handleDiscreteMediaTypeContent (Context context, BStruct entity, InputStream inputStream) {
         String baseType = getContentType(entity);
         long contentLength = entity.getIntField(0);
@@ -541,23 +531,4 @@ public class MimeUtil {
         }
         return null;
     }
-
-   /* *//**
-     * Set the received multipart contents as the payload of carbon message.
-     *
-     * @param httpContent HttpContent
-     *//*
-    private void handleMultipartBody(HttpContent httpContent) {
-        requestDecoder = nettyRequestDecoder.offer(httpContent);
-        readChunkByChunk();
-        if (httpContent instanceof LastHttpContent) {
-            try {
-                sourceReqCmsg.addMultipartMessageBody(getMultipartBodyInByteBuff());
-            } catch (IOException e) {
-                log.error("Error occurred while converting multipart collection to a stream", e);
-            }
-            sourceReqCmsg.markMessageEnd();
-            resetPostRequestDecoder();
-        }
-    }*/
 }
