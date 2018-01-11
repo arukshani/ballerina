@@ -173,6 +173,14 @@ public function <Request request> getFormParams () (map) {
     return parameters;
 }
 
+@Description {value:"Get multiparts from request"}
+@Param {value:"req: The request message"}
+@Return {value:"Returns the body parts as an array of entities"}
+public function <Request request> getMultiparts () (mime:Entity[]) {
+    mime:Entity entity = request.getEntity(true);
+    return entity.multipartData;
+}
+
 @Description {value:"Sets a JSON as the request payload"}
 @Param {value:"request: The request message"}
 @Param {value:"payload: The JSON payload to be set to the request"}

@@ -18,13 +18,14 @@
 
 package org.ballerinalang.mime.util;
 
-import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
 import org.ballerinalang.bre.Context;
 import org.ballerinalang.connector.api.ConnectorUtils;
+import org.ballerinalang.model.types.BStructType;
 import org.ballerinalang.model.util.StringUtils;
 import org.ballerinalang.model.util.XMLUtils;
 import org.ballerinalang.model.values.BJSON;
 import org.ballerinalang.model.values.BMap;
+import org.ballerinalang.model.values.BRefValueArray;
 import org.ballerinalang.model.values.BString;
 import org.ballerinalang.model.values.BStruct;
 import org.ballerinalang.model.values.BValue;
@@ -32,7 +33,9 @@ import org.ballerinalang.model.values.BXML;
 import org.ballerinalang.util.exceptions.BallerinaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.wso2.transport.http.netty.message.HttpBodyPart;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -42,7 +45,9 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.List;
 import javax.activation.MimeType;
 import javax.activation.MimeTypeParameterList;
 import javax.activation.MimeTypeParseException;
@@ -55,14 +60,18 @@ import static org.ballerinalang.mime.util.Constants.BALLERINA_JSON_DATA;
 import static org.ballerinalang.mime.util.Constants.BALLERINA_TEXT_DATA;
 import static org.ballerinalang.mime.util.Constants.BALLERINA_XML_DATA;
 import static org.ballerinalang.mime.util.Constants.BYTE_DATA_INDEX;
+import static org.ballerinalang.mime.util.Constants.ENTITY;
 import static org.ballerinalang.mime.util.Constants.FALSE;
 import static org.ballerinalang.mime.util.Constants.FILE_PATH_INDEX;
 import static org.ballerinalang.mime.util.Constants.IS_IN_MEMORY_INDEX;
 import static org.ballerinalang.mime.util.Constants.JSON_DATA_INDEX;
+import static org.ballerinalang.mime.util.Constants.MEDIA_TYPE;
 import static org.ballerinalang.mime.util.Constants.MEDIA_TYPE_INDEX;
+import static org.ballerinalang.mime.util.Constants.MULTIPART_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.OVERFLOW_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.PARAMETER_MAP_INDEX;
 import static org.ballerinalang.mime.util.Constants.PRIMARY_TYPE_INDEX;
+import static org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_MIME;
 import static org.ballerinalang.mime.util.Constants.SIZE_INDEX;
 import static org.ballerinalang.mime.util.Constants.SUBTYPE_INDEX;
 import static org.ballerinalang.mime.util.Constants.SUFFIX_INDEX;
@@ -268,6 +277,22 @@ public class MimeUtil {
     }
 
     /**
+     * Check whether the 'Entity' body is present as multi parts.
+     *
+     * @param entity Represent 'Entity' struct
+     * @return a boolean denoting the availability of binary payload
+     */
+    public static boolean isMultipartsAvailable(BStruct entity) {
+        boolean isInMemory = entity.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
+        if (isInMemory) {
+            if (entity.getRefField(MULTIPART_DATA_INDEX) != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Extract the text payload from entity.
      *
      * @param entity Represent 'Entity' struct
@@ -321,7 +346,7 @@ public class MimeUtil {
     public static BXML getXmlPayload(BStruct entity) {
         boolean isInMemory = entity.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
         if (isInMemory) {
-            return  (BXML) entity.getRefField(XML_DATA_INDEX);
+            return (BXML) entity.getRefField(XML_DATA_INDEX);
         } else {
             BStruct fileHandler = (BStruct) entity.getRefField(OVERFLOW_DATA_INDEX);
             String filePath = fileHandler.getStringField(FILE_PATH_INDEX);
@@ -494,7 +519,14 @@ public class MimeUtil {
         }
     }
 
-    public static void handleDiscreteMediaTypeContent (Context context, BStruct entity, InputStream inputStream) {
+    /**
+     * Handle discrete media type content. This method populates ballerina entity with the relevant payload.
+     *
+     * @param context     Represent ballerina context
+     * @param entity      Represent an 'Entity'
+     * @param inputStream Represent input stream coming from the request/response
+     */
+    public static void handleDiscreteMediaTypeContent(Context context, BStruct entity, InputStream inputStream) {
         String baseType = getContentType(entity);
         long contentLength = entity.getIntField(0);
         if (baseType != null) {
@@ -518,10 +550,39 @@ public class MimeUtil {
         }
     }
 
-    public static void handleCompositeMediaTypeContent(Context context, BStruct entity) {
-
+    /**
+     * Handle composite media type content. This method populates a set of body parts as an array of ballerina entities
+     * and set them into the top level entity. Nested parts are not covered yet.
+     *
+     * @param context    Represent ballerina context
+     * @param entity     Represent an 'Entity'
+     * @param multiparts Represent a list of body parts
+     */
+    public static void handleCompositeMediaTypeContent(Context context, BStruct entity, List<HttpBodyPart> multiparts) {
+        ArrayList<BStruct> bodyParts = new ArrayList<>();
+        for (HttpBodyPart bodyPart : multiparts) {
+            BStruct partStruct = ConnectorUtils.createAndGetStruct(context, PROTOCOL_PACKAGE_MIME, ENTITY);
+            String baseType = bodyPart.getContentType();
+            partStruct.setIntField(SIZE_INDEX, bodyPart.getSize());
+            BStruct mediaType = ConnectorUtils.createAndGetStruct(context, PROTOCOL_PACKAGE_MIME, MEDIA_TYPE);
+            setContentType(mediaType, partStruct, baseType);
+            handleDiscreteMediaTypeContent(context, partStruct, new ByteArrayInputStream(bodyPart.getContent()));
+            bodyParts.add(partStruct);
+        }
+        if (!bodyParts.isEmpty()) {
+            BStructType typeOfBodyPart = bodyParts.get(0).getType();
+            BStruct[] result = bodyParts.toArray(new BStruct[bodyParts.size()]);
+            BRefValueArray partsArray = new BRefValueArray(result, typeOfBodyPart);
+            entity.setRefField(MULTIPART_DATA_INDEX, partsArray);
+        }
     }
 
+    /**
+     * Given a ballerina entity, get the content-type as a base type.
+     *
+     * @param entity Represent an 'Entity'
+     * @return content-type in 'primarytype/subtype' format
+     */
     public static String getContentType(BStruct entity) {
         if (entity.getRefField(MEDIA_TYPE_INDEX) != null) {
             BStruct mediaType = (BStruct) entity.getRefField(MEDIA_TYPE_INDEX);
@@ -530,5 +591,25 @@ public class MimeUtil {
             }
         }
         return null;
+    }
+
+    /**
+     * Check whether the entity body is present.
+     *
+     * @param entity   Represent an 'Entity'
+     * @param baseType Content type that describes the entity body
+     * @return a boolean indicating entity body availability
+     */
+    public static boolean checkEntityBodyAvailability(BStruct entity, String baseType) {
+        switch (baseType) {
+            case TEXT_PLAIN:
+                return MimeUtil.isTextBodyPresent(entity);
+            case APPLICATION_JSON:
+                return MimeUtil.isJsonBodyPresent(entity);
+            case APPLICATION_XML:
+                return MimeUtil.isXmlBodyPresent(entity);
+            default:
+                return MimeUtil.isBinaryBodyPresent(entity);
+        }
     }
 }

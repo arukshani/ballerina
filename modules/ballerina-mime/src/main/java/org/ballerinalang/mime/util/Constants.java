@@ -79,6 +79,7 @@ public class Constants {
     public static final int IS_IN_MEMORY_INDEX = 0;
     public static final int MEDIA_TYPE_INDEX = 0;
     public static final int ENTITY_HEADERS_INDEX = 1;
+    public static final int MULTIPART_DATA_INDEX = 5;
 
     public static final int TRUE = 1;
     public static final int FALSE = 0;
