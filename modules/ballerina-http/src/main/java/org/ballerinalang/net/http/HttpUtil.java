@@ -247,13 +247,13 @@ public class HttpUtil {
      * @param context                Ballerina context
      * @param abstractNativeFunction Reference to abstract native ballerina function
      * @param isRequest              boolean representing whether the message is a request or a response
+     * @param isEntityBodyRequired   boolean representing whether the entity body is required
      * @return Entity of the request or response
      */
-    public static BValue[] getEntity(Context context, AbstractNativeFunction abstractNativeFunction,
-            boolean isRequest) {
+    public static BValue[] getEntity(Context context, AbstractNativeFunction abstractNativeFunction, boolean isRequest,
+            boolean isEntityBodyRequired) {
         BStruct httpMessageStruct = (BStruct) abstractNativeFunction.getRefArgument(context, HTTP_MESSAGE_INDEX);
         BStruct entity = (BStruct) httpMessageStruct.getNativeData(MESSAGE_ENTITY);
-        boolean isEntityBodyRequired = abstractNativeFunction.getBooleanArgument(context, ENTITY_BODY_REQUIRED_INDEX);
         boolean isEntityBodyAvailable = false;
 
         if (httpMessageStruct.getNativeData(IS_ENTITY_BODY_PRESENT) != null) {
@@ -263,7 +263,9 @@ public class HttpUtil {
             populateEntityBody(context, httpMessageStruct, entity, isRequest);
         }
         if (entity == null) {
-            entity = ConnectorUtils.createAndGetStruct(context, PROTOCOL_PACKAGE_MIME, ENTITY);
+            entity = ConnectorUtils
+                    .createAndGetStruct(context, org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_MIME,
+                            org.ballerinalang.mime.util.Constants.ENTITY);
             entity.setRefField(ENTITY_HEADERS_INDEX, new BMap<>());
             httpMessageStruct.addNativeData(MESSAGE_ENTITY, entity);
             httpMessageStruct.addNativeData(IS_ENTITY_BODY_PRESENT, false);
@@ -280,7 +282,7 @@ public class HttpUtil {
      * @param isRequest         boolean representing whether the message is a request or a response
      */
     public static void populateEntityBody(Context context, BStruct httpMessageStruct, BStruct entity,
-            boolean isRequest) {
+                                          boolean isRequest) {
         HTTPCarbonMessage httpCarbonMessage = HttpUtil
                 .getCarbonMsg(httpMessageStruct, HttpUtil.createHttpCarbonMessage(isRequest));
         HttpMessageDataStreamer httpMessageDataStreamer = new HttpMessageDataStreamer(httpCarbonMessage);
