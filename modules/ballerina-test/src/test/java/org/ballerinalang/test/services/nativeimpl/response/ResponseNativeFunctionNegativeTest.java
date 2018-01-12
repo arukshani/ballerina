@@ -108,6 +108,14 @@ public class ResponseNativeFunctionNegativeTest {
         Assert.assertFalse(returnVals == null || returnVals.length == 0 || returnVals[0] == null,
                 "Invalid Return Values.");
         Assert.assertNotNull(returnVals[0]);
+        BValue[] inputArg = {request};
+        String error = null;
+        try {
+            BRunUtil.invoke(result, "testGetJsonPayload", inputArg);
+        } catch (Throwable e) {
+            error = e.getMessage();
+        }
+        Assert.assertTrue(error.contains("empty JSON document"));
     }
 
     @Test(description = "Test method with string payload")
