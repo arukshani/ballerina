@@ -63,7 +63,6 @@ import org.wso2.transport.http.netty.config.ListenerConfiguration;
 import org.wso2.transport.http.netty.config.Parameter;
 import org.wso2.transport.http.netty.contractimpl.HttpResponseStatusFuture;
 import org.wso2.transport.http.netty.message.HTTPCarbonMessage;
-import org.wso2.transport.http.netty.message.HTTPConnectorUtil;
 import org.wso2.transport.http.netty.message.HttpBodyPart;
 import org.wso2.transport.http.netty.message.HttpMessageDataStreamer;
 import org.wso2.transport.http.netty.message.MultipartRequestDecoder;
@@ -86,7 +85,6 @@ import java.util.stream.Collectors;
 import static org.ballerinalang.mime.util.Constants.APPLICATION_JSON;
 import static org.ballerinalang.mime.util.Constants.APPLICATION_XML;
 import static org.ballerinalang.mime.util.Constants.CONTENT_TYPE;
-import static org.ballerinalang.mime.util.Constants.ENTITY;
 import static org.ballerinalang.mime.util.Constants.ENTITY_HEADERS_INDEX;
 import static org.ballerinalang.mime.util.Constants.HEADER_VALUE_STRUCT;
 import static org.ballerinalang.mime.util.Constants.IS_ENTITY_BODY_PRESENT;
@@ -94,7 +92,6 @@ import static org.ballerinalang.mime.util.Constants.MESSAGE_ENTITY;
 import static org.ballerinalang.mime.util.Constants.OCTET_STREAM;
 import static org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_MIME;
 import static org.ballerinalang.mime.util.Constants.TEXT_PLAIN;
-import static org.ballerinalang.net.http.Constants.ENTITY_BODY_REQUIRED_INDEX;
 import static org.ballerinalang.net.http.Constants.ENTITY_INDEX;
 import static org.ballerinalang.net.http.Constants.HTTP_MESSAGE_INDEX;
 import static org.ballerinalang.net.http.Constants.MESSAGE_OUTPUT_STREAM;
@@ -524,26 +521,25 @@ public class HttpUtil {
         headerValueStructType = struct.getType();
     }
 
-    public static void populateInboundRequest(BStruct inboundRequestStruct, HTTPCarbonMessage inboundRequestMsg) {
+    public static void populateInboundRequest(BStruct inboundRequestStruct, BStruct entityForRequest, BStruct mediaType,
+                                              HTTPCarbonMessage inboundRequestMsg) {
         inboundRequestStruct.addNativeData(Constants.TRANSPORT_MESSAGE, inboundRequestMsg);
         inboundRequestStruct.addNativeData(Constants.INBOUND_REQUEST, true);
 
-        enrichWithInboundRequestInfo(inboundRequestStruct, inboundRequestMsg);
+        enrichWithInboundRequestInfo(inboundRequestStruct, entityForRequest, mediaType, inboundRequestMsg);
         enrichWithInboundRequestHeaders(inboundRequestStruct, inboundRequestMsg);
     }
 
-    private static void enrichWithInboundRequestHeaders(BStruct inboundRequestStruct, BStruct entity, BStruct mediaType,
+    private static void enrichWithInboundRequestHeaders(BStruct inboundRequestStruct,
             HTTPCarbonMessage inboundRequestMsg) {
         if (inboundRequestMsg.getHeader(Constants.USER_AGENT_HEADER) != null) {
             inboundRequestStruct.setStringField(Constants.REQUEST_USER_AGENT_INDEX,
                     inboundRequestMsg.getHeader(Constants.USER_AGENT_HEADER));
             inboundRequestMsg.removeHeader(Constants.USER_AGENT_HEADER);
         }
-        inboundRequestStruct.setRefField(Constants.REQUEST_HEADERS_INDEX,
-                prepareHeaderMap(inboundRequestMsg.getHeaders(), new BMap<>()));
     }
 
-    private static void enrichWithInboundRequestInfo(BStruct inboundRequestStruct,
+    private static void enrichWithInboundRequestInfo(BStruct inboundRequestStruct, BStruct entity, BStruct mediaType,
             HTTPCarbonMessage inboundRequestMsg) {
         inboundRequestStruct.setStringField(Constants.REQUEST_PATH_INDEX,
                 (String) inboundRequestMsg.getProperty(Constants.REQUEST_URL));
@@ -556,7 +552,7 @@ public class HttpUtil {
         inboundRequestStruct.setStringField(Constants.REQUEST_REST_URI_POSTFIX_INDEX,
                 resourceArgValues.get(Constants.REST_URI_POSTFIX));
 
-        populateEntity(entity, mediaType, cMsg);
+        populateEntity(entity, mediaType, inboundRequestMsg);
         inboundRequestStruct.addNativeData(MESSAGE_ENTITY, entity);
         inboundRequestStruct.addNativeData(IS_ENTITY_BODY_PRESENT, false);
     }

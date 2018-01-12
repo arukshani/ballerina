@@ -189,7 +189,7 @@ public function <Request request> getFormParams () (map) {
 @Param {value:"req: The request message"}
 @Return {value:"Returns the body parts as an array of entities"}
 public function <Request request> getMultiparts () (mime:Entity[]) {
-    mime:Entity entity = request.getEntity(true);
+    mime:Entity entity = request.getEntity();
     return entity.multipartData;
 }
 
