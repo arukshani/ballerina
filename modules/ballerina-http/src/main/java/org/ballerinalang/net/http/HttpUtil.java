@@ -27,6 +27,8 @@ import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.multipart.DefaultHttpDataFactory;
+import io.netty.handler.codec.http.multipart.HttpDataFactory;
 import org.ballerinalang.bre.Context;
 import org.ballerinalang.connector.api.AnnAttrValue;
 import org.ballerinalang.connector.api.Annotation;
@@ -89,6 +91,8 @@ import static org.ballerinalang.mime.util.Constants.ENTITY_HEADERS_INDEX;
 import static org.ballerinalang.mime.util.Constants.HEADER_VALUE_STRUCT;
 import static org.ballerinalang.mime.util.Constants.IS_ENTITY_BODY_PRESENT;
 import static org.ballerinalang.mime.util.Constants.MESSAGE_ENTITY;
+import static org.ballerinalang.mime.util.Constants.MULTIPART_DATA_INDEX;
+import static org.ballerinalang.mime.util.Constants.MULTIPART_FORM_DATA;
 import static org.ballerinalang.mime.util.Constants.OCTET_STREAM;
 import static org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_MIME;
 import static org.ballerinalang.mime.util.Constants.TEXT_PLAIN;
@@ -238,6 +242,21 @@ public class HttpUtil {
         }
         addMessageOutputStream(httpMessageStruct, messageOutputStream);
         return AbstractNativeFunction.VOID_RETURN;
+    }
+
+    /**
+     * Prepare carbon request message with multiparts.
+     *
+     * @param outboundRequest Represent outbound carbon request
+     * @param requestStruct   Ballerina request struct that contains multipart data
+     */
+    public static void prepareRequestWithMultiparts(HTTPCarbonMessage outboundRequest, BStruct requestStruct) {
+        BStruct entityStruct = (BStruct) requestStruct.getNativeData(MESSAGE_ENTITY);
+        BRefValueArray bodyParts = (BRefValueArray)entityStruct.getRefField(MULTIPART_DATA_INDEX);
+            for (int i = 0; i < bodyParts.size(); i++) {
+                BStruct bodyPart = (BStruct) bodyParts.get(i);
+                MimeUtil.addBodyPartToRequest(outboundRequest.getNettyHttpRequest(), bodyPart);
+            }
     }
 
     /**
@@ -410,11 +429,15 @@ public class HttpUtil {
                         break;
                     default:
                         byte[] binaryPayload = MimeUtil.getBinaryPayload(entity);
-                        return new BlobDataSource(binaryPayload, messageOutputStream);
+                        if (binaryPayload != null) {
+                            return new BlobDataSource(binaryPayload, messageOutputStream);
+                        }
                 }
             } else {
                 byte[] binaryPayload = MimeUtil.getBinaryPayload(entity);
-                return new BlobDataSource(binaryPayload, messageOutputStream);
+                if (binaryPayload != null) {
+                    return new BlobDataSource(binaryPayload, messageOutputStream);
+                }
             }
         }
         return null;

@@ -18,6 +18,16 @@
 
 package org.ballerinalang.mime.util;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.Unpooled;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.multipart.DefaultHttpDataFactory;
+import io.netty.handler.codec.http.multipart.FileUpload;
+import io.netty.handler.codec.http.multipart.HttpDataFactory;
+import io.netty.handler.codec.http.multipart.HttpPostRequestEncoder;
+import io.netty.handler.codec.http.multipart.InterfaceHttpData;
+import io.netty.util.CharsetUtil;
 import org.ballerinalang.bre.Context;
 import org.ballerinalang.connector.api.ConnectorUtils;
 import org.ballerinalang.model.types.BStructType;
@@ -35,15 +45,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.transport.http.netty.message.HttpBodyPart;
 
+import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -61,6 +74,7 @@ import static org.ballerinalang.mime.util.Constants.BALLERINA_TEXT_DATA;
 import static org.ballerinalang.mime.util.Constants.BALLERINA_XML_DATA;
 import static org.ballerinalang.mime.util.Constants.BYTE_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.ENTITY;
+import static org.ballerinalang.mime.util.Constants.ENTITY_NAME_INDEX;
 import static org.ballerinalang.mime.util.Constants.FALSE;
 import static org.ballerinalang.mime.util.Constants.FILE_PATH_INDEX;
 import static org.ballerinalang.mime.util.Constants.IS_IN_MEMORY_INDEX;
@@ -68,6 +82,8 @@ import static org.ballerinalang.mime.util.Constants.JSON_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.MEDIA_TYPE;
 import static org.ballerinalang.mime.util.Constants.MEDIA_TYPE_INDEX;
 import static org.ballerinalang.mime.util.Constants.MULTIPART_DATA_INDEX;
+import static org.ballerinalang.mime.util.Constants.MULTIPART_FORM_DATA;
+import static org.ballerinalang.mime.util.Constants.OCTET_STREAM;
 import static org.ballerinalang.mime.util.Constants.OVERFLOW_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.PARAMETER_MAP_INDEX;
 import static org.ballerinalang.mime.util.Constants.PRIMARY_TYPE_INDEX;
@@ -79,6 +95,7 @@ import static org.ballerinalang.mime.util.Constants.TEMP_FILE_EXTENSION;
 import static org.ballerinalang.mime.util.Constants.TEMP_FILE_PATH_INDEX;
 import static org.ballerinalang.mime.util.Constants.TEXT_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.TEXT_PLAIN;
+import static org.ballerinalang.mime.util.Constants.TEXT_XML;
 import static org.ballerinalang.mime.util.Constants.TRUE;
 import static org.ballerinalang.mime.util.Constants.UTF_8;
 import static org.ballerinalang.mime.util.Constants.XML_DATA_INDEX;
@@ -91,6 +108,8 @@ import static org.ballerinalang.mime.util.Constants.XML_DATA_INDEX;
 public class MimeUtil {
     private static final Logger LOG = LoggerFactory.getLogger(MimeUtil.class);
 
+    private final static HttpDataFactory dataFactory = new DefaultHttpDataFactory(DefaultHttpDataFactory.MINSIZE);
+
     /**
      * Read the string payload from input stream and set it into request or response's entity struct. If the content
      * length exceeds the BYTE_LIMIT, data will be written on to a temporary file. Otherwise data will be kept in
@@ -102,7 +121,7 @@ public class MimeUtil {
      * @param contentLength Content length of the request
      */
     public static void readAndSetStringPayload(Context context, BStruct entityStruct, InputStream inputStream,
-            long contentLength) {
+                                               long contentLength) {
         if (contentLength > Constants.BYTE_LIMIT) {
             String temporaryFilePath = writeToTemporaryFile(inputStream, BALLERINA_TEXT_DATA);
             createBallerinaFileHandler(context, entityStruct, temporaryFilePath);
@@ -125,7 +144,7 @@ public class MimeUtil {
      * @param contentLength Content length of the request
      */
     public static void readAndSetJsonPayload(Context context, BStruct entityStruct, InputStream inputStream,
-            long contentLength) {
+                                             long contentLength) {
         if (contentLength > Constants.BYTE_LIMIT) {
             String temporaryFilePath = writeToTemporaryFile(inputStream, BALLERINA_JSON_DATA);
             createBallerinaFileHandler(context, entityStruct, temporaryFilePath);
@@ -148,7 +167,7 @@ public class MimeUtil {
      * @param contentLength Content length of the request
      */
     public static void readAndSetXmlPayload(Context context, BStruct entityStruct, InputStream inputStream,
-            long contentLength) {
+                                            long contentLength) {
         if (contentLength > Constants.BYTE_LIMIT) {
             String temporaryFilePath = writeToTemporaryFile(inputStream, BALLERINA_XML_DATA);
             createBallerinaFileHandler(context, entityStruct, temporaryFilePath);
@@ -171,7 +190,7 @@ public class MimeUtil {
      * @param contentLength Content length of the request
      */
     public static void readAndSetBinaryPayload(Context context, BStruct entityStruct, InputStream inputStream,
-            long contentLength) {
+                                               long contentLength) {
         if (contentLength > Constants.BYTE_LIMIT) {
             String temporaryFilePath = writeToTemporaryFile(inputStream, BALLERINA_BINARY_DATA);
             createBallerinaFileHandler(context, entityStruct, temporaryFilePath);
@@ -538,6 +557,7 @@ public class MimeUtil {
                 case APPLICATION_JSON:
                     MimeUtil.readAndSetJsonPayload(context, entity, inputStream, contentLength);
                     break;
+                case TEXT_XML:
                 case APPLICATION_XML:
                     MimeUtil.readAndSetXmlPayload(context, entity, inputStream, contentLength);
                     break;
@@ -608,8 +628,179 @@ public class MimeUtil {
                 return MimeUtil.isJsonBodyPresent(entity);
             case APPLICATION_XML:
                 return MimeUtil.isXmlBodyPresent(entity);
+            case MULTIPART_FORM_DATA:
+                return MimeUtil.isMultipartsAvailable(entity);
             default:
                 return MimeUtil.isBinaryBodyPresent(entity);
         }
     }
+
+    public static void addBodyPartToRequest(HttpRequest httpRequest, BStruct bodyPart) {
+        try {
+            HttpPostRequestEncoder nettyEncoder = new HttpPostRequestEncoder(dataFactory,
+                    httpRequest, true);
+            InterfaceHttpData encodedData = null;
+            String baseType = MimeUtil.getContentType(bodyPart);
+            if (baseType != null) {
+                switch (baseType) {
+                    case TEXT_PLAIN:
+                        encodedData = addTextBodyPart(httpRequest, bodyPart);
+                        break;
+                    case APPLICATION_JSON:
+                        encodedData = addJsonBodyPart(httpRequest, bodyPart);
+                        break;
+                    case APPLICATION_XML:
+                        encodedData = addXmlBodyPart(httpRequest, bodyPart);
+                        break;
+                    default:
+                        encodedData = addBinaryBodyPart(httpRequest, bodyPart);
+                        break;
+                }
+            } else {
+                addBinaryBodyPart(httpRequest, bodyPart);
+            }
+            if (encodedData != null) {
+                nettyEncoder.addBodyHttpData(encodedData);
+            }
+            nettyEncoder.finalizeRequest();
+        } catch (HttpPostRequestEncoder.ErrorDataEncoderException e) {
+            LOG.error("Error occurred while creating netty request encoder for multipart data binding", e.getMessage());
+        } catch (IOException e) {
+            LOG.error("Error occurred while creating netty request encoder for multipart data binding", e.getMessage());
+        }
+    }
+
+
+    public static InterfaceHttpData addTextBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
+        boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
+        String bodyPartName = bodyPart.getStringField(ENTITY_NAME_INDEX);
+        if (isInMemory) {
+            return createAttribute(httpRequest, bodyPartName,
+                    bodyPart.getStringField(TEXT_DATA_INDEX));
+        } else {
+            BStruct fileHandler = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
+            String filePath = fileHandler.getStringField(FILE_PATH_INDEX);
+            return createPartFromFile(httpRequest, bodyPartName, filePath, TEXT_PLAIN);
+        }
+    }
+
+    public static InterfaceHttpData addJsonBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
+        boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
+        String bodyPartName = bodyPart.getStringField(ENTITY_NAME_INDEX);
+        if (isInMemory) {
+            BJSON jsonPayload = (BJSON) bodyPart.getRefField(JSON_DATA_INDEX);
+            return createPartForJson(httpRequest, bodyPartName, jsonPayload);
+        } else {
+            BStruct overFlowData = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
+            if (overFlowData != null) {
+                BStruct fileHandler = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
+                String filePath = fileHandler.getStringField(FILE_PATH_INDEX);
+                return createPartFromFile(httpRequest, bodyPartName, filePath, APPLICATION_JSON);
+            }
+        }
+       return null;
+    }
+
+    public static InterfaceHttpData addXmlBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
+        boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
+        String bodyPartName = bodyPart.getStringField(ENTITY_NAME_INDEX);
+        if (isInMemory) {
+            BXML xmlPayload = (BXML) bodyPart.getRefField(XML_DATA_INDEX);
+            return createPartForXml(httpRequest, bodyPartName, xmlPayload);
+        } else {
+            BStruct overFlowData = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
+            if (overFlowData != null) {
+                BStruct fileHandler = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
+                String filePath = fileHandler.getStringField(FILE_PATH_INDEX);
+                return createPartFromFile(httpRequest, bodyPartName, filePath, APPLICATION_XML);
+            }
+        }
+        return null;
+    }
+
+    public static InterfaceHttpData addBinaryBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
+        boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
+        String bodyPartName = bodyPart.getStringField(ENTITY_NAME_INDEX);
+        if (isInMemory) {
+            byte[] binaryPayload = bodyPart.getBlobField(BYTE_DATA_INDEX);
+            createPartForBinaryData(httpRequest, bodyPartName, binaryPayload);
+        } else {
+            BStruct overFlowData = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
+            if (overFlowData != null) {
+                BStruct fileHandler = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
+                String filePath = fileHandler.getStringField(FILE_PATH_INDEX);
+                return createPartFromFile(httpRequest, bodyPartName, filePath, OCTET_STREAM);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Create a body part.
+     *
+     * @param request Represent a HttpRequest
+     * @return InterfaceHttpData which includes the data object that needs to be decoded
+     * @throws IOException
+     */
+    private static InterfaceHttpData createAttribute(HttpRequest request, String bodyPartName, String bodyPartContent) throws IOException {
+        ByteBuf content = Unpooled.buffer();
+        ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(content);
+        byteBufOutputStream.writeBytes(bodyPartContent);
+        return dataFactory.createAttribute(request, bodyPartName, content.toString(CharsetUtil.UTF_8));
+    }
+
+    /**
+     * Include a file as a body part.
+     *
+     * @param request Represent a HttpRequest
+     * @return InterfaceHttpData which includes the data object that needs to be decoded
+     * @throws IOException
+     */
+    private static InterfaceHttpData createPartFromFile(HttpRequest request, String bodyPartName, String file, String contentType)
+            throws IOException {
+        Path filePath = Paths.get(file);
+        InputStream inputStream = Files.newInputStream(filePath);
+        int size = (Integer) Files.getAttribute(filePath, "basic:size");
+        FileUpload fileUpload = dataFactory
+                .createFileUpload(request, bodyPartName, filePath.getFileName().toString(), contentType,
+                        "7bit", null, size);
+        fileUpload.setContent(inputStream);
+        return fileUpload;
+    }
+
+    private static InterfaceHttpData createPartForJson(HttpRequest request, String bodyPartName, BJSON jsonContent)
+            throws IOException {
+        File file = File.createTempFile("tempJson", ".json");
+        file.deleteOnExit();
+        BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(file));
+        bufferedWriter.write(jsonContent.getMessageAsString());
+        bufferedWriter.close();
+        FileUpload fileUpload = dataFactory
+                .createFileUpload(request, bodyPartName, file.getName(), APPLICATION_JSON, "7bit", null, file.length());
+        fileUpload.setContent(file);
+        return fileUpload;
+    }
+
+    private static InterfaceHttpData createPartForXml(HttpRequest request, String bodyPartName, BXML xmlContent)
+            throws IOException {
+        File file = File.createTempFile("tempXml", ".xml");
+        file.deleteOnExit();
+        BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(file));
+        bufferedWriter.write(xmlContent.getMessageAsString());
+        bufferedWriter.close();
+        FileUpload fileUpload = dataFactory
+                .createFileUpload(request, bodyPartName, file.getName(), APPLICATION_JSON, "7bit", null, file.length());
+        fileUpload.setContent(file);
+        return fileUpload;
+    }
+
+    private static InterfaceHttpData createPartForBinaryData(HttpRequest request, String bodyPartName, byte[] binaryPayload)
+            throws IOException {
+        InputStream inputStream = new ByteArrayInputStream(binaryPayload);
+        FileUpload fileUpload = dataFactory
+                .createFileUpload(request, bodyPartName, "temp.tmp", OCTET_STREAM, "7bit", null, binaryPayload.length);
+        fileUpload.setContent(inputStream);
+        return fileUpload;
+    }
+
 }

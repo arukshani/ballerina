@@ -47,6 +47,11 @@ public class Constants {
     public static final String APPLICATION_XML = "application/xml";
 
     /**
+     * Content-type text/xml.
+     */
+    public static final String TEXT_XML = "text/xml";
+
+    /**
      * Content-type text/plain.
      */
     public static final String TEXT_PLAIN = "text/plain";
@@ -60,6 +65,12 @@ public class Constants {
      * Content-type application/x-www-form-urlencoded.
      */
     public static final String APPLICATION_FORM = "application/x-www-form-urlencoded";
+
+    /**
+     * Content-type multipart/form-data.
+     */
+    public static final String MULTIPART_FORM_DATA = "multipart/form-data";
+
 
     public static final String DEFAULT_PRIMARY_TYPE = "application";
     public static final String DEFAULT_SUB_TYPE = "octet-stream";
@@ -80,6 +91,7 @@ public class Constants {
     public static final int MEDIA_TYPE_INDEX = 0;
     public static final int ENTITY_HEADERS_INDEX = 1;
     public static final int MULTIPART_DATA_INDEX = 5;
+    public static final int ENTITY_NAME_INDEX = 3;
 
     public static final int TRUE = 1;
     public static final int FALSE = 0;
