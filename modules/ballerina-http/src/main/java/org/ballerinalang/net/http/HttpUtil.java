@@ -29,6 +29,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.multipart.DefaultHttpDataFactory;
 import io.netty.handler.codec.http.multipart.HttpDataFactory;
+import io.netty.handler.codec.http.multipart.HttpPostRequestEncoder;
 import org.ballerinalang.bre.Context;
 import org.ballerinalang.connector.api.AnnAttrValue;
 import org.ballerinalang.connector.api.Annotation;
@@ -92,7 +93,6 @@ import static org.ballerinalang.mime.util.Constants.HEADER_VALUE_STRUCT;
 import static org.ballerinalang.mime.util.Constants.IS_ENTITY_BODY_PRESENT;
 import static org.ballerinalang.mime.util.Constants.MESSAGE_ENTITY;
 import static org.ballerinalang.mime.util.Constants.MULTIPART_DATA_INDEX;
-import static org.ballerinalang.mime.util.Constants.MULTIPART_FORM_DATA;
 import static org.ballerinalang.mime.util.Constants.OCTET_STREAM;
 import static org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_MIME;
 import static org.ballerinalang.mime.util.Constants.TEXT_PLAIN;
@@ -252,11 +252,21 @@ public class HttpUtil {
      */
     public static void prepareRequestWithMultiparts(HTTPCarbonMessage outboundRequest, BStruct requestStruct) {
         BStruct entityStruct = (BStruct) requestStruct.getNativeData(MESSAGE_ENTITY);
-        BRefValueArray bodyParts = (BRefValueArray)entityStruct.getRefField(MULTIPART_DATA_INDEX);
+        BRefValueArray bodyParts = (BRefValueArray) entityStruct.getRefField(MULTIPART_DATA_INDEX);
+        final HttpDataFactory dataFactory = new DefaultHttpDataFactory(DefaultHttpDataFactory.MINSIZE);
+        MimeUtil.setDataFactory(dataFactory);
+        try {
+            HttpPostRequestEncoder nettyEncoder = new HttpPostRequestEncoder(dataFactory,
+                    outboundRequest.getNettyHttpRequest(), true);
             for (int i = 0; i < bodyParts.size(); i++) {
                 BStruct bodyPart = (BStruct) bodyParts.get(i);
-                MimeUtil.addBodyPartToRequest(outboundRequest.getNettyHttpRequest(), bodyPart);
+                MimeUtil.addBodyPartToRequest(nettyEncoder, outboundRequest.getNettyHttpRequest(),
+                        bodyPart);
             }
+            nettyEncoder.finalizeRequest();
+        } catch (HttpPostRequestEncoder.ErrorDataEncoderException e) {
+            log.error("Error occurred while creating netty request encoder for multipart data binding", e.getMessage());
+        }
     }
 
     /**

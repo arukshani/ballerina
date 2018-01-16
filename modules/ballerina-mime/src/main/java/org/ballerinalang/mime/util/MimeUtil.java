@@ -22,7 +22,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.multipart.DefaultHttpDataFactory;
 import io.netty.handler.codec.http.multipart.FileUpload;
 import io.netty.handler.codec.http.multipart.HttpDataFactory;
 import io.netty.handler.codec.http.multipart.HttpPostRequestEncoder;
@@ -30,6 +29,7 @@ import io.netty.handler.codec.http.multipart.InterfaceHttpData;
 import io.netty.util.CharsetUtil;
 import org.ballerinalang.bre.Context;
 import org.ballerinalang.connector.api.ConnectorUtils;
+import org.ballerinalang.model.DataIterator;
 import org.ballerinalang.model.types.BStructType;
 import org.ballerinalang.model.util.StringUtils;
 import org.ballerinalang.model.util.XMLUtils;
@@ -107,8 +107,7 @@ import static org.ballerinalang.mime.util.Constants.XML_DATA_INDEX;
  */
 public class MimeUtil {
     private static final Logger LOG = LoggerFactory.getLogger(MimeUtil.class);
-
-    private final static HttpDataFactory dataFactory = new DefaultHttpDataFactory(DefaultHttpDataFactory.MINSIZE);
+    private static HttpDataFactory dataFactory = null;
 
     /**
      * Read the string payload from input stream and set it into request or response's entity struct. If the content
@@ -635,11 +634,10 @@ public class MimeUtil {
         }
     }
 
-    public static void addBodyPartToRequest(HttpRequest httpRequest, BStruct bodyPart) {
+    public static void addBodyPartToRequest(HttpPostRequestEncoder nettyEncoder, HttpRequest httpRequest,
+                                            BStruct bodyPart) throws HttpPostRequestEncoder.ErrorDataEncoderException {
         try {
-            HttpPostRequestEncoder nettyEncoder = new HttpPostRequestEncoder(dataFactory,
-                    httpRequest, true);
-            InterfaceHttpData encodedData = null;
+            InterfaceHttpData encodedData;
             String baseType = MimeUtil.getContentType(bodyPart);
             if (baseType != null) {
                 switch (baseType) {
@@ -657,14 +655,11 @@ public class MimeUtil {
                         break;
                 }
             } else {
-                addBinaryBodyPart(httpRequest, bodyPart);
+                encodedData = addBinaryBodyPart(httpRequest, bodyPart);
             }
             if (encodedData != null) {
                 nettyEncoder.addBodyHttpData(encodedData);
             }
-            nettyEncoder.finalizeRequest();
-        } catch (HttpPostRequestEncoder.ErrorDataEncoderException e) {
-            LOG.error("Error occurred while creating netty request encoder for multipart data binding", e.getMessage());
         } catch (IOException e) {
             LOG.error("Error occurred while creating netty request encoder for multipart data binding", e.getMessage());
         }
@@ -803,4 +798,7 @@ public class MimeUtil {
         return fileUpload;
     }
 
+    public static void setDataFactory(HttpDataFactory dataFactory) {
+       MimeUtil.dataFactory = dataFactory;
+    }
 }
