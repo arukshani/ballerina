@@ -263,7 +263,7 @@ public class HttpUtil {
                 MimeUtil.addBodyPartToRequest(nettyEncoder, outboundRequest.getNettyHttpRequest(),
                         bodyPart);
             }
-            nettyEncoder.finalizeRequest();
+           nettyEncoder.finalizeRequest();
         } catch (HttpPostRequestEncoder.ErrorDataEncoderException e) {
             log.error("Error occurred while creating netty request encoder for multipart data binding", e.getMessage());
         }
