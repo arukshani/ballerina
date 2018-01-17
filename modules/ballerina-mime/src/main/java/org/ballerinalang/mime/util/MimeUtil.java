@@ -18,15 +18,11 @@
 
 package org.ballerinalang.mime.util;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.multipart.FileUpload;
 import io.netty.handler.codec.http.multipart.HttpDataFactory;
 import io.netty.handler.codec.http.multipart.HttpPostRequestEncoder;
 import io.netty.handler.codec.http.multipart.InterfaceHttpData;
-import io.netty.util.CharsetUtil;
 import org.ballerinalang.bre.Context;
 import org.ballerinalang.connector.api.ConnectorUtils;
 import org.ballerinalang.model.types.BStructType;
@@ -60,6 +56,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.UUID;
 import javax.activation.MimeType;
 import javax.activation.MimeTypeParameterList;
 import javax.activation.MimeTypeParseException;
@@ -72,12 +69,15 @@ import static org.ballerinalang.mime.util.Constants.BALLERINA_JSON_DATA;
 import static org.ballerinalang.mime.util.Constants.BALLERINA_TEXT_DATA;
 import static org.ballerinalang.mime.util.Constants.BALLERINA_XML_DATA;
 import static org.ballerinalang.mime.util.Constants.BYTE_DATA_INDEX;
+import static org.ballerinalang.mime.util.Constants.CONTENT_TRANSFER_ENCODING_7_BIT;
 import static org.ballerinalang.mime.util.Constants.ENTITY;
 import static org.ballerinalang.mime.util.Constants.ENTITY_NAME_INDEX;
 import static org.ballerinalang.mime.util.Constants.FALSE;
 import static org.ballerinalang.mime.util.Constants.FILE_PATH_INDEX;
+import static org.ballerinalang.mime.util.Constants.FILE_SIZE;
 import static org.ballerinalang.mime.util.Constants.IS_IN_MEMORY_INDEX;
 import static org.ballerinalang.mime.util.Constants.JSON_DATA_INDEX;
+import static org.ballerinalang.mime.util.Constants.JSON_EXTENSION;
 import static org.ballerinalang.mime.util.Constants.MEDIA_TYPE;
 import static org.ballerinalang.mime.util.Constants.MEDIA_TYPE_INDEX;
 import static org.ballerinalang.mime.util.Constants.MULTIPART_DATA_INDEX;
@@ -91,6 +91,7 @@ import static org.ballerinalang.mime.util.Constants.SIZE_INDEX;
 import static org.ballerinalang.mime.util.Constants.SUBTYPE_INDEX;
 import static org.ballerinalang.mime.util.Constants.SUFFIX_INDEX;
 import static org.ballerinalang.mime.util.Constants.TEMP_FILE_EXTENSION;
+import static org.ballerinalang.mime.util.Constants.TEMP_FILE_NAME;
 import static org.ballerinalang.mime.util.Constants.TEMP_FILE_PATH_INDEX;
 import static org.ballerinalang.mime.util.Constants.TEXT_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.TEXT_PLAIN;
@@ -98,6 +99,7 @@ import static org.ballerinalang.mime.util.Constants.TEXT_XML;
 import static org.ballerinalang.mime.util.Constants.TRUE;
 import static org.ballerinalang.mime.util.Constants.UTF_8;
 import static org.ballerinalang.mime.util.Constants.XML_DATA_INDEX;
+import static org.ballerinalang.mime.util.Constants.XML_EXTENSION;
 
 /**
  * Entity related operations and mime utility functions are included here.
@@ -633,8 +635,16 @@ public class MimeUtil {
         }
     }
 
-    public static void addBodyPartToRequest(HttpPostRequestEncoder nettyEncoder, HttpRequest httpRequest,
-                                            BStruct bodyPart) throws HttpPostRequestEncoder.ErrorDataEncoderException {
+    /**
+     * Encode a given body part and add it to multipart request encoder.
+     *
+     * @param nettyEncoder Helps encode multipart/form-data
+     * @param httpRequest  Represent top level http request that should hold multiparts
+     * @param bodyPart     Represent a ballerina body part
+     * @throws HttpPostRequestEncoder.ErrorDataEncoderException when an error occurs while encoding
+     */
+    public static void encodeBodyPart(HttpPostRequestEncoder nettyEncoder, HttpRequest httpRequest,
+                                      BStruct bodyPart) throws HttpPostRequestEncoder.ErrorDataEncoderException {
         try {
             InterfaceHttpData encodedData;
             String baseType = MimeUtil.getContentType(bodyPart);
@@ -660,144 +670,245 @@ public class MimeUtil {
                 nettyEncoder.addBodyHttpData(encodedData);
             }
         } catch (IOException e) {
-            LOG.error("Error occurred while creating netty request encoder for multipart data binding", e.getMessage());
+            LOG.error("Error occurred while encoding body part in ", e.getMessage());
         }
     }
 
-
-    public static InterfaceHttpData getEncodedTextBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
+    /**
+     * Encode a text body part.
+     *
+     * @param httpRequest Represent the top level http request that should hold the body part
+     * @param bodyPart    Represent a ballerina body part
+     * @return InterfaceHttpData which represent an encoded file upload part
+     * @throws IOException
+     */
+    public static InterfaceHttpData getEncodedTextBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws
+            IOException {
         boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
-        String bodyPartName = bodyPart.getStringField(ENTITY_NAME_INDEX);
+        String bodyPartName = getBodyPartName(bodyPart);
         if (isInMemory) {
-            return createAttribute(httpRequest, bodyPartName,
+            return getAttribute(httpRequest, bodyPartName,
                     bodyPart.getStringField(TEXT_DATA_INDEX));
         } else {
-            BStruct fileHandler = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
-            String filePath = fileHandler.getStringField(FILE_PATH_INDEX);
-            return createPartFromFile(httpRequest, bodyPartName, filePath, TEXT_PLAIN);
+            return getPartAsFileUpload(httpRequest, bodyPart, bodyPartName, TEXT_PLAIN);
         }
     }
 
-    public static InterfaceHttpData getEncodedJsonBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
-        boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
-        String bodyPartName = bodyPart.getStringField(ENTITY_NAME_INDEX);
-        if (isInMemory) {
-            BJSON jsonPayload = (BJSON) bodyPart.getRefField(JSON_DATA_INDEX);
-            return createPartForJson(httpRequest, bodyPartName, jsonPayload);
-        } else {
-            BStruct overFlowData = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
-            if (overFlowData != null) {
-                BStruct fileHandler = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
-                String filePath = fileHandler.getStringField(FILE_PATH_INDEX);
-                return createPartFromFile(httpRequest, bodyPartName, filePath, APPLICATION_JSON);
-            }
-        }
-       return null;
+    /**
+     * Create an encoded body part from a given string.
+     *
+     * @param request         Represent the top level http request that should hold the body part
+     * @param bodyPartName    Represent body part's name
+     * @param bodyPartContent Actual content that needs to be encoded
+     * @return nterfaceHttpData which represent an encoded attribute
+     * @throws IOException
+     */
+    private static InterfaceHttpData getAttribute(HttpRequest request, String bodyPartName, String bodyPartContent)
+            throws IOException {
+        return dataFactory.createAttribute(request, bodyPartName, bodyPartContent);
     }
 
-    public static InterfaceHttpData getEncodedXmlBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
+    /**
+     * Include a given file as a body part.
+     *
+     * @param request      Represent the top level http request that should hold the body part
+     * @param bodyPartName Represent body part's name
+     * @param filePath     Location of the file that needs to be encoded as a body part
+     * @param contentType  Content-Type of the body part
+     * @return InterfaceHttpData which represent an encoded file upload part
+     * @throws IOException
+     */
+    private static InterfaceHttpData createPartAsFileUpload(HttpRequest request, String bodyPartName, String filePath,
+                                                            String contentType) throws IOException {
+        Path path = Paths.get(filePath);
+        InputStream inputStream = Files.newInputStream(path);
+        long size = (long) Files.getAttribute(path, FILE_SIZE);
+        FileUpload fileUpload = dataFactory.createFileUpload(request, bodyPartName, path.getFileName().toString(),
+                contentType, CONTENT_TRANSFER_ENCODING_7_BIT, null, size);
+        fileUpload.setContent(inputStream);
+        return fileUpload;
+    }
+
+    /**
+     * Get an encoded body part from json content.
+     *
+     * @param httpRequest Represent the top level http request that should hold the body part
+     * @param bodyPart    Represent a ballerina body part
+     * @return InterfaceHttpData which represent an encoded file upload part with json content
+     * @throws IOException
+     */
+    private static InterfaceHttpData getEncodedJsonBodyPart(HttpRequest httpRequest, BStruct bodyPart)
+            throws IOException {
         boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
-        String bodyPartName = bodyPart.getStringField(ENTITY_NAME_INDEX);
+        String bodyPartName = getBodyPartName(bodyPart);
         if (isInMemory) {
-            BXML xmlPayload = (BXML) bodyPart.getRefField(XML_DATA_INDEX);
-            return createPartForXml(httpRequest, bodyPartName, xmlPayload);
-        } else {
-            BStruct overFlowData = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
-            if (overFlowData != null) {
-                BStruct fileHandler = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
-                String filePath = fileHandler.getStringField(FILE_PATH_INDEX);
-                return createPartFromFile(httpRequest, bodyPartName, filePath, APPLICATION_XML);
+            if (bodyPart.getRefField(JSON_DATA_INDEX) != null) {
+                if (bodyPart.getRefField(JSON_DATA_INDEX) != null) {
+                    return createPartForJson(httpRequest, bodyPartName, (BJSON) bodyPart.getRefField(JSON_DATA_INDEX));
+                }
             }
+        } else {
+            return getPartAsFileUpload(httpRequest, bodyPart, bodyPartName, APPLICATION_JSON);
         }
         return null;
     }
 
-    public static InterfaceHttpData getEncodedBinaryBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
+    /**
+     * Create an encoded body part from json content which is in memory.
+     *
+     * @param request      Represent the top level http request that should hold the body part
+     * @param bodyPartName Represent body part's name
+     * @param jsonContent  json content that needs to be encoded
+     * @return InterfaceHttpData which represent an encoded file upload part with json content
+     * @throws IOException
+     */
+    private static InterfaceHttpData createPartForJson(HttpRequest request, String bodyPartName, BJSON jsonContent)
+            throws IOException {
+        File file = File.createTempFile(TEMP_FILE_NAME, JSON_EXTENSION);
+        file.deleteOnExit();
+        writeToTempFile(new FileWriter(file), jsonContent.getMessageAsString());
+        FileUpload fileUpload = dataFactory.createFileUpload(request, bodyPartName, file.getName(), APPLICATION_JSON,
+                CONTENT_TRANSFER_ENCODING_7_BIT, null, file.length());
+        fileUpload.setContent(file);
+        return fileUpload;
+    }
+
+    /**
+     * Get an encoded body part from xml content.
+     *
+     * @param httpRequest Represent the top level http request that should hold the body part
+     * @param bodyPart    Represent a ballerina body part
+     * @return InterfaceHttpData which represent an encoded file upload part with xml content
+     * @throws IOException
+     */
+    private static InterfaceHttpData getEncodedXmlBodyPart(HttpRequest httpRequest, BStruct bodyPart)
+            throws IOException {
         boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
-        String bodyPartName = bodyPart.getStringField(ENTITY_NAME_INDEX);
+        String bodyPartName = getBodyPartName(bodyPart);
+        if (isInMemory) {
+            if (bodyPart.getRefField(XML_DATA_INDEX) != null) {
+                BXML xmlPayload = (BXML) bodyPart.getRefField(XML_DATA_INDEX);
+                return createPartForXml(httpRequest, bodyPartName, xmlPayload);
+            }
+        } else {
+            getPartAsFileUpload(httpRequest, bodyPart, bodyPartName, getContentType(bodyPart));
+        }
+        return null;
+    }
+
+    /**
+     * Create an encoded body part from xml content which is in memory.
+     *
+     * @param request      Represent the top level http request that should hold the body part
+     * @param bodyPartName Represent body part's name
+     * @param xmlContent   xml content that needs to be encoded
+     * @return InterfaceHttpData which represent an encoded file upload part with xml content
+     * @throws IOException
+     */
+    private static InterfaceHttpData createPartForXml(HttpRequest request, String bodyPartName, BXML xmlContent)
+            throws IOException {
+        File file = File.createTempFile(TEMP_FILE_NAME, XML_EXTENSION);
+        file.deleteOnExit();
+        writeToTempFile(new FileWriter(file), xmlContent.getMessageAsString());
+        FileUpload fileUpload = dataFactory
+                .createFileUpload(request, bodyPartName, file.getName(), APPLICATION_XML,
+                        CONTENT_TRANSFER_ENCODING_7_BIT, null, file.length());
+        fileUpload.setContent(file);
+        return fileUpload;
+    }
+
+    /**
+     * Get an encoded body part from binary content.
+     *
+     * @param httpRequest Represent the top level http request that should hold the body part
+     * @param bodyPart    Represent a ballerina body part
+     * @return InterfaceHttpData which represent an encoded file upload part with xml content
+     * @throws IOException
+     */
+    private static InterfaceHttpData getEncodedBinaryBodyPart(HttpRequest httpRequest, BStruct bodyPart)
+            throws IOException {
+        boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
+        String bodyPartName = getBodyPartName(bodyPart);
         if (isInMemory) {
             byte[] binaryPayload = bodyPart.getBlobField(BYTE_DATA_INDEX);
             createPartForBinaryData(httpRequest, bodyPartName, binaryPayload);
         } else {
-            BStruct overFlowData = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
-            if (overFlowData != null) {
-                BStruct fileHandler = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
-                String filePath = fileHandler.getStringField(FILE_PATH_INDEX);
-                return createPartFromFile(httpRequest, bodyPartName, filePath, OCTET_STREAM);
-            }
+            return getPartAsFileUpload(httpRequest, bodyPart, bodyPartName, getContentType(bodyPart));
         }
         return null;
     }
 
     /**
-     * Create a body part.
+     * Create an encoded body part from xml content which is in memory.
      *
-     * @param request Represent a HttpRequest
-     * @return InterfaceHttpData which includes the data object that needs to be decoded
+     * @param request       Represent the top level http request that should hold the body part
+     * @param bodyPartName  Represent body part's name
+     * @param binaryPayload Binary payload that needs to be encoded
+     * @return InterfaceHttpData which represent an encoded file upload part with xml content
      * @throws IOException
      */
-    private static InterfaceHttpData createAttribute(HttpRequest request, String bodyPartName, String bodyPartContent) throws IOException {
-        ByteBuf content = Unpooled.buffer();
-        ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(content);
-        byteBufOutputStream.writeBytes(bodyPartContent);
-        return dataFactory.createAttribute(request, bodyPartName, content.toString(CharsetUtil.UTF_8));
+    private static InterfaceHttpData createPartForBinaryData(HttpRequest request, String bodyPartName,
+                                                             byte[] binaryPayload) throws IOException {
+        InputStream inputStream = new ByteArrayInputStream(binaryPayload);
+        FileUpload fileUpload = dataFactory
+                .createFileUpload(request, bodyPartName, TEMP_FILE_NAME + TEMP_FILE_EXTENSION, OCTET_STREAM,
+                        CONTENT_TRANSFER_ENCODING_7_BIT, null, binaryPayload.length);
+        fileUpload.setContent(inputStream);
+        return fileUpload;
     }
 
     /**
-     * Include a file as a body part.
+     * Get a body part as a file upload.
      *
-     * @param request Represent a HttpRequest
-     * @return InterfaceHttpData which includes the data object that needs to be decoded
+     * @param httpRequest  Represent the top level http request that should hold the body part
+     * @param bodyPart     Represent a ballerina body part
+     * @param bodyPartName Represent body part's name
+     * @return InterfaceHttpData which represent an encoded file upload part
      * @throws IOException
      */
-    private static InterfaceHttpData createPartFromFile(HttpRequest request, String bodyPartName, String file, String contentType)
-            throws IOException {
-        Path filePath = Paths.get(file);
-        InputStream inputStream = Files.newInputStream(filePath);
-        int size = (Integer) Files.getAttribute(filePath, "basic:size");
-        FileUpload fileUpload = dataFactory
-                .createFileUpload(request, bodyPartName, filePath.getFileName().toString(), contentType,
-                        "7bit", null, size);
-        fileUpload.setContent(inputStream);
-        return fileUpload;
+    private static InterfaceHttpData getPartAsFileUpload(HttpRequest httpRequest, BStruct bodyPart, String bodyPartName,
+                                                         String contentType) throws IOException {
+        BStruct fileHandler = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
+        if (fileHandler != null) {
+            String filePath = fileHandler.getStringField(FILE_PATH_INDEX);
+            return createPartAsFileUpload(httpRequest, bodyPartName, filePath, contentType);
+        }
+        return null;
     }
 
-    private static InterfaceHttpData createPartForJson(HttpRequest request, String bodyPartName, BJSON jsonContent)
-            throws IOException {
-        File file = File.createTempFile("tempJson", ".json");
-        file.deleteOnExit();
-        BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(file));
-        bufferedWriter.write(jsonContent.getMessageAsString());
+    /**
+     * Get the body part name and if the user hasn't set a name set a random string as the part name.
+     *
+     * @param bodyPart Represent a ballerina body part
+     * @return a string denoting the body part's name
+     */
+    private static String getBodyPartName(BStruct bodyPart) {
+        String bodyPartName = bodyPart.getStringField(ENTITY_NAME_INDEX);
+        if (bodyPartName == null || bodyPartName.isEmpty()) {
+            bodyPartName = UUID.randomUUID().toString();
+        }
+        return bodyPartName;
+    }
+
+    /**
+     * Write content to temp file through a file writer.
+     *
+     * @param fileWriter      Represent a FileWriter to be used for writing character data
+     * @param messageAsString Actual content that needs to be written
+     * @throws IOException
+     */
+    private static void writeToTempFile(FileWriter fileWriter, String messageAsString) throws IOException {
+        BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+        bufferedWriter.write(messageAsString);
         bufferedWriter.close();
-        FileUpload fileUpload = dataFactory
-                .createFileUpload(request, bodyPartName, file.getName(), APPLICATION_JSON, "7bit", null, file.length());
-        fileUpload.setContent(file);
-        return fileUpload;
     }
 
-    private static InterfaceHttpData createPartForXml(HttpRequest request, String bodyPartName, BXML xmlContent)
-            throws IOException {
-        File file = File.createTempFile("tempXml", ".xml");
-        file.deleteOnExit();
-        BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(file));
-        bufferedWriter.write(xmlContent.getMessageAsString());
-        bufferedWriter.close();
-        FileUpload fileUpload = dataFactory
-                .createFileUpload(request, bodyPartName, file.getName(), APPLICATION_XML, "7bit", null, file.length());
-        fileUpload.setContent(file);
-        return fileUpload;
-    }
-
-    private static InterfaceHttpData createPartForBinaryData(HttpRequest request, String bodyPartName, byte[] binaryPayload)
-            throws IOException {
-        InputStream inputStream = new ByteArrayInputStream(binaryPayload);
-        FileUpload fileUpload = dataFactory
-                .createFileUpload(request, bodyPartName, "temp.tmp", OCTET_STREAM, "7bit", null, binaryPayload.length);
-        fileUpload.setContent(inputStream);
-        return fileUpload;
-    }
-
+    /**
+     * Set the data factory that needs to be used for encoding body parts.
+     *
+     * @param dataFactory which enables creation of InterfaceHttpData objects
+     */
     public static void setDataFactory(HttpDataFactory dataFactory) {
-       MimeUtil.dataFactory = dataFactory;
+        MimeUtil.dataFactory = dataFactory;
     }
 }

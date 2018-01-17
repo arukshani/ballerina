@@ -24,7 +24,6 @@ import io.netty.handler.codec.http.DefaultHttpHeaders;
 import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
-import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -95,6 +94,7 @@ import static org.ballerinalang.mime.util.Constants.HEADER_VALUE_STRUCT;
 import static org.ballerinalang.mime.util.Constants.IS_ENTITY_BODY_PRESENT;
 import static org.ballerinalang.mime.util.Constants.MESSAGE_ENTITY;
 import static org.ballerinalang.mime.util.Constants.MULTIPART_DATA_INDEX;
+import static org.ballerinalang.mime.util.Constants.MULTIPART_ENCODER;
 import static org.ballerinalang.mime.util.Constants.OCTET_STREAM;
 import static org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_MIME;
 import static org.ballerinalang.mime.util.Constants.TEXT_PLAIN;
@@ -247,27 +247,32 @@ public class HttpUtil {
      * Prepare carbon request message with multiparts.
      *
      * @param outboundRequest Represent outbound carbon request
-     * @param requestStruct   Ballerina request struct that contains multipart data
+     * @param requestStruct   Ballerina request struct which contains multipart data
      */
     public static void prepareRequestWithMultiparts(HTTPCarbonMessage outboundRequest, BStruct requestStruct) {
-        BStruct entityStruct = (BStruct) requestStruct.getNativeData(MESSAGE_ENTITY);
-        BRefValueArray bodyParts = (BRefValueArray) entityStruct.getRefField(MULTIPART_DATA_INDEX);
-        final HttpDataFactory dataFactory = new DefaultHttpDataFactory(DefaultHttpDataFactory.MINSIZE);
-        MimeUtil.setDataFactory(dataFactory);
-        try {
-            HttpPostRequestEncoder nettyEncoder = new HttpPostRequestEncoder(dataFactory,
-                    outboundRequest.getNettyHttpRequest(), true);
-            for (int i = 0; i < bodyParts.size(); i++) {
-                BStruct bodyPart = (BStruct) bodyParts.get(i);
-                MimeUtil.addBodyPartToRequest(nettyEncoder, outboundRequest.getNettyHttpRequest(),
-                        bodyPart);
+        BStruct entityStruct = requestStruct.getNativeData(MESSAGE_ENTITY) != null ?
+                (BStruct) requestStruct.getNativeData(MESSAGE_ENTITY) : null;
+        if (entityStruct != null) {
+            BRefValueArray bodyParts = entityStruct.getRefField(MULTIPART_DATA_INDEX) != null ?
+                    (BRefValueArray) entityStruct.getRefField(MULTIPART_DATA_INDEX) : null;
+            if (bodyParts != null) {
+                HttpDataFactory dataFactory = new DefaultHttpDataFactory(DefaultHttpDataFactory.MINSIZE);
+                MimeUtil.setDataFactory(dataFactory);
+                try {
+                    HttpPostRequestEncoder nettyEncoder = new HttpPostRequestEncoder(dataFactory,
+                            outboundRequest.getNettyHttpRequest(), true);
+                    for (int i = 0; i < bodyParts.size(); i++) {
+                        BStruct bodyPart = (BStruct) bodyParts.get(i);
+                        MimeUtil.encodeBodyPart(nettyEncoder, outboundRequest.getNettyHttpRequest(),
+                                bodyPart);
+                    }
+                    nettyEncoder.finalizeRequest();
+                    requestStruct.addNativeData(MULTIPART_ENCODER, nettyEncoder);
+                } catch (HttpPostRequestEncoder.ErrorDataEncoderException e) {
+                    log.error("Error occurred while creating netty request encoder for multipart data binding",
+                            e.getMessage());
+                }
             }
-            nettyEncoder.finalizeRequest();
-            requestStruct.addNativeData("MultipartEncoder", nettyEncoder);
-        } catch (HttpPostRequestEncoder.ErrorDataEncoderException e) {
-            log.error("Error occurred while creating netty request encoder for multipart data binding", e.getMessage());
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 

@@ -78,6 +78,7 @@ public class Constants {
 
     public static final String MESSAGE_ENTITY = "message_entity";
     public static final String IS_ENTITY_BODY_PRESENT = "is_entity_body_present";
+    public static final String MULTIPART_ENCODER = "MultipartEncoder";
 
     //Entity properties
     public static final int TEXT_DATA_INDEX = 1;
@@ -111,8 +112,14 @@ public class Constants {
 
     public static final int BYTE_LIMIT = 2097152; //2MB
     public static final String UTF_8 = "UTF-8";
+    public static final String CONTENT_TRANSFER_ENCODING_7_BIT = "7bit";
+    public static final String FILE_SIZE = "basic:size";
 
     public static final String TEMP_FILE_EXTENSION = ".tmp";
+    public static final String TEMP_FILE_NAME = "tempFile";
+    public static final String JSON_EXTENSION = ".json";
+    public static final String XML_EXTENSION = ".xml";
+
     public static final String BALLERINA_TEXT_DATA = "ballerinaTextPayload";
     public static final String BALLERINA_JSON_DATA = "ballerinaJsonPayload";
     public static final String BALLERINA_XML_DATA = "ballerinaXmlPayload";

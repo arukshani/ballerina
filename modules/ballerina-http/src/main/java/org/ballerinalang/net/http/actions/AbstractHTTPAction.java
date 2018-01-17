@@ -81,13 +81,15 @@ public abstract class AbstractHTTPAction extends AbstractNativeAction {
 
         prepareRequest(bConnector, path, requestMsg, requestStruct);
         try {
-            if (MULTIPART_FORM_DATA.equals(new MimeType(requestMsg.getHeader(CONTENT_TYPE)).getBaseType())){
-                HttpUtil.prepareRequestWithMultiparts(requestMsg, requestStruct);
+            String contentType = requestMsg.getHeader(CONTENT_TYPE);
+            if (contentType != null) {
+                if (MULTIPART_FORM_DATA.equals(new MimeType(contentType).getBaseType())){
+                    HttpUtil.prepareRequestWithMultiparts(requestMsg, requestStruct);
+                }
             }
         } catch (MimeTypeParseException e) {
-            logger.error("Error occured while parsing Content-Type header in createCarbonMsg", e.getMessage());
+            logger.error("Error occurred while parsing Content-Type header in createCarbonMsg", e.getMessage());
         }
-
         return requestMsg;
     }
 
