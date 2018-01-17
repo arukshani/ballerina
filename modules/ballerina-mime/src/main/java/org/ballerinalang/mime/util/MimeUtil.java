@@ -29,7 +29,6 @@ import io.netty.handler.codec.http.multipart.InterfaceHttpData;
 import io.netty.util.CharsetUtil;
 import org.ballerinalang.bre.Context;
 import org.ballerinalang.connector.api.ConnectorUtils;
-import org.ballerinalang.model.DataIterator;
 import org.ballerinalang.model.types.BStructType;
 import org.ballerinalang.model.util.StringUtils;
 import org.ballerinalang.model.util.XMLUtils;
@@ -642,20 +641,20 @@ public class MimeUtil {
             if (baseType != null) {
                 switch (baseType) {
                     case TEXT_PLAIN:
-                        encodedData = addTextBodyPart(httpRequest, bodyPart);
+                        encodedData = getEncodedTextBodyPart(httpRequest, bodyPart);
                         break;
                     case APPLICATION_JSON:
-                        encodedData = addJsonBodyPart(httpRequest, bodyPart);
+                        encodedData = getEncodedJsonBodyPart(httpRequest, bodyPart);
                         break;
                     case APPLICATION_XML:
-                        encodedData = addXmlBodyPart(httpRequest, bodyPart);
+                        encodedData = getEncodedXmlBodyPart(httpRequest, bodyPart);
                         break;
                     default:
-                        encodedData = addBinaryBodyPart(httpRequest, bodyPart);
+                        encodedData = getEncodedBinaryBodyPart(httpRequest, bodyPart);
                         break;
                 }
             } else {
-                encodedData = addBinaryBodyPart(httpRequest, bodyPart);
+                encodedData = getEncodedBinaryBodyPart(httpRequest, bodyPart);
             }
             if (encodedData != null) {
                 nettyEncoder.addBodyHttpData(encodedData);
@@ -666,7 +665,7 @@ public class MimeUtil {
     }
 
 
-    public static InterfaceHttpData addTextBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
+    public static InterfaceHttpData getEncodedTextBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
         boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
         String bodyPartName = bodyPart.getStringField(ENTITY_NAME_INDEX);
         if (isInMemory) {
@@ -679,7 +678,7 @@ public class MimeUtil {
         }
     }
 
-    public static InterfaceHttpData addJsonBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
+    public static InterfaceHttpData getEncodedJsonBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
         boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
         String bodyPartName = bodyPart.getStringField(ENTITY_NAME_INDEX);
         if (isInMemory) {
@@ -696,7 +695,7 @@ public class MimeUtil {
        return null;
     }
 
-    public static InterfaceHttpData addXmlBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
+    public static InterfaceHttpData getEncodedXmlBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
         boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
         String bodyPartName = bodyPart.getStringField(ENTITY_NAME_INDEX);
         if (isInMemory) {
@@ -713,7 +712,7 @@ public class MimeUtil {
         return null;
     }
 
-    public static InterfaceHttpData addBinaryBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
+    public static InterfaceHttpData getEncodedBinaryBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws IOException {
         boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
         String bodyPartName = bodyPart.getStringField(ENTITY_NAME_INDEX);
         if (isInMemory) {

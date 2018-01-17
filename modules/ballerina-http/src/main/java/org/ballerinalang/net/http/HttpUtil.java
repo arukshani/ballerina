@@ -18,11 +18,13 @@
 
 package org.ballerinalang.net.http;
 
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.DefaultHttpHeaders;
 import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
+import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -263,10 +265,22 @@ public class HttpUtil {
                 MimeUtil.addBodyPartToRequest(nettyEncoder, outboundRequest.getNettyHttpRequest(),
                         bodyPart);
             }
-           nettyEncoder.finalizeRequest();
+            nettyEncoder.finalizeRequest();
+            addMultipartsToCarbonMessage(nettyEncoder);
         } catch (HttpPostRequestEncoder.ErrorDataEncoderException e) {
             log.error("Error occurred while creating netty request encoder for multipart data binding", e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
+
+    private static void addMultipartsToCarbonMessage(HttpPostRequestEncoder nettyEncoder) throws Exception {
+        HttpContent content;
+        while (!nettyEncoder.isEndOfInput()) {
+            content = nettyEncoder.readChunk(ByteBufAllocator.DEFAULT);
+
+        }
+        nettyEncoder.cleanFiles();
     }
 
     /**
