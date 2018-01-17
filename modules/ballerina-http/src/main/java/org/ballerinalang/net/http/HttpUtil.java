@@ -230,7 +230,6 @@ public class HttpUtil {
         HTTPCarbonMessage httpCarbonMessage = HttpUtil
                 .getCarbonMsg(httpMessageStruct, HttpUtil.createHttpCarbonMessage(isRequest));
         httpCarbonMessage.waitAndReleaseAllEntities();
-        OutputStream messageOutputStream = new HttpMessageDataStreamer(httpCarbonMessage).getOutputStream();
         BStruct entity = (BStruct) abstractNativeFunction.getRefArgument(context, ENTITY_INDEX);
         String baseType = MimeUtil.getContentType(entity);
         if (baseType == null) {
@@ -264,7 +263,7 @@ public class HttpUtil {
                         bodyPart);
             }
             nettyEncoder.finalizeRequest();
-            addMultipartsToCarbonMessage(nettyEncoder);
+            requestStruct.addNativeData("MultipartEncoder", nettyEncoder);
         } catch (HttpPostRequestEncoder.ErrorDataEncoderException e) {
             log.error("Error occurred while creating netty request encoder for multipart data binding", e.getMessage());
         } catch (Exception e) {
@@ -272,11 +271,9 @@ public class HttpUtil {
         }
     }
 
-    private static void addMultipartsToCarbonMessage(HttpPostRequestEncoder nettyEncoder) throws Exception {
-        HttpContent content;
+    public static void sendMultiparts(HTTPCarbonMessage httpRequestMsg, HttpPostRequestEncoder nettyEncoder) throws Exception {
         while (!nettyEncoder.isEndOfInput()) {
-            content = nettyEncoder.readChunk(ByteBufAllocator.DEFAULT);
-
+            httpRequestMsg.addHttpContent(nettyEncoder.readChunk(ByteBufAllocator.DEFAULT));
         }
         nettyEncoder.cleanFiles();
     }

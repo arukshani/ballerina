@@ -783,7 +783,7 @@ public class MimeUtil {
         bufferedWriter.write(xmlContent.getMessageAsString());
         bufferedWriter.close();
         FileUpload fileUpload = dataFactory
-                .createFileUpload(request, bodyPartName, file.getName(), APPLICATION_JSON, "7bit", null, file.length());
+                .createFileUpload(request, bodyPartName, file.getName(), APPLICATION_XML, "7bit", null, file.length());
         fileUpload.setContent(file);
         return fileUpload;
     }
