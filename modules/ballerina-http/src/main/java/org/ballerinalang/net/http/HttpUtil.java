@@ -100,7 +100,6 @@ import static org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_MIME;
 import static org.ballerinalang.mime.util.Constants.TEXT_PLAIN;
 import static org.ballerinalang.net.http.Constants.ENTITY_INDEX;
 import static org.ballerinalang.net.http.Constants.HTTP_MESSAGE_INDEX;
-import static org.ballerinalang.net.http.Constants.MESSAGE_OUTPUT_STREAM;
 
 /**
  * Utility class providing utility methods.
@@ -225,7 +224,7 @@ public class HttpUtil {
      * @return void return
      */
     public static BValue[] setEntity(Context context, AbstractNativeFunction abstractNativeFunction,
-            boolean isRequest) {
+                                     boolean isRequest) {
         BStruct httpMessageStruct = (BStruct) abstractNativeFunction.getRefArgument(context, HTTP_MESSAGE_INDEX);
 
         HTTPCarbonMessage httpCarbonMessage = HttpUtil
@@ -242,7 +241,6 @@ public class HttpUtil {
         if (MimeUtil.checkEntityBodyAvailability(entity, baseType)) {
             httpMessageStruct.addNativeData(IS_ENTITY_BODY_PRESENT, true);
         }
-        addMessageOutputStream(httpMessageStruct, messageOutputStream);
         return AbstractNativeFunction.VOID_RETURN;
     }
 
@@ -293,7 +291,7 @@ public class HttpUtil {
      * @return Entity of the request or response
      */
     public static BValue[] getEntity(Context context, AbstractNativeFunction abstractNativeFunction, boolean isRequest,
-            boolean isEntityBodyRequired) {
+                                     boolean isEntityBodyRequired) {
         BStruct httpMessageStruct = (BStruct) abstractNativeFunction.getRefArgument(context, HTTP_MESSAGE_INDEX);
         BStruct entity = (BStruct) httpMessageStruct.getNativeData(MESSAGE_ENTITY);
         boolean isEntityBodyAvailable = false;
@@ -344,16 +342,9 @@ public class HttpUtil {
         }
         httpMessageStruct.addNativeData(MESSAGE_ENTITY, entity);
         httpMessageStruct.addNativeData(IS_ENTITY_BODY_PRESENT, true);
-        OutputStream messageOutputStream = httpMessageDataStreamer.getOutputStream();
-        HttpUtil.addMessageOutputStream(httpMessageStruct, messageOutputStream);
     }
 
-    public static void addMessageOutputStream(BStruct struct, OutputStream messageOutputStream) {
-        struct.addNativeData(MESSAGE_OUTPUT_STREAM, messageOutputStream);
-    }
-
-    public static void closeMessageOutputStream(BStruct httpMsgStruct) {
-        OutputStream messageOutputStream = (OutputStream) httpMsgStruct.getNativeData(MESSAGE_OUTPUT_STREAM);
+    public static void closeMessageOutputStream(OutputStream messageOutputStream) {
         try {
             if (messageOutputStream != null) {
                 messageOutputStream.close();
@@ -403,8 +394,9 @@ public class HttpUtil {
         HttpResponseStatusFuture outboundResponseStatusFuture = sendOutboundResponse(requestMessage, responseMessage);
 
         if (outboundMessageSource != null) {
-            outboundMessageSource.serializeData();
-            HttpUtil.closeMessageOutputStream(httpMessageStruct);
+            OutputStream messageOutputStream = new HttpMessageDataStreamer(responseMessage).getOutputStream();
+            outboundMessageSource.serializeData(messageOutputStream);
+            HttpUtil.closeMessageOutputStream(messageOutputStream);
         }
         try {
             outboundResponseStatusFuture = outboundResponseStatusFuture.sync();
@@ -427,40 +419,36 @@ public class HttpUtil {
      */
     public static MessageDataSource readMessageDataSource(BStruct httpMessageStruct) {
         boolean isEntityBodyAvailable = (Boolean) httpMessageStruct.getNativeData(IS_ENTITY_BODY_PRESENT);
-
         if (isEntityBodyAvailable) {
             BStruct entity = (BStruct) httpMessageStruct.getNativeData(MESSAGE_ENTITY);
-            OutputStream messageOutputStream = (OutputStream) httpMessageStruct.getNativeData(MESSAGE_OUTPUT_STREAM);
             String baseType = MimeUtil.getContentType(entity);
             if (baseType != null) {
                 switch (baseType) {
                     case TEXT_PLAIN:
                         String textPayload = MimeUtil.getTextPayload(entity);
-                        return new StringDataSource(textPayload, messageOutputStream);
+                        return new StringDataSource(textPayload);
                     case APPLICATION_JSON:
                         BJSON jsonPayload = MimeUtil.getJsonPayload(entity);
                         if (jsonPayload != null) {
-                            jsonPayload.setOutputStream(messageOutputStream);
                             return jsonPayload;
                         }
                         break;
                     case APPLICATION_XML:
                         BXML xmlPayload = MimeUtil.getXmlPayload(entity);
                         if (xmlPayload != null) {
-                            xmlPayload.setOutputStream(messageOutputStream);
                             return xmlPayload;
                         }
                         break;
                     default:
                         byte[] binaryPayload = MimeUtil.getBinaryPayload(entity);
                         if (binaryPayload != null) {
-                            return new BlobDataSource(binaryPayload, messageOutputStream);
+                            return new BlobDataSource(binaryPayload);
                         }
                 }
             } else {
                 byte[] binaryPayload = MimeUtil.getBinaryPayload(entity);
                 if (binaryPayload != null) {
-                    return new BlobDataSource(binaryPayload, messageOutputStream);
+                    return new BlobDataSource(binaryPayload);
                 }
             }
         }
@@ -568,12 +556,12 @@ public class HttpUtil {
         headerValueStructType = struct.getType();
     }
 
-    public static void populateInboundRequest(BStruct inboundRequestStruct, BStruct entityForRequest, BStruct mediaType,
+    public static void populateInboundRequest(BStruct inboundRequestStruct, BStruct entity, BStruct mediaType,
                                               HTTPCarbonMessage inboundRequestMsg) {
         inboundRequestStruct.addNativeData(Constants.TRANSPORT_MESSAGE, inboundRequestMsg);
         inboundRequestStruct.addNativeData(Constants.INBOUND_REQUEST, true);
 
-        enrichWithInboundRequestInfo(inboundRequestStruct, entityForRequest, mediaType, inboundRequestMsg);
+        enrichWithInboundRequestInfo(inboundRequestStruct, entity, mediaType, inboundRequestMsg);
         enrichWithInboundRequestHeaders(inboundRequestStruct, inboundRequestMsg);
     }
 
