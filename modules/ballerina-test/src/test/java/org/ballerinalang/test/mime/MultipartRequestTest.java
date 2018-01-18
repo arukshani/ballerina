@@ -16,19 +16,16 @@
  * under the License.
  */
 
-package org.ballerinalang.test.services.nativeimpl.request;
+package org.ballerinalang.test.mime;
 
+import io.netty.handler.codec.http.multipart.HttpPostRequestEncoder;
 import org.ballerinalang.launcher.util.BCompileUtil;
-import org.ballerinalang.launcher.util.BRunUtil;
 import org.ballerinalang.launcher.util.BServiceUtil;
 import org.ballerinalang.launcher.util.CompileResult;
 import org.ballerinalang.model.types.BStructType;
-import org.ballerinalang.model.values.BArray;
 import org.ballerinalang.model.values.BJSON;
 import org.ballerinalang.model.values.BRefValueArray;
 import org.ballerinalang.model.values.BStruct;
-import org.ballerinalang.model.values.BValue;
-import org.ballerinalang.model.values.BXMLItem;
 import org.ballerinalang.net.http.Constants;
 import org.ballerinalang.net.http.HttpUtil;
 import org.ballerinalang.test.services.testutils.HTTPTestRequest;
@@ -39,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import org.wso2.carbon.messaging.Header;
 import org.wso2.transport.http.netty.message.HTTPCarbonMessage;
 import org.wso2.transport.http.netty.message.HttpMessageDataStreamer;
 
@@ -47,22 +43,19 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.ArrayList;
-import java.util.List;
 
-import static org.ballerinalang.mime.util.Constants.APPLICATION_JSON;
 import static org.ballerinalang.mime.util.Constants.ENTITY_NAME_INDEX;
-import static org.ballerinalang.mime.util.Constants.HEADER_VALUE_STRUCT;
+import static org.ballerinalang.mime.util.Constants.IS_IN_MEMORY_INDEX;
 import static org.ballerinalang.mime.util.Constants.JSON_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.MEDIA_TYPE;
 import static org.ballerinalang.mime.util.Constants.MEDIA_TYPE_INDEX;
 import static org.ballerinalang.mime.util.Constants.MESSAGE_ENTITY;
 import static org.ballerinalang.mime.util.Constants.MULTIPART_DATA_INDEX;
+import static org.ballerinalang.mime.util.Constants.MULTIPART_ENCODER;
 import static org.ballerinalang.mime.util.Constants.PRIMARY_TYPE_INDEX;
-import static org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_FILE;
 import static org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_MIME;
 import static org.ballerinalang.mime.util.Constants.SUBTYPE_INDEX;
 import static org.ballerinalang.mime.util.Constants.UTF_8;
-import static org.ballerinalang.mime.util.Constants.XML_DATA_INDEX;
 
 /**
  * Test cases for multipart request handling.
@@ -72,13 +65,11 @@ public class MultipartRequestTest {
 
     private CompileResult result, serviceResult;
     private final String requestStruct = Constants.REQUEST;
-    private final String headerStruct = HEADER_VALUE_STRUCT;
     private final String protocolPackageHttp = Constants.PROTOCOL_PACKAGE_HTTP;
     private final String protocolPackageMime = PROTOCOL_PACKAGE_MIME;
-    private final String protocolPackageFile = PROTOCOL_PACKAGE_FILE;
     private final String entityStruct = Constants.ENTITY;
     private final String mediaTypeStruct = MEDIA_TYPE;
-    private String sourceFilePath = "test-src/statements/services/nativeimpl/request/multipart-request.bal";
+    private String sourceFilePath = "test-src/mime/multipart-request.bal";
 
     @BeforeClass
     public void setup() {
@@ -86,11 +77,11 @@ public class MultipartRequestTest {
         serviceResult = BServiceUtil.setupProgramFile(this, sourceFilePath);
     }
 
-    @Test(description = "Test setting json body part taken from memory")
-    public void testServiceGetJsonBodyPart() {
-        String path = "/test/bodypart1";
+    @Test(description = "Test sending a multipart request with a json body part")
+    public void testServiceGetMutliparts() {
+        String path = "/test/jsonbodypart";
         BStruct request = BCompileUtil.createAndGetStruct(result.getProgFile(), protocolPackageHttp, requestStruct);
-        HTTPTestRequest cMsg = MessageUtils.generateHTTPMessage(path, Constants.HTTP_METHOD_POST);
+        HTTPTestRequest cMsg = MessageUtils.generateHTTPMessageForMultiparts(path, Constants.HTTP_METHOD_POST);
         HttpUtil.addCarbonMsg(request, cMsg);
         HttpUtil.setHeaderValueStructType(
                 BCompileUtil.createAndGetStruct(result.getProgFile(), protocolPackageMime, entityStruct));
@@ -111,6 +102,7 @@ public class MultipartRequestTest {
         bodyPart.setRefField(JSON_DATA_INDEX, new BJSON(jsonPart));
         bodyPart.setStringField(ENTITY_NAME_INDEX, "First Part");
         bodyPart.setRefField(MEDIA_TYPE_INDEX, mediaTypeForBodyPart);
+        bodyPart.setBooleanField(IS_IN_MEMORY_INDEX, 1);
 
         ArrayList<BStruct> bodyParts = new ArrayList<>();
         bodyParts.add(bodyPart);
@@ -118,12 +110,20 @@ public class MultipartRequestTest {
         BStruct[] result = bodyParts.toArray(new BStruct[bodyParts.size()]);
         BRefValueArray partsArray = new BRefValueArray(result, typeOfBodyPart);
         entity.setRefField(MULTIPART_DATA_INDEX, partsArray);
+        entity.setBooleanField(IS_IN_MEMORY_INDEX, 1);
         request.addNativeData(MESSAGE_ENTITY, entity);
 
         HttpUtil.prepareRequestWithMultiparts(cMsg, request);
+        try {
+            HttpPostRequestEncoder nettyEncoder = (HttpPostRequestEncoder) request.getNativeData(MULTIPART_ENCODER);
+            HttpUtil.addMultipartsToCarbonMessage(cMsg, nettyEncoder);
+        } catch (Exception e) {
+            LOG.error("Error occured while adding multiparts to carbon message in testServiceGetMutliparts",
+                    e.getMessage());
+        }
         HTTPCarbonMessage response = Services.invokeNew(serviceResult, cMsg);
         Assert.assertNotNull(response, "Response message not found");
-        Assert.assertEquals(new BJSON(getReturnValue(response)).value().stringValue(), value);
+        Assert.assertEquals(new BJSON(getReturnValue(response)).value().get("lang").asText(), value);
     }
 
     /**

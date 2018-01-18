@@ -241,6 +241,18 @@ public function <Request request> setBinaryPayload (blob payload) {
     request.setEntity(entity);
 }
 
+@Description {value:"Set multiparts as the request payload"}
+@Param {value:"request: The request message"}
+@Param {value:"bodyParts: Represent body parts that needs to be set to the request"}
+public function <Request request> setMultiparts (mime:Entity[] bodyParts) {
+    mime:Entity entity = {};
+    entity.multipartData = bodyParts;
+    mime:MediaType mediaType = mime:getMediaType(mime:MULTIPART_FORM_DATA);
+    entity.contentType = mediaType;
+    entity.isInMemory = true;
+    request.setEntity(entity);
+}
+
 @Description {value:"Sets the entity body of the request with the given file content"}
 @Param {value:"request: The request message"}
 @Param {value:"content: File containing the actual content"}

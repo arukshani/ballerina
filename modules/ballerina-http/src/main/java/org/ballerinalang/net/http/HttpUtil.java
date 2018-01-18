@@ -276,7 +276,8 @@ public class HttpUtil {
         }
     }
 
-    public static void sendMultiparts(HTTPCarbonMessage httpRequestMsg, HttpPostRequestEncoder nettyEncoder) throws Exception {
+    public static void addMultipartsToCarbonMessage(HTTPCarbonMessage httpRequestMsg,
+                                                    HttpPostRequestEncoder nettyEncoder) throws Exception {
         while (!nettyEncoder.isEndOfInput()) {
             httpRequestMsg.addHttpContent(nettyEncoder.readChunk(ByteBufAllocator.DEFAULT));
         }

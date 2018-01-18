@@ -124,4 +124,11 @@ public class Constants {
     public static final String BALLERINA_JSON_DATA = "ballerinaJsonPayload";
     public static final String BALLERINA_XML_DATA = "ballerinaXmlPayload";
     public static final String BALLERINA_BINARY_DATA = "ballerinaBinaryPayload";
+
+    /**
+     * Describes the format of the body part.
+     */
+    public enum BodyPartForm {
+        INPUTSTREAM, FILE
+    }
 }

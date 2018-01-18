@@ -46,14 +46,13 @@ import org.wso2.transport.http.netty.message.HttpMessageDataStreamer;
 import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-
 import javax.activation.MimeType;
 import javax.activation.MimeTypeParseException;
 
 import static org.ballerinalang.mime.util.Constants.CONTENT_TYPE;
 import static org.ballerinalang.mime.util.Constants.HEADER_VALUE_STRUCT;
 import static org.ballerinalang.mime.util.Constants.MEDIA_TYPE;
-import static org.ballerinalang.mime.util.Constants.MESSAGE_ENTITY;
+import static org.ballerinalang.mime.util.Constants.MULTIPART_ENCODER;
 import static org.ballerinalang.mime.util.Constants.MULTIPART_FORM_DATA;
 import static org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_MIME;
 import static org.ballerinalang.runtime.Constants.BALLERINA_VERSION;
@@ -83,7 +82,7 @@ public abstract class AbstractHTTPAction extends AbstractNativeAction {
         try {
             String contentType = requestMsg.getHeader(CONTENT_TYPE);
             if (contentType != null) {
-                if (MULTIPART_FORM_DATA.equals(new MimeType(contentType).getBaseType())){
+                if (MULTIPART_FORM_DATA.equals(new MimeType(contentType).getBaseType())) {
                     HttpUtil.prepareRequestWithMultiparts(requestMsg, requestStruct);
                 }
             }
@@ -215,10 +214,10 @@ public abstract class AbstractHTTPAction extends AbstractNativeAction {
                     (HttpClientConnector) bConnector.getnativeData(Constants.CONNECTOR_NAME);
             HttpResponseFuture future = clientConnector.send(httpRequestMsg);
             future.setHttpConnectorListener(httpClientConnectorLister);
-            if (MULTIPART_FORM_DATA.equals(new MimeType(httpRequestMsg.getHeader(CONTENT_TYPE)).getBaseType())){
+            if (MULTIPART_FORM_DATA.equals(new MimeType(httpRequestMsg.getHeader(CONTENT_TYPE)).getBaseType())) {
                 BStruct requestStruct = ((BStruct) getRefArgument(context, 1));
-                HttpUtil.sendMultiparts(httpRequestMsg,
-                        (HttpPostRequestEncoder) requestStruct.getNativeData("MultipartEncoder"));
+                HttpUtil.addMultipartsToCarbonMessage(httpRequestMsg,
+                        (HttpPostRequestEncoder) requestStruct.getNativeData(MULTIPART_ENCODER));
             } else {
                 serializeDataSource(context, httpRequestMsg);
             }

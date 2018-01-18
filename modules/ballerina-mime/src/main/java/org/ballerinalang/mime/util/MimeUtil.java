@@ -45,11 +45,12 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -690,43 +691,8 @@ public class MimeUtil {
             return getAttribute(httpRequest, bodyPartName,
                     bodyPart.getStringField(TEXT_DATA_INDEX));
         } else {
-            return getPartAsFileUpload(httpRequest, bodyPart, bodyPartName, TEXT_PLAIN);
+            return readFromFile(httpRequest, bodyPart, bodyPartName, TEXT_PLAIN);
         }
-    }
-
-    /**
-     * Create an encoded body part from a given string.
-     *
-     * @param request         Represent the top level http request that should hold the body part
-     * @param bodyPartName    Represent body part's name
-     * @param bodyPartContent Actual content that needs to be encoded
-     * @return nterfaceHttpData which represent an encoded attribute
-     * @throws IOException
-     */
-    private static InterfaceHttpData getAttribute(HttpRequest request, String bodyPartName, String bodyPartContent)
-            throws IOException {
-        return dataFactory.createAttribute(request, bodyPartName, bodyPartContent);
-    }
-
-    /**
-     * Include a given file as a body part.
-     *
-     * @param request      Represent the top level http request that should hold the body part
-     * @param bodyPartName Represent body part's name
-     * @param filePath     Location of the file that needs to be encoded as a body part
-     * @param contentType  Content-Type of the body part
-     * @return InterfaceHttpData which represent an encoded file upload part
-     * @throws IOException
-     */
-    private static InterfaceHttpData createPartAsFileUpload(HttpRequest request, String bodyPartName, String filePath,
-                                                            String contentType) throws IOException {
-        Path path = Paths.get(filePath);
-        InputStream inputStream = Files.newInputStream(path);
-        long size = (long) Files.getAttribute(path, FILE_SIZE);
-        FileUpload fileUpload = dataFactory.createFileUpload(request, bodyPartName, path.getFileName().toString(),
-                contentType, CONTENT_TRANSFER_ENCODING_7_BIT, null, size);
-        fileUpload.setContent(inputStream);
-        return fileUpload;
     }
 
     /**
@@ -743,34 +709,14 @@ public class MimeUtil {
         String bodyPartName = getBodyPartName(bodyPart);
         if (isInMemory) {
             if (bodyPart.getRefField(JSON_DATA_INDEX) != null) {
-                if (bodyPart.getRefField(JSON_DATA_INDEX) != null) {
-                    return createPartForJson(httpRequest, bodyPartName, (BJSON) bodyPart.getRefField(JSON_DATA_INDEX));
-                }
+                BJSON jsonContent = (BJSON) bodyPart.getRefField(JSON_DATA_INDEX);
+                return readFromMemory(httpRequest, bodyPartName, APPLICATION_JSON, JSON_EXTENSION,
+                        jsonContent.getMessageAsString());
             }
         } else {
-            return getPartAsFileUpload(httpRequest, bodyPart, bodyPartName, APPLICATION_JSON);
+            return readFromFile(httpRequest, bodyPart, bodyPartName, APPLICATION_JSON);
         }
         return null;
-    }
-
-    /**
-     * Create an encoded body part from json content which is in memory.
-     *
-     * @param request      Represent the top level http request that should hold the body part
-     * @param bodyPartName Represent body part's name
-     * @param jsonContent  json content that needs to be encoded
-     * @return InterfaceHttpData which represent an encoded file upload part with json content
-     * @throws IOException
-     */
-    private static InterfaceHttpData createPartForJson(HttpRequest request, String bodyPartName, BJSON jsonContent)
-            throws IOException {
-        File file = File.createTempFile(TEMP_FILE_NAME, JSON_EXTENSION);
-        file.deleteOnExit();
-        writeToTempFile(new FileWriter(file), jsonContent.getMessageAsString());
-        FileUpload fileUpload = dataFactory.createFileUpload(request, bodyPartName, file.getName(), APPLICATION_JSON,
-                CONTENT_TRANSFER_ENCODING_7_BIT, null, file.length());
-        fileUpload.setContent(file);
-        return fileUpload;
     }
 
     /**
@@ -788,33 +734,13 @@ public class MimeUtil {
         if (isInMemory) {
             if (bodyPart.getRefField(XML_DATA_INDEX) != null) {
                 BXML xmlPayload = (BXML) bodyPart.getRefField(XML_DATA_INDEX);
-                return createPartForXml(httpRequest, bodyPartName, xmlPayload);
+                return readFromMemory(httpRequest, bodyPartName, APPLICATION_XML, XML_EXTENSION,
+                        xmlPayload.getMessageAsString());
             }
         } else {
-            getPartAsFileUpload(httpRequest, bodyPart, bodyPartName, getContentType(bodyPart));
+            return readFromFile(httpRequest, bodyPart, bodyPartName, getContentType(bodyPart));
         }
         return null;
-    }
-
-    /**
-     * Create an encoded body part from xml content which is in memory.
-     *
-     * @param request      Represent the top level http request that should hold the body part
-     * @param bodyPartName Represent body part's name
-     * @param xmlContent   xml content that needs to be encoded
-     * @return InterfaceHttpData which represent an encoded file upload part with xml content
-     * @throws IOException
-     */
-    private static InterfaceHttpData createPartForXml(HttpRequest request, String bodyPartName, BXML xmlContent)
-            throws IOException {
-        File file = File.createTempFile(TEMP_FILE_NAME, XML_EXTENSION);
-        file.deleteOnExit();
-        writeToTempFile(new FileWriter(file), xmlContent.getMessageAsString());
-        FileUpload fileUpload = dataFactory
-                .createFileUpload(request, bodyPartName, file.getName(), APPLICATION_XML,
-                        CONTENT_TRANSFER_ENCODING_7_BIT, null, file.length());
-        fileUpload.setContent(file);
-        return fileUpload;
     }
 
     /**
@@ -831,30 +757,33 @@ public class MimeUtil {
         String bodyPartName = getBodyPartName(bodyPart);
         if (isInMemory) {
             byte[] binaryPayload = bodyPart.getBlobField(BYTE_DATA_INDEX);
-            createPartForBinaryData(httpRequest, bodyPartName, binaryPayload);
+            InputStream inputStream = new ByteArrayInputStream(binaryPayload);
+            FileUploadContentHolder contentHolder = new FileUploadContentHolder();
+            contentHolder.setRequest(httpRequest);
+            contentHolder.setBodyPartName(bodyPartName);
+            contentHolder.setFileName(TEMP_FILE_NAME + TEMP_FILE_EXTENSION);
+            contentHolder.setContentType(OCTET_STREAM);
+            contentHolder.setSize(binaryPayload.length);
+            contentHolder.setInputStream(inputStream);
+            contentHolder.setContentTransferEncoding(CONTENT_TRANSFER_ENCODING_7_BIT);
+            return getFileUpload(contentHolder);
         } else {
-            return getPartAsFileUpload(httpRequest, bodyPart, bodyPartName, getContentType(bodyPart));
+            return readFromFile(httpRequest, bodyPart, bodyPartName, getContentType(bodyPart));
         }
-        return null;
     }
 
     /**
-     * Create an encoded body part from xml content which is in memory.
+     * Create an encoded body part from a given string.
      *
-     * @param request       Represent the top level http request that should hold the body part
-     * @param bodyPartName  Represent body part's name
-     * @param binaryPayload Binary payload that needs to be encoded
-     * @return InterfaceHttpData which represent an encoded file upload part with xml content
+     * @param request         Represent the top level http request that should hold the body part
+     * @param bodyPartName    Represent body part's name
+     * @param bodyPartContent Actual content that needs to be encoded
+     * @return InterfaceHttpData which represent an encoded attribute
      * @throws IOException
      */
-    private static InterfaceHttpData createPartForBinaryData(HttpRequest request, String bodyPartName,
-                                                             byte[] binaryPayload) throws IOException {
-        InputStream inputStream = new ByteArrayInputStream(binaryPayload);
-        FileUpload fileUpload = dataFactory
-                .createFileUpload(request, bodyPartName, TEMP_FILE_NAME + TEMP_FILE_EXTENSION, OCTET_STREAM,
-                        CONTENT_TRANSFER_ENCODING_7_BIT, null, binaryPayload.length);
-        fileUpload.setContent(inputStream);
-        return fileUpload;
+    private static InterfaceHttpData getAttribute(HttpRequest request, String bodyPartName, String bodyPartContent)
+            throws IOException {
+        return dataFactory.createAttribute(request, bodyPartName, bodyPartContent);
     }
 
     /**
@@ -863,17 +792,86 @@ public class MimeUtil {
      * @param httpRequest  Represent the top level http request that should hold the body part
      * @param bodyPart     Represent a ballerina body part
      * @param bodyPartName Represent body part's name
+     * @param contentType  Content-Type of the body part
      * @return InterfaceHttpData which represent an encoded file upload part
      * @throws IOException
      */
-    private static InterfaceHttpData getPartAsFileUpload(HttpRequest httpRequest, BStruct bodyPart, String bodyPartName,
-                                                         String contentType) throws IOException {
+    private static InterfaceHttpData readFromFile(HttpRequest httpRequest, BStruct bodyPart, String bodyPartName,
+                                                  String contentType) throws IOException {
         BStruct fileHandler = (BStruct) bodyPart.getRefField(OVERFLOW_DATA_INDEX);
         if (fileHandler != null) {
             String filePath = fileHandler.getStringField(FILE_PATH_INDEX);
-            return createPartAsFileUpload(httpRequest, bodyPartName, filePath, contentType);
+            if (filePath != null) {
+                Path path = Paths.get(filePath);
+                Path fileName = path != null ? path.getFileName() : null;
+                if (fileName != null) {
+                    InputStream inputStream = Files.newInputStream(path);
+                    long size = (long) Files.getAttribute(path, FILE_SIZE);
+                    FileUploadContentHolder contentHolder = new FileUploadContentHolder();
+                    contentHolder.setRequest(httpRequest);
+                    contentHolder.setBodyPartName(bodyPartName);
+                    contentHolder.setFileName(fileName.toString());
+                    contentHolder.setContentType(contentType);
+                    contentHolder.setSize(size);
+                    contentHolder.setInputStream(inputStream);
+                    contentHolder.setContentTransferEncoding(CONTENT_TRANSFER_ENCODING_7_BIT);
+                    return getFileUpload(contentHolder);
+                }
+            }
         }
         return null;
+    }
+
+    /**
+     * Create an encoded body part from the data in memory.
+     *
+     * @param request       Represent the top level http request that should hold the body part
+     * @param bodyPartName  Represent body part's name
+     * @param contentType   Content-Type of the data in memory
+     * @param fileExtension File extension to be used when writing data in the memory to temp file
+     * @param actualContent Actual content in the memory
+     * @return InterfaceHttpData which represent an encoded file upload part for the given
+     * @throws IOException
+     */
+    private static InterfaceHttpData readFromMemory(HttpRequest request, String bodyPartName,
+                                                    String contentType, String fileExtension,
+                                                    String actualContent)
+            throws IOException {
+        File file = File.createTempFile(TEMP_FILE_NAME, fileExtension);
+        file.deleteOnExit();
+        writeToTempFile(file, actualContent);
+        FileUploadContentHolder contentHolder = new FileUploadContentHolder();
+        contentHolder.setRequest(request);
+        contentHolder.setBodyPartName(bodyPartName);
+        contentHolder.setFileName(file.getName());
+        contentHolder.setContentType(contentType);
+        contentHolder.setSize(file.length());
+        contentHolder.setFile(file);
+        contentHolder.setContentTransferEncoding(CONTENT_TRANSFER_ENCODING_7_BIT);
+        return getFileUpload(contentHolder);
+    }
+
+    /**
+     * Get a body part as a file upload.
+     *
+     * @param contentHolder Holds attributes required for creating a body part
+     * @return InterfaceHttpData which represent an encoded file upload part for the given
+     * @throws IOException
+     */
+    private static InterfaceHttpData getFileUpload(FileUploadContentHolder contentHolder)
+            throws IOException {
+        FileUpload fileUpload = dataFactory.createFileUpload(contentHolder.getRequest(), contentHolder.getBodyPartName()
+                , contentHolder.getFileName(), contentHolder.getContentType(),
+                contentHolder.getContentTransferEncoding(), contentHolder.getCharset(), contentHolder.getSize());
+        switch (contentHolder.getBodyPartFormat()) {
+            case INPUTSTREAM:
+                fileUpload.setContent(contentHolder.getInputStream());
+                break;
+            case FILE:
+                fileUpload.setContent(contentHolder.getFile());
+                break;
+        }
+        return fileUpload;
     }
 
     /**
@@ -893,14 +891,16 @@ public class MimeUtil {
     /**
      * Write content to temp file through a file writer.
      *
-     * @param fileWriter      Represent a FileWriter to be used for writing character data
+     * @param file            Represent the file that the content needs to be written to
      * @param messageAsString Actual content that needs to be written
      * @throws IOException
      */
-    private static void writeToTempFile(FileWriter fileWriter, String messageAsString) throws IOException {
-        BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-        bufferedWriter.write(messageAsString);
-        bufferedWriter.close();
+    private static void writeToTempFile(File file, String messageAsString) throws IOException {
+        try (Writer writer = new OutputStreamWriter(new FileOutputStream(file), UTF_8);
+             BufferedWriter bufferedWriter = new BufferedWriter(writer);) {
+            bufferedWriter.write(messageAsString);
+            bufferedWriter.close();
+        }
     }
 
     /**
