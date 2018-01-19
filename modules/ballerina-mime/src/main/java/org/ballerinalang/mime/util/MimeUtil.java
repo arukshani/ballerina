@@ -766,6 +766,7 @@ public class MimeUtil {
             contentHolder.setSize(binaryPayload.length);
             contentHolder.setInputStream(inputStream);
             contentHolder.setContentTransferEncoding(CONTENT_TRANSFER_ENCODING_7_BIT);
+            contentHolder.setBodyPartFormat(Constants.BodyPartForm.INPUTSTREAM);
             return getFileUpload(contentHolder);
         } else {
             return readFromFile(httpRequest, bodyPart, bodyPartName, getContentType(bodyPart));
@@ -815,6 +816,7 @@ public class MimeUtil {
                     contentHolder.setSize(size);
                     contentHolder.setInputStream(inputStream);
                     contentHolder.setContentTransferEncoding(CONTENT_TRANSFER_ENCODING_7_BIT);
+                    contentHolder.setBodyPartFormat(Constants.BodyPartForm.INPUTSTREAM);
                     return getFileUpload(contentHolder);
                 }
             }
@@ -848,6 +850,7 @@ public class MimeUtil {
         contentHolder.setSize(file.length());
         contentHolder.setFile(file);
         contentHolder.setContentTransferEncoding(CONTENT_TRANSFER_ENCODING_7_BIT);
+        contentHolder.setBodyPartFormat(Constants.BodyPartForm.FILE);
         return getFileUpload(contentHolder);
     }
 
