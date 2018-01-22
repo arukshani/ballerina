@@ -79,7 +79,7 @@ public class MultipartRequestTest {
     private static final Logger LOG = LoggerFactory.getLogger(MultipartRequestTest.class);
 
     private CompileResult result, serviceResult;
-    private final String requestStruct = Constants.REQUEST;
+    private final String requestStruct = Constants.IN_REQUEST;
     private final String protocolPackageHttp = Constants.PROTOCOL_PACKAGE_HTTP;
     private final String protocolPackageMime = PROTOCOL_PACKAGE_MIME;
     private final String protocolPackageFile = PROTOCOL_PACKAGE_FILE;

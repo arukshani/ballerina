@@ -10,7 +10,7 @@ service<http> helloServer {
         methods:["POST"],
         path:"/textbodypart"
     }
-    resource multipart1 (http:Connection conn, http:Request request) {
+    resource multipart1 (http:Connection conn, http:InRequest request) {
         mime:Entity[] bodyParts = request.getMultiparts();
         string textContent = mime:getText(bodyParts[0]);
         http:Response response = {};
@@ -22,7 +22,7 @@ service<http> helloServer {
         methods:["POST"],
         path:"/jsonbodypart"
     }
-    resource multipart2 (http:Connection conn, http:Request request) {
+    resource multipart2 (http:Connection conn, http:InRequest request) {
         mime:Entity[] bodyParts = request.getMultiparts();
         json jsonContent = mime:getJson(bodyParts[0]);
         http:Response response = {};
@@ -34,7 +34,7 @@ service<http> helloServer {
         methods:["POST"],
         path:"/xmlbodypart"
     }
-    resource multipart3 (http:Connection conn, http:Request request) {
+    resource multipart3 (http:Connection conn, http:InRequest request) {
         mime:Entity[] bodyParts = request.getMultiparts();
         xml xmlContent = mime:getXml(bodyParts[0]);
         http:Response response = {};
@@ -46,7 +46,7 @@ service<http> helloServer {
         methods:["POST"],
         path:"/binarybodypart"
     }
-    resource multipart4 (http:Connection conn, http:Request request) {
+    resource multipart4 (http:Connection conn, http:InRequest request) {
         mime:Entity[] bodyParts = request.getMultiparts();
         blob blobContent = mime:getBlob(bodyParts[0]);
         http:Response response = {};
@@ -58,7 +58,7 @@ service<http> helloServer {
         methods:["POST"],
         path:"/multipleparts"
     }
-    resource multipart5 (http:Connection conn, http:Request request) {
+    resource multipart5 (http:Connection conn, http:InRequest request) {
         mime:Entity[] bodyParts = request.getMultiparts();
         int i = 0;
         string content = "";
