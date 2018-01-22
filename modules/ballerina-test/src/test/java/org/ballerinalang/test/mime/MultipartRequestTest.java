@@ -87,9 +87,9 @@ public class MultipartRequestTest {
     private final String entityStruct = Constants.ENTITY;
     private final String mediaTypeStruct = MEDIA_TYPE;
     private String sourceFilePath = "test-src/mime/multipart-request.bal";
-    private final static String CARBON_MESSAGE = "CarbonMessage";
-    private final static String BALLERINA_REQUEST = "BallerinaRequest";
-    private final static String MULTIPART_ENTITY = "MultipartEntity";
+    private final String carbonMessage = "CarbonMessage";
+    private final String ballerinaRequest = "BallerinaRequest";
+    private final String multipartEntity = "MultipartEntity";
 
     @BeforeClass
     public void setup() {
@@ -120,7 +120,6 @@ public class MultipartRequestTest {
         Assert.assertNotNull(response, "Response message not found");
         Assert.assertEquals(getReturnValue(response), "Ballerina text as a file part!");
     }
-
 
     @Test(description = "Test sending a multipart request with a json body part which is kept in memory")
     public void testJsonBodyPart() {
@@ -377,7 +376,6 @@ public class MultipartRequestTest {
         return null;
     }
 
-
     /**
      * Create prerequisite messages that are needed to proceed with the test cases.
      *
@@ -391,9 +389,9 @@ public class MultipartRequestTest {
         HttpUtil.addCarbonMsg(request, cMsg);
         BStruct entity = getEntityStruct();
         MimeUtil.setContentType(getMediaTypeStruct(), entity, MULTIPART_FORM_DATA);
-        messageMap.put(CARBON_MESSAGE, cMsg);
-        messageMap.put(BALLERINA_REQUEST, request);
-        messageMap.put(MULTIPART_ENTITY, entity);
+        messageMap.put(carbonMessage, cMsg);
+        messageMap.put(ballerinaRequest, request);
+        messageMap.put(multipartEntity, entity);
         return messageMap;
     }
 
@@ -405,9 +403,9 @@ public class MultipartRequestTest {
      * @return A test carbon message to be used for invoking the service with.
      */
     private HTTPTestRequest getCarbonMessageWithBodyParts(Map<String, Object> messageMap, BRefValueArray bodyParts) {
-        HTTPTestRequest cMsg = (HTTPTestRequest) messageMap.get(CARBON_MESSAGE);
-        BStruct request = (BStruct) messageMap.get(BALLERINA_REQUEST);
-        BStruct entity = (BStruct) messageMap.get(MULTIPART_ENTITY);
+        HTTPTestRequest cMsg = (HTTPTestRequest) messageMap.get(carbonMessage);
+        BStruct request = (BStruct) messageMap.get(ballerinaRequest);
+        BStruct entity = (BStruct) messageMap.get(multipartEntity);
         entity.setRefField(MULTIPART_DATA_INDEX, bodyParts);
         entity.setBooleanField(IS_IN_MEMORY_INDEX, 1);
         request.addNativeData(MESSAGE_ENTITY, entity);
@@ -482,5 +480,4 @@ public class MultipartRequestTest {
         }
         return out.toString();
     }
-
 }

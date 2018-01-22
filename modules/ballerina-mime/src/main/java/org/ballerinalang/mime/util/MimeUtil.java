@@ -70,7 +70,6 @@ import static org.ballerinalang.mime.util.Constants.BALLERINA_JSON_DATA;
 import static org.ballerinalang.mime.util.Constants.BALLERINA_TEXT_DATA;
 import static org.ballerinalang.mime.util.Constants.BALLERINA_XML_DATA;
 import static org.ballerinalang.mime.util.Constants.BYTE_DATA_INDEX;
-import static org.ballerinalang.mime.util.Constants.CONTENT_TRANSFER_ENCODING_7_BIT;
 import static org.ballerinalang.mime.util.Constants.ENTITY;
 import static org.ballerinalang.mime.util.Constants.ENTITY_NAME_INDEX;
 import static org.ballerinalang.mime.util.Constants.FALSE;
@@ -765,7 +764,6 @@ public class MimeUtil {
             contentHolder.setContentType(OCTET_STREAM);
             contentHolder.setSize(binaryPayload.length);
             contentHolder.setInputStream(inputStream);
-            contentHolder.setContentTransferEncoding(CONTENT_TRANSFER_ENCODING_7_BIT);
             contentHolder.setBodyPartFormat(Constants.BodyPartForm.INPUTSTREAM);
             return getFileUpload(contentHolder);
         } else {
@@ -815,7 +813,6 @@ public class MimeUtil {
                     contentHolder.setContentType(contentType);
                     contentHolder.setSize(size);
                     contentHolder.setInputStream(inputStream);
-                    contentHolder.setContentTransferEncoding(CONTENT_TRANSFER_ENCODING_7_BIT);
                     contentHolder.setBodyPartFormat(Constants.BodyPartForm.INPUTSTREAM);
                     return getFileUpload(contentHolder);
                 }
@@ -849,7 +846,6 @@ public class MimeUtil {
         contentHolder.setContentType(contentType);
         contentHolder.setSize(file.length());
         contentHolder.setFile(file);
-        contentHolder.setContentTransferEncoding(CONTENT_TRANSFER_ENCODING_7_BIT);
         contentHolder.setBodyPartFormat(Constants.BodyPartForm.FILE);
         return getFileUpload(contentHolder);
     }

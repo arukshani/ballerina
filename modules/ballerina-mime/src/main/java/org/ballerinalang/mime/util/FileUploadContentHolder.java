@@ -25,6 +25,8 @@ import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 
+import static org.ballerinalang.mime.util.Constants.CONTENT_TRANSFER_ENCODING_7_BIT;
+
 /**
  * This class holds attributes required for creating a body part as a file upload.
  */
@@ -90,6 +92,9 @@ public class FileUploadContentHolder {
     }
 
     public String getContentTransferEncoding() {
+        if (this.contentTransferEncoding == null) {
+            return CONTENT_TRANSFER_ENCODING_7_BIT;
+        }
         return contentTransferEncoding;
     }
 
