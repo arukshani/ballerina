@@ -30,6 +30,7 @@ import org.ballerinalang.model.util.StringUtils;
 import org.ballerinalang.model.util.XMLUtils;
 import org.ballerinalang.model.values.BJSON;
 import org.ballerinalang.model.values.BMap;
+import org.ballerinalang.model.values.BRefType;
 import org.ballerinalang.model.values.BRefValueArray;
 import org.ballerinalang.model.values.BString;
 import org.ballerinalang.model.values.BStruct;
@@ -72,10 +73,8 @@ import static org.ballerinalang.mime.util.Constants.BALLERINA_XML_DATA;
 import static org.ballerinalang.mime.util.Constants.BYTE_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.ENTITY;
 import static org.ballerinalang.mime.util.Constants.ENTITY_NAME_INDEX;
-import static org.ballerinalang.mime.util.Constants.FALSE;
 import static org.ballerinalang.mime.util.Constants.FILE_PATH_INDEX;
 import static org.ballerinalang.mime.util.Constants.FILE_SIZE;
-import static org.ballerinalang.mime.util.Constants.IS_IN_MEMORY_INDEX;
 import static org.ballerinalang.mime.util.Constants.JSON_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.JSON_EXTENSION;
 import static org.ballerinalang.mime.util.Constants.MEDIA_TYPE;
@@ -96,7 +95,6 @@ import static org.ballerinalang.mime.util.Constants.TEMP_FILE_PATH_INDEX;
 import static org.ballerinalang.mime.util.Constants.TEXT_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.TEXT_PLAIN;
 import static org.ballerinalang.mime.util.Constants.TEXT_XML;
-import static org.ballerinalang.mime.util.Constants.TRUE;
 import static org.ballerinalang.mime.util.Constants.UTF_8;
 import static org.ballerinalang.mime.util.Constants.XML_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.XML_EXTENSION;
@@ -125,11 +123,9 @@ public class MimeUtil {
         if (contentLength > Constants.BYTE_LIMIT) {
             String temporaryFilePath = writeToTemporaryFile(inputStream, BALLERINA_TEXT_DATA);
             createBallerinaFileHandler(context, entityStruct, temporaryFilePath);
-            entityStruct.setBooleanField(IS_IN_MEMORY_INDEX, FALSE);
         } else {
             String payload = StringUtils.getStringFromInputStream(inputStream);
             entityStruct.setStringField(TEXT_DATA_INDEX, payload);
-            entityStruct.setBooleanField(IS_IN_MEMORY_INDEX, TRUE);
         }
     }
 
@@ -148,11 +144,9 @@ public class MimeUtil {
         if (contentLength > Constants.BYTE_LIMIT) {
             String temporaryFilePath = writeToTemporaryFile(inputStream, BALLERINA_JSON_DATA);
             createBallerinaFileHandler(context, entityStruct, temporaryFilePath);
-            entityStruct.setBooleanField(IS_IN_MEMORY_INDEX, FALSE);
         } else {
             BJSON payload = new BJSON(inputStream);
             entityStruct.setRefField(JSON_DATA_INDEX, payload);
-            entityStruct.setBooleanField(IS_IN_MEMORY_INDEX, TRUE);
         }
     }
 
@@ -171,11 +165,9 @@ public class MimeUtil {
         if (contentLength > Constants.BYTE_LIMIT) {
             String temporaryFilePath = writeToTemporaryFile(inputStream, BALLERINA_XML_DATA);
             createBallerinaFileHandler(context, entityStruct, temporaryFilePath);
-            entityStruct.setBooleanField(IS_IN_MEMORY_INDEX, FALSE);
         } else {
             BXML payload = XMLUtils.parse(inputStream);
             entityStruct.setRefField(XML_DATA_INDEX, payload);
-            entityStruct.setBooleanField(IS_IN_MEMORY_INDEX, TRUE);
         }
     }
 
@@ -194,7 +186,6 @@ public class MimeUtil {
         if (contentLength > Constants.BYTE_LIMIT) {
             String temporaryFilePath = writeToTemporaryFile(inputStream, BALLERINA_BINARY_DATA);
             createBallerinaFileHandler(context, entityStruct, temporaryFilePath);
-            entityStruct.setBooleanField(IS_IN_MEMORY_INDEX, FALSE);
         } else {
             byte[] payload;
             try {
@@ -203,7 +194,6 @@ public class MimeUtil {
                 throw new BallerinaException("Error while converting inputstream to a byte array: " + e.getMessage());
             }
             entityStruct.setBlobField(BYTE_DATA_INDEX, payload);
-            entityStruct.setBooleanField(IS_IN_MEMORY_INDEX, TRUE);
         }
     }
 
@@ -214,12 +204,9 @@ public class MimeUtil {
      * @return a boolean denoting the availability of text payload
      */
     public static boolean isTextBodyPresent(BStruct entity) {
-        boolean isInMemory = entity.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
-        if (isInMemory) {
-            String textPayload = entity.getStringField(TEXT_DATA_INDEX);
-            if (textPayload != null) {
-                return true;
-            }
+        String textPayload = entity.getStringField(TEXT_DATA_INDEX);
+        if (textPayload != null) {
+            return true;
         } else {
             BStruct overFlowData = (BStruct) entity.getRefField(OVERFLOW_DATA_INDEX);
             if (overFlowData != null) {
@@ -236,8 +223,8 @@ public class MimeUtil {
      * @return a boolean denoting the availability of json payload
      */
     public static boolean isJsonBodyPresent(BStruct entity) {
-        boolean isInMemory = entity.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
-        if (isInMemory) {
+        BRefType jsonRefType = entity.getRefField(JSON_DATA_INDEX);
+        if (jsonRefType != null) {
             BJSON jsonPayload = (BJSON) entity.getRefField(JSON_DATA_INDEX);
             if (jsonPayload != null) {
                 return true;
@@ -258,8 +245,8 @@ public class MimeUtil {
      * @return a boolean denoting the availability of xml payload
      */
     public static boolean isXmlBodyPresent(BStruct entity) {
-        boolean isInMemory = entity.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
-        if (isInMemory) {
+        BRefType xmlRefType = entity.getRefField(XML_DATA_INDEX);
+        if (xmlRefType != null) {
             BXML xmlPayload = (BXML) entity.getRefField(XML_DATA_INDEX);
             if (xmlPayload != null) {
                 return true;
@@ -280,12 +267,9 @@ public class MimeUtil {
      * @return a boolean denoting the availability of binary payload
      */
     public static boolean isBinaryBodyPresent(BStruct entity) {
-        boolean isInMemory = entity.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
-        if (isInMemory) {
-            byte[] binaryPayload = entity.getBlobField(BYTE_DATA_INDEX);
-            if (binaryPayload != null) {
-                return true;
-            }
+        byte[] binaryPayload = entity.getBlobField(BYTE_DATA_INDEX);
+        if (binaryPayload != null) {
+            return true;
         } else {
             BStruct overFlowData = (BStruct) entity.getRefField(OVERFLOW_DATA_INDEX);
             if (overFlowData != null) {
@@ -302,11 +286,8 @@ public class MimeUtil {
      * @return a boolean denoting the availability of binary payload
      */
     public static boolean isMultipartsAvailable(BStruct entity) {
-        boolean isInMemory = entity.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
-        if (isInMemory) {
-            if (entity.getRefField(MULTIPART_DATA_INDEX) != null) {
-                return true;
-            }
+        if (entity.getRefField(MULTIPART_DATA_INDEX) != null) {
+            return true;
         }
         return false;
     }
@@ -318,20 +299,19 @@ public class MimeUtil {
      * @return string containing text payload
      */
     public static String getTextPayload(BStruct entity) {
-        String returnValue = null;
-        boolean isInMemory = entity.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
-        if (isInMemory) {
-            return entity.getStringField(TEXT_DATA_INDEX);
+        String returnValue = entity.getStringField(TEXT_DATA_INDEX);
+        if (returnValue != null) {
+            return returnValue;
         } else {
             BStruct fileHandler = (BStruct) entity.getRefField(OVERFLOW_DATA_INDEX);
             String filePath = fileHandler.getStringField(FILE_PATH_INDEX);
             try {
-                returnValue = new String(readFromFile(filePath), UTF_8);
+                return new String(readFromFile(filePath), UTF_8);
             } catch (UnsupportedEncodingException e) {
                 LOG.error("Error occured while extracting text payload from entity", e.getMessage());
             }
         }
-        return returnValue;
+        return null;
     }
 
     /**
@@ -341,8 +321,8 @@ public class MimeUtil {
      * @return json content in BJSON form
      */
     public static BJSON getJsonPayload(BStruct entity) {
-        boolean isInMemory = entity.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
-        if (isInMemory) {
+        BRefType jsonRefType = entity.getRefField(JSON_DATA_INDEX);
+        if (jsonRefType != null) {
             return (BJSON) entity.getRefField(JSON_DATA_INDEX);
         } else {
             BStruct fileHandler = (BStruct) entity.getRefField(OVERFLOW_DATA_INDEX);
@@ -363,8 +343,8 @@ public class MimeUtil {
      * @return xml content in BXML form
      */
     public static BXML getXmlPayload(BStruct entity) {
-        boolean isInMemory = entity.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
-        if (isInMemory) {
+        BRefType xmlRefType = entity.getRefField(XML_DATA_INDEX);
+        if (xmlRefType != null) {
             return (BXML) entity.getRefField(XML_DATA_INDEX);
         } else {
             BStruct fileHandler = (BStruct) entity.getRefField(OVERFLOW_DATA_INDEX);
@@ -385,8 +365,8 @@ public class MimeUtil {
      * @return entity body as a byte array
      */
     public static byte[] getBinaryPayload(BStruct entity) {
-        boolean isInMemory = entity.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
-        if (isInMemory) {
+        byte[] byteData = entity.getBlobField(BYTE_DATA_INDEX);
+        if (byteData != null) {
             return entity.getBlobField(BYTE_DATA_INDEX);
         } else {
             BStruct fileHandler = (BStruct) entity.getRefField(OVERFLOW_DATA_INDEX);
@@ -684,9 +664,8 @@ public class MimeUtil {
      */
     public static InterfaceHttpData getEncodedTextBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws
             IOException {
-        boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
         String bodyPartName = getBodyPartName(bodyPart);
-        if (isInMemory) {
+        if (bodyPart.getStringField(TEXT_DATA_INDEX) != null) {
             return getAttribute(httpRequest, bodyPartName,
                     bodyPart.getStringField(TEXT_DATA_INDEX));
         } else {
@@ -704,18 +683,14 @@ public class MimeUtil {
      */
     private static InterfaceHttpData getEncodedJsonBodyPart(HttpRequest httpRequest, BStruct bodyPart)
             throws IOException {
-        boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
         String bodyPartName = getBodyPartName(bodyPart);
-        if (isInMemory) {
-            if (bodyPart.getRefField(JSON_DATA_INDEX) != null) {
-                BJSON jsonContent = (BJSON) bodyPart.getRefField(JSON_DATA_INDEX);
-                return readFromMemory(httpRequest, bodyPartName, APPLICATION_JSON, JSON_EXTENSION,
-                        jsonContent.getMessageAsString());
-            }
+        if (bodyPart.getRefField(JSON_DATA_INDEX) != null) {
+            BJSON jsonContent = (BJSON) bodyPart.getRefField(JSON_DATA_INDEX);
+            return readFromMemory(httpRequest, bodyPartName, APPLICATION_JSON, JSON_EXTENSION,
+                    jsonContent.getMessageAsString());
         } else {
             return readFromFile(httpRequest, bodyPart, bodyPartName, APPLICATION_JSON);
         }
-        return null;
     }
 
     /**
@@ -728,18 +703,14 @@ public class MimeUtil {
      */
     private static InterfaceHttpData getEncodedXmlBodyPart(HttpRequest httpRequest, BStruct bodyPart)
             throws IOException {
-        boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
         String bodyPartName = getBodyPartName(bodyPart);
-        if (isInMemory) {
-            if (bodyPart.getRefField(XML_DATA_INDEX) != null) {
-                BXML xmlPayload = (BXML) bodyPart.getRefField(XML_DATA_INDEX);
-                return readFromMemory(httpRequest, bodyPartName, APPLICATION_XML, XML_EXTENSION,
-                        xmlPayload.getMessageAsString());
-            }
+        if (bodyPart.getRefField(XML_DATA_INDEX) != null) {
+            BXML xmlPayload = (BXML) bodyPart.getRefField(XML_DATA_INDEX);
+            return readFromMemory(httpRequest, bodyPartName, APPLICATION_XML, XML_EXTENSION,
+                    xmlPayload.getMessageAsString());
         } else {
             return readFromFile(httpRequest, bodyPart, bodyPartName, getContentType(bodyPart));
         }
-        return null;
     }
 
     /**
@@ -752,10 +723,9 @@ public class MimeUtil {
      */
     private static InterfaceHttpData getEncodedBinaryBodyPart(HttpRequest httpRequest, BStruct bodyPart)
             throws IOException {
-        boolean isInMemory = bodyPart.getBooleanField(IS_IN_MEMORY_INDEX) == 1;
         String bodyPartName = getBodyPartName(bodyPart);
-        if (isInMemory) {
-            byte[] binaryPayload = bodyPart.getBlobField(BYTE_DATA_INDEX);
+        byte[] binaryPayload = bodyPart.getBlobField(BYTE_DATA_INDEX);
+        if (binaryPayload != null) {
             InputStream inputStream = new ByteArrayInputStream(binaryPayload);
             FileUploadContentHolder contentHolder = new FileUploadContentHolder();
             contentHolder.setRequest(httpRequest);

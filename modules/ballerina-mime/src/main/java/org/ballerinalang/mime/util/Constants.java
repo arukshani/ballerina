@@ -88,7 +88,6 @@ public class Constants {
     public static final int SIZE_INDEX = 0;
     public static final int OVERFLOW_DATA_INDEX = 4;
     public static final int TEMP_FILE_PATH_INDEX = 0;
-    public static final int IS_IN_MEMORY_INDEX = 0;
     public static final int MEDIA_TYPE_INDEX = 0;
     public static final int ENTITY_HEADERS_INDEX = 1;
     public static final int MULTIPART_DATA_INDEX = 5;

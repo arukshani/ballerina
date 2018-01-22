@@ -201,7 +201,6 @@ public function <Request request> setJsonPayload (json payload) {
     entity.jsonData = payload;
     mime:MediaType mediaType = mime:getMediaType(mime:APPLICATION_JSON);
     entity.contentType = mediaType;
-    entity.isInMemory = true;
     request.setEntity(entity);
 }
 
@@ -213,7 +212,6 @@ public function <Request request> setXmlPayload (xml payload) {
     entity.xmlData = payload;
     mime:MediaType mediaType = mime:getMediaType(mime:APPLICATION_XML);
     entity.contentType = mediaType;
-    entity.isInMemory = true;
     request.setEntity(entity);
 }
 
@@ -225,7 +223,6 @@ public function <Request request> setStringPayload (string payload) {
     entity.textData = payload;
     mime:MediaType mediaType = mime:getMediaType(mime:TEXT_PLAIN);
     entity.contentType = mediaType;
-    entity.isInMemory = true;
     request.setEntity(entity);
 }
 
@@ -237,7 +234,6 @@ public function <Request request> setBinaryPayload (blob payload) {
     entity.byteData = payload;
     mime:MediaType mediaType = mime:getMediaType(mime:APPLICATION_OCTET_STREAM);
     entity.contentType = mediaType;
-    entity.isInMemory = true;
     request.setEntity(entity);
 }
 
@@ -249,7 +245,6 @@ public function <Request request> setMultiparts (mime:Entity[] bodyParts) {
     entity.multipartData = bodyParts;
     mime:MediaType mediaType = mime:getMediaType(mime:MULTIPART_FORM_DATA);
     entity.contentType = mediaType;
-    entity.isInMemory = true;
     request.setEntity(entity);
 }
 
@@ -261,7 +256,6 @@ public function <Request request> setEntityBody (file:File content, string conte
     mime:MediaType mediaType = mime:getMediaType(contentType);
     mime:Entity entity = request.getEntityWithoutBody();
     entity.contentType = mediaType;
-    entity.isInMemory = false;
     entity.overflowData = content;
     request.setEntity(entity);
 }

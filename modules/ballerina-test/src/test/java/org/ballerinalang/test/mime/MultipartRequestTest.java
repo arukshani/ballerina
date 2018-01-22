@@ -57,7 +57,6 @@ import static org.ballerinalang.mime.util.Constants.BYTE_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.ENTITY_NAME_INDEX;
 import static org.ballerinalang.mime.util.Constants.FILE;
 import static org.ballerinalang.mime.util.Constants.FILE_PATH_INDEX;
-import static org.ballerinalang.mime.util.Constants.IS_IN_MEMORY_INDEX;
 import static org.ballerinalang.mime.util.Constants.JSON_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.MEDIA_TYPE;
 import static org.ballerinalang.mime.util.Constants.MESSAGE_ENTITY;
@@ -220,7 +219,6 @@ public class MultipartRequestTest {
         bodyPart.setStringField(TEXT_DATA_INDEX, "Ballerina text body part");
         bodyPart.setStringField(ENTITY_NAME_INDEX, "Text Body Part");
         MimeUtil.setContentType(getMediaTypeStruct(), bodyPart, TEXT_PLAIN);
-        bodyPart.setBooleanField(IS_IN_MEMORY_INDEX, 1);
         return bodyPart;
     }
 
@@ -242,7 +240,6 @@ public class MultipartRequestTest {
             bodyPart.setRefField(OVERFLOW_DATA_INDEX, fileStruct);
             bodyPart.setStringField(ENTITY_NAME_INDEX, "Text File Part");
             MimeUtil.setContentType(getMediaTypeStruct(), bodyPart, TEXT_PLAIN);
-            bodyPart.setBooleanField(IS_IN_MEMORY_INDEX, 0);
             return bodyPart;
         } catch (IOException e) {
             LOG.error("Error occured while creating a temp file for json file part in getTextFilePart",
@@ -264,7 +261,6 @@ public class MultipartRequestTest {
         bodyPart.setRefField(JSON_DATA_INDEX, new BJSON(jsonContent));
         bodyPart.setStringField(ENTITY_NAME_INDEX, "Json Body Part");
         MimeUtil.setContentType(getMediaTypeStruct(), bodyPart, APPLICATION_JSON);
-        bodyPart.setBooleanField(IS_IN_MEMORY_INDEX, 1);
         return bodyPart;
     }
 
@@ -286,7 +282,6 @@ public class MultipartRequestTest {
             bodyPart.setRefField(OVERFLOW_DATA_INDEX, fileStruct);
             bodyPart.setStringField(ENTITY_NAME_INDEX, "Json File Part");
             MimeUtil.setContentType(getMediaTypeStruct(), bodyPart, APPLICATION_JSON);
-            bodyPart.setBooleanField(IS_IN_MEMORY_INDEX, 0);
             return bodyPart;
         } catch (IOException e) {
             LOG.error("Error occured while creating a temp file for json file part in getJsonFilePart", e.getMessage());
@@ -305,7 +300,6 @@ public class MultipartRequestTest {
         bodyPart.setRefField(XML_DATA_INDEX, xmlContent);
         bodyPart.setStringField(ENTITY_NAME_INDEX, "Xml Body Part");
         MimeUtil.setContentType(getMediaTypeStruct(), bodyPart, APPLICATION_XML);
-        bodyPart.setBooleanField(IS_IN_MEMORY_INDEX, 1);
         return bodyPart;
     }
 
@@ -327,7 +321,6 @@ public class MultipartRequestTest {
             bodyPart.setRefField(OVERFLOW_DATA_INDEX, fileStruct);
             bodyPart.setStringField(ENTITY_NAME_INDEX, "Xml File Part");
             MimeUtil.setContentType(getMediaTypeStruct(), bodyPart, APPLICATION_XML);
-            bodyPart.setBooleanField(IS_IN_MEMORY_INDEX, 0);
             return bodyPart;
         } catch (IOException e) {
             LOG.error("Error occured while creating a temp file for xml file part in getXmlFilePart", e.getMessage());
@@ -345,7 +338,6 @@ public class MultipartRequestTest {
         bodyPart.setBlobField(BYTE_DATA_INDEX, "Ballerina binary part".getBytes());
         bodyPart.setStringField(ENTITY_NAME_INDEX, "Binary Body Part");
         MimeUtil.setContentType(getMediaTypeStruct(), bodyPart, OCTET_STREAM);
-        bodyPart.setBooleanField(IS_IN_MEMORY_INDEX, 1);
         return bodyPart;
     }
 
@@ -367,7 +359,6 @@ public class MultipartRequestTest {
             bodyPart.setRefField(OVERFLOW_DATA_INDEX, fileStruct);
             bodyPart.setStringField(ENTITY_NAME_INDEX, "Binary File Part");
             MimeUtil.setContentType(getMediaTypeStruct(), bodyPart, OCTET_STREAM);
-            bodyPart.setBooleanField(IS_IN_MEMORY_INDEX, 0);
             return bodyPart;
         } catch (IOException e) {
             LOG.error("Error occured while creating a temp file for binary file part in getBinaryFilePart",
@@ -407,7 +398,6 @@ public class MultipartRequestTest {
         BStruct request = (BStruct) messageMap.get(ballerinaRequest);
         BStruct entity = (BStruct) messageMap.get(multipartEntity);
         entity.setRefField(MULTIPART_DATA_INDEX, bodyParts);
-        entity.setBooleanField(IS_IN_MEMORY_INDEX, 1);
         request.addNativeData(MESSAGE_ENTITY, entity);
         setCarbonMessageWithMultiparts(request, cMsg);
         return cMsg;
