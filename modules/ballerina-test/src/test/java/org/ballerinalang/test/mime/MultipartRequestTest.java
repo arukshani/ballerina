@@ -25,8 +25,10 @@ import org.ballerinalang.launcher.util.CompileResult;
 import org.ballerinalang.mime.util.MimeUtil;
 import org.ballerinalang.model.types.BStructType;
 import org.ballerinalang.model.values.BJSON;
+import org.ballerinalang.model.values.BMap;
 import org.ballerinalang.model.values.BRefValueArray;
 import org.ballerinalang.model.values.BStruct;
+import org.ballerinalang.model.values.BValue;
 import org.ballerinalang.model.values.BXMLItem;
 import org.ballerinalang.net.http.Constants;
 import org.ballerinalang.net.http.HttpUtil;
@@ -52,9 +54,14 @@ import java.util.Map;
 import static org.ballerinalang.mime.util.Constants.APPLICATION_JSON;
 import static org.ballerinalang.mime.util.Constants.APPLICATION_XML;
 import static org.ballerinalang.mime.util.Constants.BYTE_DATA_INDEX;
+import static org.ballerinalang.mime.util.Constants.CONTENT_TRANSFER_ENCODING;
+import static org.ballerinalang.mime.util.Constants.CONTENT_TRANSFER_ENCODING_7_BIT;
+import static org.ballerinalang.mime.util.Constants.CONTENT_TRANSFER_ENCODING_8_BIT;
+import static org.ballerinalang.mime.util.Constants.ENTITY_HEADERS_INDEX;
 import static org.ballerinalang.mime.util.Constants.ENTITY_NAME_INDEX;
 import static org.ballerinalang.mime.util.Constants.FILE;
 import static org.ballerinalang.mime.util.Constants.FILE_PATH_INDEX;
+import static org.ballerinalang.mime.util.Constants.HEADER_VALUE_STRUCT;
 import static org.ballerinalang.mime.util.Constants.JSON_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.MEDIA_TYPE;
 import static org.ballerinalang.mime.util.Constants.MESSAGE_ENTITY;
@@ -81,6 +88,7 @@ public class MultipartRequestTest {
     private final String protocolPackageMime = PROTOCOL_PACKAGE_MIME;
     private final String protocolPackageFile = PROTOCOL_PACKAGE_FILE;
     private final String entityStruct = Constants.ENTITY;
+    private final String headerValueStruct = HEADER_VALUE_STRUCT;
     private final String mediaTypeStruct = MEDIA_TYPE;
     private String sourceFilePath = "test-src/mime/multipart-request.bal";
     private final String carbonMessage = "CarbonMessage";
@@ -114,7 +122,7 @@ public class MultipartRequestTest {
         HTTPTestRequest cMsg = getCarbonMessageWithBodyParts(messageMap, getArrayOfBodyParts(bodyParts));
         HTTPCarbonMessage response = Services.invokeNew(serviceResult, cMsg);
         Assert.assertNotNull(response, "Response message not found");
-        Assert.assertEquals(ResponseReader.getReturnValue(response), "Ballerina text as a file part!");
+        Assert.assertEquals(ResponseReader.getReturnValue(response), "Ballerina text as a file part");
     }
 
     @Test(description = "Test sending a multipart request with a json body part which is kept in memory")
@@ -167,7 +175,7 @@ public class MultipartRequestTest {
         Assert.assertNotNull(response, "Response message not found");
         Assert.assertEquals(new BXMLItem(ResponseReader.getReturnValue(response)).getTextValue().stringValue(),
                 "Ballerina" +
-                " xml file part");
+                        " xml file part");
     }
 
     @Test(description = "Test sending a multipart request with a binary body part which is kept in memory")
@@ -211,6 +219,30 @@ public class MultipartRequestTest {
                 "file part -- Ballerina text body part -- Ballerina binary file part");
     }
 
+    @Test(description = "Test sending a multipart request with a text body part that has 7 bit tranfer encoding")
+    public void testTextBodyPartWith7BitEncoding() {
+        String path = "/test/textbodypart";
+        Map<String, Object> messageMap = createPrerequisiteMessages(path);
+        ArrayList<BStruct> bodyParts = new ArrayList<>();
+        bodyParts.add(getTextFilePartWithEncoding(CONTENT_TRANSFER_ENCODING_7_BIT, "èiiii"));
+        HTTPTestRequest cMsg = getCarbonMessageWithBodyParts(messageMap, getArrayOfBodyParts(bodyParts));
+        HTTPCarbonMessage response = Services.invokeNew(serviceResult, cMsg);
+        Assert.assertNotNull(response, "Response message not found");
+        Assert.assertEquals(ResponseReader.getReturnValue(response), "èiiii");
+    }
+
+    @Test(description = "Test sending a multipart request with a text body part that has 8 bit transfer encoding")
+    public void testTextBodyPartWith8BitEncoding() {
+        String path = "/test/textbodypart";
+        Map<String, Object> messageMap = createPrerequisiteMessages(path);
+        ArrayList<BStruct> bodyParts = new ArrayList<>();
+        bodyParts.add(getTextFilePartWithEncoding(CONTENT_TRANSFER_ENCODING_8_BIT, "èlllll"));
+        HTTPTestRequest cMsg = getCarbonMessageWithBodyParts(messageMap, getArrayOfBodyParts(bodyParts));
+        HTTPCarbonMessage response = Services.invokeNew(serviceResult, cMsg);
+        Assert.assertNotNull(response, "Response message not found");
+        Assert.assertEquals(ResponseReader.getReturnValue(response), "èlllll");
+    }
+
     /**
      * Get a text body part from a given text content.
      *
@@ -234,7 +266,7 @@ public class MultipartRequestTest {
             File file = File.createTempFile("test", ".txt");
             file.deleteOnExit();
             BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(file));
-            bufferedWriter.write("Ballerina text as a file part!");
+            bufferedWriter.write("Ballerina text as a file part");
             bufferedWriter.close();
             BStruct fileStruct = BCompileUtil.createAndGetStruct(result.getProgFile(), protocolPackageFile, FILE);
             fileStruct.setStringField(FILE_PATH_INDEX, file.getAbsolutePath());
@@ -242,6 +274,38 @@ public class MultipartRequestTest {
             bodyPart.setRefField(OVERFLOW_DATA_INDEX, fileStruct);
             bodyPart.setStringField(ENTITY_NAME_INDEX, "Text File Part");
             MimeUtil.setContentType(getMediaTypeStruct(), bodyPart, TEXT_PLAIN);
+            return bodyPart;
+        } catch (IOException e) {
+            LOG.error("Error occured while creating a temp file for json file part in getTextFilePart",
+                    e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Get a text body part from a given text content and content transfer encoding.
+     *
+     * @return A ballerina struct that represent a body part
+     */
+    private BStruct getTextFilePartWithEncoding(String contentTransferEncoding, String message) {
+
+        try {
+            File file = File.createTempFile("test", ".txt");
+            file.deleteOnExit();
+            BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(file));
+            bufferedWriter.write(message);
+            bufferedWriter.close();
+            BStruct fileStruct = BCompileUtil.createAndGetStruct(result.getProgFile(), protocolPackageFile, FILE);
+            fileStruct.setStringField(FILE_PATH_INDEX, file.getAbsolutePath());
+            BStruct bodyPart = getEntityStruct();
+            bodyPart.setRefField(OVERFLOW_DATA_INDEX, fileStruct);
+            bodyPart.setStringField(ENTITY_NAME_INDEX, "Text File Part");
+            MimeUtil.setContentType(getMediaTypeStruct(), bodyPart, TEXT_PLAIN);
+            BMap<String, BValue> headerMap = new BMap<>();
+            BStruct headerStruct = getHeaderValueStruct();
+            headerStruct.setStringField(0, contentTransferEncoding);
+            headerMap.put(CONTENT_TRANSFER_ENCODING, headerStruct);
+            bodyPart.setRefField(ENTITY_HEADERS_INDEX, headerMap);
             return bodyPart;
         } catch (IOException e) {
             LOG.error("Error occured while creating a temp file for json file part in getTextFilePart",
@@ -447,5 +511,10 @@ public class MultipartRequestTest {
     private BStruct getMediaTypeStruct() {
         return BCompileUtil.createAndGetStruct(result.getProgFile(), protocolPackageMime,
                 mediaTypeStruct);
+    }
+
+    private BStruct getHeaderValueStruct() {
+        return BCompileUtil.createAndGetStruct(result.getProgFile(), protocolPackageMime,
+                headerValueStruct);
     }
 }

@@ -30,11 +30,15 @@ public class Constants {
     public static final String PROTOCOL_PACKAGE_FILE = "ballerina.file";
     public static final String HEADER_VALUE_STRUCT = "HeaderValue";
 
-    //TODO: Remove following properties from http package.
     /**
      * Content type HTTP header.
      */
     public static final String CONTENT_TYPE = "Content-Type";
+
+    /**
+     * Content-Transfer-Encoding HTTP header.
+     */
+    public static final String CONTENT_TRANSFER_ENCODING = "Content-Transfer-Encoding";
 
     /**
      * Content-type application/json.
@@ -93,9 +97,6 @@ public class Constants {
     public static final int MULTIPART_DATA_INDEX = 5;
     public static final int ENTITY_NAME_INDEX = 3;
 
-    public static final int TRUE = 1;
-    public static final int FALSE = 0;
-
     //Media type properties
     public static final int PRIMARY_TYPE_INDEX = 0;
     public static final int SUBTYPE_INDEX = 1;
@@ -107,11 +108,15 @@ public class Constants {
     public static final int STRING_INDEX = 0;
     public static final int CHARSET_INDEX = 1;
 
+    public static final int HEADER_VALUE_INDEX = 0;
+
     public static final int FILE_PATH_INDEX = 0;
 
     public static final int BYTE_LIMIT = 2097152; //2MB
     public static final String UTF_8 = "UTF-8";
     public static final String CONTENT_TRANSFER_ENCODING_7_BIT = "7bit";
+    public static final String CONTENT_TRANSFER_ENCODING_8_BIT = "8bit";
+    public static final String CONTENT_TRANSFER_ENCODING_BINARY = "binary";
     public static final String FILE_SIZE = "basic:size";
 
     public static final String TEMP_FILE_EXTENSION = ".tmp";

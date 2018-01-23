@@ -72,7 +72,7 @@ public enum Disposition {
 @Param {value:"entity: Represent mime Entity"}
 @Return {value:"return text data"}
 public function getText (Entity entity) (string) {
-    if (entity.textData != null) {
+    if (entity.textData != null && entity.textData != "") {
         return entity.textData;
     } else {
         file:File overFlowData = entity.overflowData;

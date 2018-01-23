@@ -71,10 +71,13 @@ import static org.ballerinalang.mime.util.Constants.BALLERINA_JSON_DATA;
 import static org.ballerinalang.mime.util.Constants.BALLERINA_TEXT_DATA;
 import static org.ballerinalang.mime.util.Constants.BALLERINA_XML_DATA;
 import static org.ballerinalang.mime.util.Constants.BYTE_DATA_INDEX;
+import static org.ballerinalang.mime.util.Constants.CONTENT_TRANSFER_ENCODING;
 import static org.ballerinalang.mime.util.Constants.ENTITY;
+import static org.ballerinalang.mime.util.Constants.ENTITY_HEADERS_INDEX;
 import static org.ballerinalang.mime.util.Constants.ENTITY_NAME_INDEX;
 import static org.ballerinalang.mime.util.Constants.FILE_PATH_INDEX;
 import static org.ballerinalang.mime.util.Constants.FILE_SIZE;
+import static org.ballerinalang.mime.util.Constants.HEADER_VALUE_INDEX;
 import static org.ballerinalang.mime.util.Constants.JSON_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.JSON_EXTENSION;
 import static org.ballerinalang.mime.util.Constants.MEDIA_TYPE;
@@ -205,7 +208,7 @@ public class MimeUtil {
      */
     public static boolean isTextBodyPresent(BStruct entity) {
         String textPayload = entity.getStringField(TEXT_DATA_INDEX);
-        if (textPayload != null) {
+        if (textPayload != null && !textPayload.isEmpty()) {
             return true;
         } else {
             BStruct overFlowData = (BStruct) entity.getRefField(OVERFLOW_DATA_INDEX);
@@ -300,7 +303,7 @@ public class MimeUtil {
      */
     public static String getTextPayload(BStruct entity) {
         String returnValue = entity.getStringField(TEXT_DATA_INDEX);
-        if (returnValue != null) {
+        if (returnValue != null && !returnValue.isEmpty()) {
             return returnValue;
         } else {
             BStruct fileHandler = (BStruct) entity.getRefField(OVERFLOW_DATA_INDEX);
@@ -662,10 +665,11 @@ public class MimeUtil {
      * @return InterfaceHttpData which represent an encoded file upload part
      * @throws IOException When an error occurs while encoding text body part
      */
-    public static InterfaceHttpData getEncodedTextBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws
+    private static InterfaceHttpData getEncodedTextBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws
             IOException {
         String bodyPartName = getBodyPartName(bodyPart);
-        if (bodyPart.getStringField(TEXT_DATA_INDEX) != null) {
+        if (bodyPart.getStringField(TEXT_DATA_INDEX) != null &&
+                !bodyPart.getStringField(TEXT_DATA_INDEX).isEmpty()) {
             return getAttribute(httpRequest, bodyPartName,
                     bodyPart.getStringField(TEXT_DATA_INDEX));
         } else {
@@ -686,7 +690,7 @@ public class MimeUtil {
         String bodyPartName = getBodyPartName(bodyPart);
         if (bodyPart.getRefField(JSON_DATA_INDEX) != null) {
             BJSON jsonContent = (BJSON) bodyPart.getRefField(JSON_DATA_INDEX);
-            return readFromMemory(httpRequest, bodyPartName, APPLICATION_JSON, JSON_EXTENSION,
+            return readFromMemory(httpRequest, bodyPart, bodyPartName, APPLICATION_JSON, JSON_EXTENSION,
                     jsonContent.getMessageAsString());
         } else {
             return readFromFile(httpRequest, bodyPart, bodyPartName, APPLICATION_JSON);
@@ -706,7 +710,7 @@ public class MimeUtil {
         String bodyPartName = getBodyPartName(bodyPart);
         if (bodyPart.getRefField(XML_DATA_INDEX) != null) {
             BXML xmlPayload = (BXML) bodyPart.getRefField(XML_DATA_INDEX);
-            return readFromMemory(httpRequest, bodyPartName, APPLICATION_XML, XML_EXTENSION,
+            return readFromMemory(httpRequest, bodyPart, bodyPartName, APPLICATION_XML, XML_EXTENSION,
                     xmlPayload.getMessageAsString());
         } else {
             return readFromFile(httpRequest, bodyPart, bodyPartName, getContentType(bodyPart));
@@ -735,10 +739,31 @@ public class MimeUtil {
             contentHolder.setSize(binaryPayload.length);
             contentHolder.setInputStream(inputStream);
             contentHolder.setBodyPartFormat(Constants.BodyPartForm.INPUTSTREAM);
+            String contentTransferHeaderValue = getHeaderValue(bodyPart, CONTENT_TRANSFER_ENCODING);
+            if (contentTransferHeaderValue != null) {
+                contentHolder.setContentTransferEncoding(contentTransferHeaderValue);
+            }
             return getFileUpload(contentHolder);
         } else {
             return readFromFile(httpRequest, bodyPart, bodyPartName, getContentType(bodyPart));
         }
+    }
+
+    /**
+     * Get the header value for a given header name from a body part.
+     *
+     * @param bodyPart   Represent a ballerina body part.
+     * @param headerName Represent an http header name
+     * @return a header value for the given header name
+     */
+    private static String getHeaderValue(BStruct bodyPart, String headerName) {
+        BMap<String, BValue> headerMap = bodyPart.getRefField(ENTITY_HEADERS_INDEX) != null ?
+                (BMap<String, BValue>) bodyPart.getRefField(ENTITY_HEADERS_INDEX) : null;
+        if (headerMap != null) {
+            BStruct headerValue = (BStruct) headerMap.get(headerName);
+            return headerValue.getStringField(HEADER_VALUE_INDEX);
+        }
+        return null;
     }
 
     /**
@@ -784,6 +809,10 @@ public class MimeUtil {
                     contentHolder.setSize(size);
                     contentHolder.setInputStream(inputStream);
                     contentHolder.setBodyPartFormat(Constants.BodyPartForm.INPUTSTREAM);
+                    String contentTransferHeaderValue = getHeaderValue(bodyPart, CONTENT_TRANSFER_ENCODING);
+                    if (contentTransferHeaderValue != null) {
+                        contentHolder.setContentTransferEncoding(contentTransferHeaderValue);
+                    }
                     return getFileUpload(contentHolder);
                 }
             }
@@ -795,6 +824,7 @@ public class MimeUtil {
      * Create an encoded body part from the data in memory.
      *
      * @param request       Represent the top level http request that should hold the body part
+     * @param bodyPart      Represent a ballerina body part
      * @param bodyPartName  Represent body part's name
      * @param contentType   Content-Type of the data in memory
      * @param fileExtension File extension to be used when writing data in the memory to temp file
@@ -802,7 +832,7 @@ public class MimeUtil {
      * @return InterfaceHttpData which represent an encoded file upload part for the given
      * @throws IOException When an error occurs while creating a file upload from data read from memory
      */
-    private static InterfaceHttpData readFromMemory(HttpRequest request, String bodyPartName,
+    private static InterfaceHttpData readFromMemory(HttpRequest request, BStruct bodyPart, String bodyPartName,
                                                     String contentType, String fileExtension,
                                                     String actualContent)
             throws IOException {
@@ -817,6 +847,10 @@ public class MimeUtil {
         contentHolder.setSize(file.length());
         contentHolder.setFile(file);
         contentHolder.setBodyPartFormat(Constants.BodyPartForm.FILE);
+        String contentTransferHeaderValue = getHeaderValue(bodyPart, CONTENT_TRANSFER_ENCODING);
+        if (contentTransferHeaderValue != null) {
+            contentHolder.setContentTransferEncoding(contentTransferHeaderValue);
+        }
         return getFileUpload(contentHolder);
     }
 
