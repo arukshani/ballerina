@@ -97,6 +97,7 @@ import static org.ballerinalang.mime.util.Constants.IS_ENTITY_BODY_PRESENT;
 import static org.ballerinalang.mime.util.Constants.MESSAGE_ENTITY;
 import static org.ballerinalang.mime.util.Constants.MULTIPART_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.MULTIPART_ENCODER;
+import static org.ballerinalang.mime.util.Constants.NO_CONTENT_LENGTH_FOUND;
 import static org.ballerinalang.mime.util.Constants.OCTET_STREAM;
 import static org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_MIME;
 import static org.ballerinalang.mime.util.Constants.TEXT_PLAIN;
@@ -266,6 +267,13 @@ public class HttpUtil {
         }
     }
 
+    /**
+     * Read http content chunk by chunk from netty encoder and add it to carbon message.
+     *
+     * @param httpRequestMsg Represent carbon message that the content should be added to
+     * @param nettyEncoder   Represent netty encoder that holds the actual http content
+     * @throws Exception In case content cannot be read from netty encoder
+     */
     public static void addMultipartsToCarbonMessage(HTTPCarbonMessage httpRequestMsg,
                                                     HttpPostRequestEncoder nettyEncoder) throws Exception {
         while (!nettyEncoder.isEndOfInput()) {
@@ -326,6 +334,17 @@ public class HttpUtil {
                 log.error("Error occurred while parsing multipart body in populateEntityBody", e);
             }
         } else {
+            int contentLength = NO_CONTENT_LENGTH_FOUND;
+            String lengthStr = httpCarbonMessage.getHeader(Constants.HTTP_CONTENT_LENGTH);
+            try {
+                contentLength = lengthStr != null ? Integer.parseInt(lengthStr) : contentLength;
+                if (contentLength == NO_CONTENT_LENGTH_FOUND) {
+                    contentLength = httpCarbonMessage.getFullMessageLength();
+                }
+                MimeUtil.setContentLength(entity, contentLength);
+            } catch (NumberFormatException e) {
+                throw new BallerinaException("Invalid content length");
+            }
             MimeUtil.handleDiscreteMediaTypeContent(context, entity, httpMessageDataStreamer.getInputStream());
         }
         httpMessageStruct.addNativeData(MESSAGE_ENTITY, entity);

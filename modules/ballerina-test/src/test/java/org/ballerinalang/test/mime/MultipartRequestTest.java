@@ -33,20 +33,18 @@ import org.ballerinalang.net.http.HttpUtil;
 import org.ballerinalang.test.services.testutils.HTTPTestRequest;
 import org.ballerinalang.test.services.testutils.MessageUtils;
 import org.ballerinalang.test.services.testutils.Services;
+import org.ballerinalang.test.utils.ResponseReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.wso2.transport.http.netty.message.HTTPCarbonMessage;
-import org.wso2.transport.http.netty.message.HttpMessageDataStreamer;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -69,7 +67,6 @@ import static org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_FILE;
 import static org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_MIME;
 import static org.ballerinalang.mime.util.Constants.TEXT_DATA_INDEX;
 import static org.ballerinalang.mime.util.Constants.TEXT_PLAIN;
-import static org.ballerinalang.mime.util.Constants.UTF_8;
 import static org.ballerinalang.mime.util.Constants.XML_DATA_INDEX;
 
 /**
@@ -105,7 +102,7 @@ public class MultipartRequestTest {
         HTTPTestRequest cMsg = getCarbonMessageWithBodyParts(messageMap, getArrayOfBodyParts(bodyParts));
         HTTPCarbonMessage response = Services.invokeNew(serviceResult, cMsg);
         Assert.assertNotNull(response, "Response message not found");
-        Assert.assertEquals(getReturnValue(response), "Ballerina text body part");
+        Assert.assertEquals(ResponseReader.getReturnValue(response), "Ballerina text body part");
     }
 
     @Test(description = "Test sending a multipart request with a text body part where the content is kept in a file")
@@ -117,7 +114,7 @@ public class MultipartRequestTest {
         HTTPTestRequest cMsg = getCarbonMessageWithBodyParts(messageMap, getArrayOfBodyParts(bodyParts));
         HTTPCarbonMessage response = Services.invokeNew(serviceResult, cMsg);
         Assert.assertNotNull(response, "Response message not found");
-        Assert.assertEquals(getReturnValue(response), "Ballerina text as a file part!");
+        Assert.assertEquals(ResponseReader.getReturnValue(response), "Ballerina text as a file part!");
     }
 
     @Test(description = "Test sending a multipart request with a json body part which is kept in memory")
@@ -129,7 +126,8 @@ public class MultipartRequestTest {
         HTTPTestRequest cMsg = getCarbonMessageWithBodyParts(messageMap, getArrayOfBodyParts(bodyParts));
         HTTPCarbonMessage response = Services.invokeNew(serviceResult, cMsg);
         Assert.assertNotNull(response, "Response message not found");
-        Assert.assertEquals(new BJSON(getReturnValue(response)).value().get("bodyPart").asText(), "jsonPart");
+        Assert.assertEquals(new BJSON(ResponseReader.getReturnValue(response)).value().get("bodyPart").asText(),
+                "jsonPart");
     }
 
     @Test(description = "Test sending a multipart request with a json body part where the content is kept in a file")
@@ -141,7 +139,8 @@ public class MultipartRequestTest {
         HTTPTestRequest cMsg = getCarbonMessageWithBodyParts(messageMap, getArrayOfBodyParts(bodyParts));
         HTTPCarbonMessage response = Services.invokeNew(serviceResult, cMsg);
         Assert.assertNotNull(response, "Response message not found");
-        Assert.assertEquals(new BJSON(getReturnValue(response)).value().get("name").asText(), "wso2");
+        Assert.assertEquals(new BJSON(ResponseReader.getReturnValue(response)).value().get("name").asText(),
+                "wso2");
     }
 
     @Test(description = "Test sending a multipart request with a xml body part which is kept in memory")
@@ -153,7 +152,8 @@ public class MultipartRequestTest {
         HTTPTestRequest cMsg = getCarbonMessageWithBodyParts(messageMap, getArrayOfBodyParts(bodyParts));
         HTTPCarbonMessage response = Services.invokeNew(serviceResult, cMsg);
         Assert.assertNotNull(response, "Response message not found");
-        Assert.assertEquals(new BXMLItem(getReturnValue(response)).getTextValue().stringValue(), "Ballerina");
+        Assert.assertEquals(new BXMLItem(ResponseReader.getReturnValue(response)).getTextValue().stringValue(),
+                "Ballerina");
     }
 
     @Test(description = "Test sending a multipart request with a json body part where the content is kept in a file")
@@ -165,7 +165,8 @@ public class MultipartRequestTest {
         HTTPTestRequest cMsg = getCarbonMessageWithBodyParts(messageMap, getArrayOfBodyParts(bodyParts));
         HTTPCarbonMessage response = Services.invokeNew(serviceResult, cMsg);
         Assert.assertNotNull(response, "Response message not found");
-        Assert.assertEquals(new BXMLItem(getReturnValue(response)).getTextValue().stringValue(), "Ballerina" +
+        Assert.assertEquals(new BXMLItem(ResponseReader.getReturnValue(response)).getTextValue().stringValue(),
+                "Ballerina" +
                 " xml file part");
     }
 
@@ -178,10 +179,11 @@ public class MultipartRequestTest {
         HTTPTestRequest cMsg = getCarbonMessageWithBodyParts(messageMap, getArrayOfBodyParts(bodyParts));
         HTTPCarbonMessage response = Services.invokeNew(serviceResult, cMsg);
         Assert.assertNotNull(response, "Response message not found");
-        Assert.assertEquals(getReturnValue(response), "Ballerina binary part");
+        Assert.assertEquals(ResponseReader.getReturnValue(response), "Ballerina binary part");
     }
 
-    @Test(description = "Test sending a multipart request with a binary body part where the content is kept in a file")
+    @Test(description = "Test sending a multipart request with a binary body part where the content " +
+            "is kept in a file")
     public void testBinaryBodyPartAsFileUpload() {
         String path = "/test/binarybodypart";
         Map<String, Object> messageMap = createPrerequisiteMessages(path);
@@ -190,7 +192,7 @@ public class MultipartRequestTest {
         HTTPTestRequest cMsg = getCarbonMessageWithBodyParts(messageMap, getArrayOfBodyParts(bodyParts));
         HTTPCarbonMessage response = Services.invokeNew(serviceResult, cMsg);
         Assert.assertNotNull(response, "Response message not found");
-        Assert.assertEquals(getReturnValue(response), "Ballerina binary file part");
+        Assert.assertEquals(ResponseReader.getReturnValue(response), "Ballerina binary file part");
     }
 
     @Test(description = "Test sending a multipart request with multiple body parts")
@@ -205,8 +207,8 @@ public class MultipartRequestTest {
         HTTPTestRequest cMsg = getCarbonMessageWithBodyParts(messageMap, getArrayOfBodyParts(bodyParts));
         HTTPCarbonMessage response = Services.invokeNew(serviceResult, cMsg);
         Assert.assertNotNull(response, "Response message not found");
-        Assert.assertEquals(getReturnValue(response), " -- jsonPart -- Ballerina xml file part -- " +
-                "Ballerina text body part -- Ballerina binary file part");
+        Assert.assertEquals(ResponseReader.getReturnValue(response), " -- jsonPart -- Ballerina xml " +
+                "file part -- Ballerina text body part -- Ballerina binary file part");
     }
 
     /**
@@ -284,7 +286,8 @@ public class MultipartRequestTest {
             MimeUtil.setContentType(getMediaTypeStruct(), bodyPart, APPLICATION_JSON);
             return bodyPart;
         } catch (IOException e) {
-            LOG.error("Error occured while creating a temp file for json file part in getJsonFilePart", e.getMessage());
+            LOG.error("Error occured while creating a temp file for json file part in getJsonFilePart",
+                    e.getMessage());
         }
         return null;
     }
@@ -323,7 +326,8 @@ public class MultipartRequestTest {
             MimeUtil.setContentType(getMediaTypeStruct(), bodyPart, APPLICATION_XML);
             return bodyPart;
         } catch (IOException e) {
-            LOG.error("Error occured while creating a temp file for xml file part in getXmlFilePart", e.getMessage());
+            LOG.error("Error occured while creating a temp file for xml file part in getXmlFilePart",
+                    e.getMessage());
         }
         return null;
     }
@@ -443,31 +447,5 @@ public class MultipartRequestTest {
     private BStruct getMediaTypeStruct() {
         return BCompileUtil.createAndGetStruct(result.getProgFile(), protocolPackageMime,
                 mediaTypeStruct);
-    }
-
-    /**
-     * Get the response value from input stream.
-     *
-     * @param response carbon response
-     * @return return value from  input stream as a string
-     */
-    private String getReturnValue(HTTPCarbonMessage response) {
-        Reader reader;
-        final int bufferSize = 1024;
-        final char[] buffer = new char[bufferSize];
-        final StringBuilder out = new StringBuilder();
-        try {
-            reader = new InputStreamReader(new HttpMessageDataStreamer(response).getInputStream(), UTF_8);
-            while (true) {
-                int size = reader.read(buffer, 0, buffer.length);
-                if (size < 0) {
-                    break;
-                }
-                out.append(buffer, 0, size);
-            }
-        } catch (IOException e) {
-            LOG.error("Error occured while reading the response value in getReturnValue", e.getMessage());
-        }
-        return out.toString();
     }
 }

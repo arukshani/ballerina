@@ -506,7 +506,7 @@ public class MimeUtil {
      *
      * @param input Represent an input stream
      * @return a byte array
-     * @throws IOException
+     * @throws IOException In case an error occurs while reading input stream
      */
     private static byte[] getByteArray(InputStream input) throws IOException {
         try (ByteArrayOutputStream output = new ByteArrayOutputStream();) {
@@ -527,7 +527,7 @@ public class MimeUtil {
      */
     public static void handleDiscreteMediaTypeContent(Context context, BStruct entity, InputStream inputStream) {
         String baseType = getContentType(entity);
-        long contentLength = entity.getIntField(0);
+        long contentLength = entity.getIntField(SIZE_INDEX);
         if (baseType != null) {
             switch (baseType) {
                 case TEXT_PLAIN:
@@ -660,7 +660,7 @@ public class MimeUtil {
      * @param httpRequest Represent the top level http request that should hold the body part
      * @param bodyPart    Represent a ballerina body part
      * @return InterfaceHttpData which represent an encoded file upload part
-     * @throws IOException
+     * @throws IOException When an error occurs while encoding text body part
      */
     public static InterfaceHttpData getEncodedTextBodyPart(HttpRequest httpRequest, BStruct bodyPart) throws
             IOException {
@@ -679,7 +679,7 @@ public class MimeUtil {
      * @param httpRequest Represent the top level http request that should hold the body part
      * @param bodyPart    Represent a ballerina body part
      * @return InterfaceHttpData which represent an encoded file upload part with json content
-     * @throws IOException
+     * @throws IOException When an error occurs while encoding json body part
      */
     private static InterfaceHttpData getEncodedJsonBodyPart(HttpRequest httpRequest, BStruct bodyPart)
             throws IOException {
@@ -699,7 +699,7 @@ public class MimeUtil {
      * @param httpRequest Represent the top level http request that should hold the body part
      * @param bodyPart    Represent a ballerina body part
      * @return InterfaceHttpData which represent an encoded file upload part with xml content
-     * @throws IOException
+     * @throws IOException When an error occurs while encoding xml body part
      */
     private static InterfaceHttpData getEncodedXmlBodyPart(HttpRequest httpRequest, BStruct bodyPart)
             throws IOException {
@@ -719,7 +719,7 @@ public class MimeUtil {
      * @param httpRequest Represent the top level http request that should hold the body part
      * @param bodyPart    Represent a ballerina body part
      * @return InterfaceHttpData which represent an encoded file upload part with xml content
-     * @throws IOException
+     * @throws IOException When an error occurs while encoding binary body part
      */
     private static InterfaceHttpData getEncodedBinaryBodyPart(HttpRequest httpRequest, BStruct bodyPart)
             throws IOException {
@@ -748,7 +748,7 @@ public class MimeUtil {
      * @param bodyPartName    Represent body part's name
      * @param bodyPartContent Actual content that needs to be encoded
      * @return InterfaceHttpData which represent an encoded attribute
-     * @throws IOException
+     * @throws IOException When an error occurs while encoding a text string
      */
     private static InterfaceHttpData getAttribute(HttpRequest request, String bodyPartName, String bodyPartContent)
             throws IOException {
@@ -763,7 +763,7 @@ public class MimeUtil {
      * @param bodyPartName Represent body part's name
      * @param contentType  Content-Type of the body part
      * @return InterfaceHttpData which represent an encoded file upload part
-     * @throws IOException
+     * @throws IOException When an error occurs while creating a file upload
      */
     private static InterfaceHttpData readFromFile(HttpRequest httpRequest, BStruct bodyPart, String bodyPartName,
                                                   String contentType) throws IOException {
@@ -800,7 +800,7 @@ public class MimeUtil {
      * @param fileExtension File extension to be used when writing data in the memory to temp file
      * @param actualContent Actual content in the memory
      * @return InterfaceHttpData which represent an encoded file upload part for the given
-     * @throws IOException
+     * @throws IOException When an error occurs while creating a file upload from data read from memory
      */
     private static InterfaceHttpData readFromMemory(HttpRequest request, String bodyPartName,
                                                     String contentType, String fileExtension,
@@ -825,7 +825,7 @@ public class MimeUtil {
      *
      * @param contentHolder Holds attributes required for creating a body part
      * @return InterfaceHttpData which represent an encoded file upload part for the given
-     * @throws IOException
+     * @throws IOException In case an error occurs while creating file part
      */
     private static InterfaceHttpData getFileUpload(FileUploadContentHolder contentHolder)
             throws IOException {
@@ -862,7 +862,7 @@ public class MimeUtil {
      *
      * @param file            Represent the file that the content needs to be written to
      * @param messageAsString Actual content that needs to be written
-     * @throws IOException
+     * @throws IOException In case an exception occurs when writing to temp file
      */
     private static void writeToTempFile(File file, String messageAsString) throws IOException {
         try (Writer writer = new OutputStreamWriter(new FileOutputStream(file), UTF_8);

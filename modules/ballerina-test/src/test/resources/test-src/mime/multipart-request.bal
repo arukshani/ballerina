@@ -13,7 +13,7 @@ service<http> helloServer {
     resource multipart1 (http:Connection conn, http:InRequest request) {
         mime:Entity[] bodyParts = request.getMultiparts();
         string textContent = mime:getText(bodyParts[0]);
-        http:Response response = {};
+        http:OutResponse response = {};
         response.setStringPayload(textContent);
         _ = conn.respond(response);
     }
@@ -25,7 +25,7 @@ service<http> helloServer {
     resource multipart2 (http:Connection conn, http:InRequest request) {
         mime:Entity[] bodyParts = request.getMultiparts();
         json jsonContent = mime:getJson(bodyParts[0]);
-        http:Response response = {};
+        http:OutResponse response = {};
         response.setJsonPayload(jsonContent);
         _ = conn.respond(response);
     }
@@ -37,7 +37,7 @@ service<http> helloServer {
     resource multipart3 (http:Connection conn, http:InRequest request) {
         mime:Entity[] bodyParts = request.getMultiparts();
         xml xmlContent = mime:getXml(bodyParts[0]);
-        http:Response response = {};
+        http:OutResponse response = {};
         response.setXmlPayload(xmlContent);
         _ = conn.respond(response);
     }
@@ -49,7 +49,7 @@ service<http> helloServer {
     resource multipart4 (http:Connection conn, http:InRequest request) {
         mime:Entity[] bodyParts = request.getMultiparts();
         blob blobContent = mime:getBlob(bodyParts[0]);
-        http:Response response = {};
+        http:OutResponse response = {};
         response.setBinaryPayload(blobContent);
         _ = conn.respond(response);
     }
@@ -67,7 +67,7 @@ service<http> helloServer {
             content = content + " -- " + handleContent(part);
             i = i + 1;
         }
-        http:Response response = {};
+        http:OutResponse response = {};
         response.setStringPayload(content);
         _ = conn.respond(response);
     }

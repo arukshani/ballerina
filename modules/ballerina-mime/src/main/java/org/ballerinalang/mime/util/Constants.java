@@ -124,6 +124,7 @@ public class Constants {
     public static final String BALLERINA_XML_DATA = "ballerinaXmlPayload";
     public static final String BALLERINA_BINARY_DATA = "ballerinaBinaryPayload";
 
+    public static final int NO_CONTENT_LENGTH_FOUND = -1;
     /**
      * Describes the format of the body part.
      */
