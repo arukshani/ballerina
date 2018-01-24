@@ -189,7 +189,7 @@ public function <InRequest request> getFormParams () (map) {
     mime:Entity entity = request.getEntity();
     string formData = mime:getText(entity);
     map parameters = {};
-    if (formData != null) {
+    if (formData != null && formData != "") {
         string[] entries = formData.split("&");
         int i = 0;
         while (i < lengthof entries) {

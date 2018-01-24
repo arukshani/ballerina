@@ -67,7 +67,7 @@ import org.wso2.carbon.messaging.exceptions.ServerConnectorException;
 import org.wso2.transport.http.netty.config.ChunkConfig;
 import org.wso2.transport.http.netty.config.ListenerConfiguration;
 import org.wso2.transport.http.netty.config.Parameter;
-import org.wso2.transport.http.netty.contractimpl.HttpResponseStatusFuture;
+import org.wso2.transport.http.netty.contract.HttpResponseFuture;
 import org.wso2.transport.http.netty.message.HTTPCarbonMessage;
 import org.wso2.transport.http.netty.message.HttpBodyPart;
 import org.wso2.transport.http.netty.message.HttpMessageDataStreamer;
@@ -398,7 +398,7 @@ public class HttpUtil {
             , HTTPCarbonMessage requestMessage, HTTPCarbonMessage responseMessage, BStruct httpMessageStruct) {
         addHTTPSessionAndCorsHeaders(requestMessage, responseMessage);
         MessageDataSource outboundMessageSource = readMessageDataSource(httpMessageStruct);
-        HttpResponseStatusFuture outboundResponseStatusFuture = sendOutboundResponse(requestMessage, responseMessage);
+        HttpResponseFuture outboundResponseStatusFuture = sendOutboundResponse(requestMessage, responseMessage);
 
         if (outboundMessageSource != null) {
             OutputStream messageOutputStream = new HttpMessageDataStreamer(responseMessage).getOutputStream();
@@ -487,9 +487,9 @@ public class HttpUtil {
         }
     }
 
-    public static HttpResponseStatusFuture sendOutboundResponse(HTTPCarbonMessage requestMsg,
-            HTTPCarbonMessage responseMsg) {
-        HttpResponseStatusFuture responseFuture;
+    public static HttpResponseFuture sendOutboundResponse(HTTPCarbonMessage requestMsg,
+                                                          HTTPCarbonMessage responseMsg) {
+        HttpResponseFuture responseFuture;
         try {
             responseFuture = requestMsg.respond(responseMsg);
         } catch (org.wso2.transport.http.netty.contract.ServerConnectorException e) {
