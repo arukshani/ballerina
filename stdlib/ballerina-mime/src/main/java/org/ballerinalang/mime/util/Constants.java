@@ -143,6 +143,9 @@ public class Constants {
     public static final String CONTENT_DISPOSITION_FILE_NAME = "filename";
     public static final String CONTENT_DISPOSITION_NAME = "name";
 
+    public static final String ANN_CONFIG_MAX_PAYLOAD_SIZE_IN_MEMORY = "maxPayloadSizeInMemory";
+    public static final String ANN_CONFIG_OVERFLOW_PAYLOAD_LOCATION = "overflowPayloadLocation";
+    public static final String DEFAULT_TEMP_DIRECTORY = "java.io.tmpdir";
     /**
      * Describes the format of the body part.
      */

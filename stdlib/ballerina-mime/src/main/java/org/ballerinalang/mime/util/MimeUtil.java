@@ -39,20 +39,25 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Enumeration;
+import java.util.Map;
 import java.util.Set;
 import javax.activation.MimeType;
 import javax.activation.MimeTypeParameterList;
 import javax.activation.MimeTypeParseException;
 
+import static org.ballerinalang.mime.util.Constants.ANN_CONFIG_MAX_PAYLOAD_SIZE_IN_MEMORY;
+import static org.ballerinalang.mime.util.Constants.ANN_CONFIG_OVERFLOW_PAYLOAD_LOCATION;
 import static org.ballerinalang.mime.util.Constants.ASSIGNMENT;
 import static org.ballerinalang.mime.util.Constants.BODY_PARTS;
 import static org.ballerinalang.mime.util.Constants.BUILTIN_PACKAGE;
+import static org.ballerinalang.mime.util.Constants.BYTE_LIMIT;
 import static org.ballerinalang.mime.util.Constants.CONTENT_DISPOSITION_FILENAME_INDEX;
 import static org.ballerinalang.mime.util.Constants.CONTENT_DISPOSITION_FILE_NAME;
 import static org.ballerinalang.mime.util.Constants.CONTENT_DISPOSITION_INDEX;
 import static org.ballerinalang.mime.util.Constants.CONTENT_DISPOSITION_NAME;
 import static org.ballerinalang.mime.util.Constants.CONTENT_DISPOSITION_NAME_INDEX;
 import static org.ballerinalang.mime.util.Constants.CONTENT_DISPOSITION_PARA_MAP_INDEX;
+import static org.ballerinalang.mime.util.Constants.DEFAULT_TEMP_DIRECTORY;
 import static org.ballerinalang.mime.util.Constants.DISPOSITION_INDEX;
 import static org.ballerinalang.mime.util.Constants.ENTITY_ERROR;
 import static org.ballerinalang.mime.util.Constants.IS_BODY_BYTE_CHANNEL_ALREADY_SET;
@@ -281,10 +286,11 @@ public class MimeUtil {
      * @param fileName    Temporary file name
      * @return Absolute path of the created temporary file.
      */
-    static String writeToTemporaryFile(InputStream inputStream, String fileName) {
+    static String writeToTemporaryFile(InputStream inputStream, String fileName, Map<String, Object> overflowSettings) {
         OutputStream outputStream = null;
         try {
-            File tempFile = File.createTempFile(fileName, TEMP_FILE_EXTENSION);
+            File tempFile = File.createTempFile(fileName, TEMP_FILE_EXTENSION,
+                    new File(MimeUtil.getOverflowLocation(overflowSettings)));
             outputStream = new FileOutputStream(tempFile.getAbsolutePath());
             writeInputToOutputStream(inputStream, outputStream);
             inputStream.close();
@@ -396,5 +402,21 @@ public class MimeUtil {
         BStruct parserError = new BStruct(errorStructInfo.getType());
         parserError.setStringField(0, errMsg);
         return parserError;
+    }
+
+    static Integer getMaxPayloadSizeInMemory(Map<String, Object> overflowSettings) {
+        return isValidOverflowSettings(overflowSettings) ? overflowSettings.get(ANN_CONFIG_MAX_PAYLOAD_SIZE_IN_MEMORY)
+                != null ? (Integer) overflowSettings.get(ANN_CONFIG_MAX_PAYLOAD_SIZE_IN_MEMORY) : BYTE_LIMIT :
+                BYTE_LIMIT;
+    }
+
+    static String getOverflowLocation(Map<String, Object> overflowSettings) {
+        String tempDir = System.getProperty(DEFAULT_TEMP_DIRECTORY);
+        return isValidOverflowSettings(overflowSettings) ? overflowSettings.get(ANN_CONFIG_OVERFLOW_PAYLOAD_LOCATION)
+                != null ? (String) overflowSettings.get(ANN_CONFIG_OVERFLOW_PAYLOAD_LOCATION) : tempDir : tempDir;
+    }
+
+    private static boolean isValidOverflowSettings(Map<String, Object> overflowSettings) {
+        return overflowSettings != null && (!overflowSettings.isEmpty());
     }
 }

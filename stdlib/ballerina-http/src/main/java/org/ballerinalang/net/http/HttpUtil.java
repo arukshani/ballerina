@@ -73,6 +73,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +81,8 @@ import java.util.Set;
 
 import static org.ballerinalang.bre.bvm.BLangVMErrors.PACKAGE_BUILTIN;
 import static org.ballerinalang.bre.bvm.BLangVMErrors.STRUCT_GENERIC_ERROR;
+import static org.ballerinalang.mime.util.Constants.ANN_CONFIG_MAX_PAYLOAD_SIZE_IN_MEMORY;
+import static org.ballerinalang.mime.util.Constants.ANN_CONFIG_OVERFLOW_PAYLOAD_LOCATION;
 import static org.ballerinalang.mime.util.Constants.BOUNDARY;
 import static org.ballerinalang.mime.util.Constants.ENTITY_HEADERS_INDEX;
 import static org.ballerinalang.mime.util.Constants.IS_BODY_BYTE_CHANNEL_ALREADY_SET;
@@ -206,9 +209,11 @@ public class HttpUtil {
                 .getCarbonMsg(httpMessageStruct, HttpUtil.createHttpCarbonMessage(isRequest));
         HttpMessageDataStreamer httpMessageDataStreamer = new HttpMessageDataStreamer(httpCarbonMessage);
         String contentType = httpCarbonMessage.getHeader(HttpHeaderNames.CONTENT_TYPE.toString());
+        Map<String, Object> overflowSettings = getOverflowSettings(context);
         if (MimeUtil.isNotNullAndEmpty(contentType) && contentType.startsWith(MULTIPART_AS_PRIMARY_TYPE)
                 && context != null) {
-            MultipartDecoder.parseBody(context, entity, contentType, httpMessageDataStreamer.getInputStream());
+            MultipartDecoder.parseBody(context, entity, contentType, httpMessageDataStreamer.getInputStream(),
+                    overflowSettings);
         } else {
             int contentLength = NO_CONTENT_LENGTH_FOUND;
             String lengthStr = httpCarbonMessage.getHeader(HttpHeaderNames.CONTENT_LENGTH.toString());
@@ -222,10 +227,29 @@ public class HttpUtil {
                 throw new BallerinaException("Invalid content length");
             }
             EntityBodyHandler.setDiscreteMediaTypeBodyContent(entity, httpMessageDataStreamer
-                    .getInputStream());
+                    .getInputStream(), overflowSettings);
         }
         httpMessageStruct.addNativeData(MESSAGE_ENTITY, entity);
         httpMessageStruct.addNativeData(IS_BODY_BYTE_CHANNEL_ALREADY_SET, true);
+    }
+
+    private static Map<String, Object> getOverflowSettings(Context context) {
+        Map<String, Object> overflowSettings = new HashMap<>();
+        AnnAttachmentInfo configAnn = context.getServiceInfo().getAnnotationAttachmentInfo(
+                HttpConstants.PROTOCOL_PACKAGE_HTTP, HttpConstants.ANN_NAME_CONFIG);
+        if (configAnn != null) {
+            AnnAttributeValue payloadSize = configAnn
+                    .getAttributeValue(ANN_CONFIG_MAX_PAYLOAD_SIZE_IN_MEMORY);
+            AnnAttributeValue overflowLocation = configAnn
+                    .getAttributeValue(ANN_CONFIG_OVERFLOW_PAYLOAD_LOCATION);
+           if (payloadSize != null) {
+               overflowSettings.put(ANN_CONFIG_MAX_PAYLOAD_SIZE_IN_MEMORY, payloadSize.getIntValue());
+           }
+            if (overflowLocation != null) {
+                overflowSettings.put(ANN_CONFIG_OVERFLOW_PAYLOAD_LOCATION, overflowLocation.getStringValue());
+            }
+        }
+        return overflowSettings;
     }
 
     public static void closeMessageOutputStream(OutputStream messageOutputStream) {

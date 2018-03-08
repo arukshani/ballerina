@@ -62,6 +62,8 @@ public annotation configuration attach service<> {
     int maxHeaderSize;
     int maxEntityBodySize;
     webSocket webSocket;
+    int maxPayloadSizeInMemory;
+    string overflowPayloadLocation;
 }
 
 @Description {value: "Annotation to upgrade connection from HTTP to WS in the same base path."}

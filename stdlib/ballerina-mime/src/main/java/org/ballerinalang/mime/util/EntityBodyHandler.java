@@ -48,6 +48,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import static org.ballerinalang.mime.util.Constants.BALLERINA_TEMP_FILE;
@@ -74,10 +75,13 @@ public class EntityBodyHandler {
      * @param entityStruct Represent an 'Entity'
      * @param inputStream  Represent input stream coming from the request/response
      */
-    public static void setDiscreteMediaTypeBodyContent(BStruct entityStruct, InputStream inputStream) {
+    public static void setDiscreteMediaTypeBodyContent(BStruct entityStruct, InputStream inputStream,
+                                                       Map<String, Object> overflowSettings) {
         long contentLength = entityStruct.getIntField(SIZE_INDEX);
-        if (contentLength > Constants.BYTE_LIMIT) {
-            String temporaryFilePath = MimeUtil.writeToTemporaryFile(inputStream, BALLERINA_TEMP_FILE);
+        int maxPayloadSizeInMemory = MimeUtil.getMaxPayloadSizeInMemory(overflowSettings);
+        if (contentLength > maxPayloadSizeInMemory) {
+            String temporaryFilePath = MimeUtil.writeToTemporaryFile(inputStream, BALLERINA_TEMP_FILE,
+                    overflowSettings);
             entityStruct.addNativeData(ENTITY_BYTE_CHANNEL, getByteChannelForTempFile(temporaryFilePath));
         } else {
             entityStruct.addNativeData(ENTITY_BYTE_CHANNEL, new EntityWrapper(new EntityBodyChannel(inputStream)));
@@ -268,7 +272,8 @@ public class EntityBodyHandler {
             return;
         }
 
-        MultipartDecoder.parseBody(context, entityStruct, contentType, byteChannel.getInputStream());
+        MultipartDecoder.parseBody(context, entityStruct, contentType, byteChannel.getInputStream(),
+                null);
     }
 
     /**
