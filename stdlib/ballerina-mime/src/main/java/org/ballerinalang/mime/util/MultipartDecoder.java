@@ -35,13 +35,9 @@ import java.util.Map;
 import javax.activation.MimeType;
 import javax.activation.MimeTypeParseException;
 
-import static org.ballerinalang.mime.util.Constants.ANN_CONFIG_MAX_PAYLOAD_SIZE_IN_MEMORY;
-import static org.ballerinalang.mime.util.Constants.ANN_CONFIG_OVERFLOW_PAYLOAD_LOCATION;
 import static org.ballerinalang.mime.util.Constants.BOUNDARY;
-import static org.ballerinalang.mime.util.Constants.BYTE_LIMIT;
 import static org.ballerinalang.mime.util.Constants.CONTENT_DISPOSITION_STRUCT;
 import static org.ballerinalang.mime.util.Constants.CONTENT_ID_INDEX;
-import static org.ballerinalang.mime.util.Constants.DEFAULT_TEMP_DIRECTORY;
 import static org.ballerinalang.mime.util.Constants.ENTITY;
 import static org.ballerinalang.mime.util.Constants.ENTITY_HEADERS_INDEX;
 import static org.ballerinalang.mime.util.Constants.FIRST_ELEMENT;

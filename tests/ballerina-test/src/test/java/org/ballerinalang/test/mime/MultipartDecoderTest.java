@@ -155,7 +155,7 @@ public class MultipartDecoderTest {
         String error = null;
         try {
             MultipartDecoder.decodeBodyParts("multipart/mixed; boundary=" + multipartDataBoundary,
-                    inputStream);
+                    inputStream, null);
         } catch (Exception e) {
             error = e.getMessage();
         }
