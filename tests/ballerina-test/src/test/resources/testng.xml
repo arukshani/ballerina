@@ -68,6 +68,9 @@ under the License.
             <package name="org.ballerinalang.test.config.*"/>
             <package name="org.ballerinalang.test.streaming.*"/>
         </packages>
+        <classes>
+            <class name="org.ballerinalang.test.services.dispatching.UriTemplateDispatcherTest"/>
+        </classes>
     </test>
     <test name="ballerina-security-test-suite" preserve-order="true" parallel="false">
         <packages>
