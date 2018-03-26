@@ -28,13 +28,14 @@
         <packages>
             <!--<package name="org.ballerinalang.test.service.http.sample"/>-->
             <!--<package name="org.ballerinalang.test.service.http2"/>-->
-            <package name="org.ballerinalang.test.transaction"/>
-            <package name="org.ballerinalang.test.filter"/>
+          <!--  <package name="org.ballerinalang.test.transaction"/>
+            <package name="org.ballerinalang.test.filter"/>-->
         </packages>
 
         <classes>
-            <class name="org.ballerinalang.test.service.http.sample.PassthroughServiceSampleTestCase"/>
-            <class name="org.ballerinalang.test.service.http.sample.EchoServiceSampleTestCase"/>
+           <!-- <class name="org.ballerinalang.test.service.http.sample.PassthroughServiceSampleTestCase"/>
+            <class name="org.ballerinalang.test.service.http.sample.EchoServiceSampleTestCase"/>-->
+            <class name="org.ballerinalang.test.service.http.sample.RoutingServiceSampleTestCase"/>
         </classes>
     </test>
 
@@ -50,10 +51,10 @@
             <!--<class name="org.ballerinalang.test.service.websocket.sample.WebSocketAutoPingPongTest"/>-->
         <!--</classes>-->
     <!--</test>-->
-    <test name="ballerina-grpc-sample-tests" preserve-order="true" parallel="false">
+   <!-- <test name="ballerina-grpc-sample-tests" preserve-order="true" parallel="false">
         <classes>
             <class name="org.ballerinalang.test.service.grpc.sample.GrpcClientTestCase"/>
             <class name="org.ballerinalang.test.service.grpc.sample.GrpcServiceTestCase"/>
         </classes>
-    </test>
+    </test>-->
 </suite>

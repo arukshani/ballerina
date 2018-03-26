@@ -5,7 +5,7 @@ import ballerina/mime;
 
 function setErrorResponse(http:Response response,  mime:EntityError err) {
     response.statusCode = 500;
-    response.setStringPayload(err.message);
+    response.setStringPayload("Error in multipart");
 }
 
 endpoint mock:NonListeningServiceEndpoint mockEP {
