@@ -1,18 +1,24 @@
-import ballerina.net.http;
+import ballerina/http;
 
-@http:configuration {basePath:"/hello"}
-service<http> helloWorldResourceConfig {
+endpoint http:NonListener helloEP {
+    port:9090
+};
 
-    @http:resourceConfig {
+@http:ServiceConfig {
+    basePath:"/hello"
+}
+service<http:Service> helloWorldResourceConfig bind helloEP {
+
+    @http:ResourceConfig {
         methods:["GET"],
         path:"/"
     }
-    @http:resourceConfig {
+    @http:ResourceConfig {
         methods:["POST"]
     }
-    resource sayHello (http:Connection conn, http:InRequest req) {
-        http:OutResponse res = {};
+    sayHello (endpoint conn, http:Request req) {
+        http:Response res = new;
         res.setStringPayload("Hello World !!!");
-        _ = conn.respond(res);
+        _ = conn -> respond(res);
     }
 }

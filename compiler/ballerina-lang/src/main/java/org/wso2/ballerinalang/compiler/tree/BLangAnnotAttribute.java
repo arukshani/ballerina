@@ -36,6 +36,7 @@ import java.util.Set;
 /**
  * @since 0.94
  */
+@Deprecated
 public class BLangAnnotAttribute extends BLangNode implements AnnotationAttributeNode {
 
     public BLangType typeNode;
@@ -113,7 +114,7 @@ public class BLangAnnotAttribute extends BLangNode implements AnnotationAttribut
 
     @Override
     public String toString() {
-        return "BLangAnnotAttribute: " + (this.getFlags().contains(Flag.CONST) ? "const " : "") +
+        return "BLangAnnotAttribute: " + (this.getFlags().contains(Flag.FINAL) ? "const " : "") +
                 (this.name != null ? this.name : "") + "[" + this.typeNode + "]" +
                 (this.expr != null ? " = " + this.expr : "");
     }

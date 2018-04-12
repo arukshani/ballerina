@@ -24,15 +24,23 @@ package org.ballerinalang.compiler;
  */
 public enum CompilerOptionName {
 
-    SOURCE_ROOT("-sourceroot"),
+    PROJECT_DIR("projectDirectory"),
 
     PRESERVE_WHITESPACE("preserveWhitespace"),
 
+    OFFLINE("offline"),
+
     COMPILER_PHASE("compilerPhase"),
 
-    SKIP_PACKAGE_VALIDATION("skipPackageValidation"),
+    TRANSACTION_EXISTS("transactionBlockExists"),
 
-    TRANSACTION_EXISTS("transactionBlockExists");
+    BUILD_COMPILED_PACKAGE("buildCompiledPackage"),
+
+    LIST_PKG("listPkg"),
+
+    DRY_RUN("dryRun"),
+
+    TARGET_BINARY_PATH("targetBinaryPath");
 
     public final String name;
 

@@ -192,7 +192,7 @@ export const flowChartControlStatement = {
         bottom: (statement.height / 2),
     },
     gap: {
-        left: (12 * statement.padding.left),
+        left: (statement.width / 2),
     },
 };
 
@@ -240,7 +240,7 @@ export const fork = {
 
 export const canvas = {
     padding: {
-        top: 50,
+        top: 20,
         right: 50,
         bottom: 100,
         left: 50,
@@ -268,25 +268,6 @@ export const blockNode = {
         right: 20,
         bottom: 0,
         left: 20,
-    },
-};
-
-export const packageDefinition = {
-    header: {
-        height: 35,
-        padding: {
-            top: 0,
-            right: 5,
-            bottom: 0,
-            left: 5,
-        },
-    },
-
-    labelWidth: 60,
-    textWidth: 245,
-
-    importDeclaration: {
-        itemHeight: 30,
     },
 };
 
@@ -318,23 +299,6 @@ export const annotationAttributeDefinition = {
             bottom: 10,
         },
     },
-};
-
-export const contentOperations = {
-    height: 45,
-    width: 600,
-};
-
-export const structDefinitionStatement = {
-    width: 600,
-    height: 30,
-    margin: {
-        bottom: 2,
-    },
-    padding: {
-        left: 10,
-    },
-    deleteButtonOffset: 30,
 };
 
 export const panelHeading = {
@@ -376,14 +340,6 @@ export const timeout = {
     },
 };
 
-export const iconForTool = {
-    height: 30,
-    width: 30,
-    padding: {
-        left: 5,
-    },
-};
-
 export const connectorDeclaration = {
     gutter: {
         v: 40,
@@ -399,52 +355,5 @@ export const actionInvocationDelete = {
     outerRect: {
         width: 50,
         height: 30,
-    },
-};
-
-export const variablesPane = {
-    headerHeight: 35,
-    topBarHeight: 25,
-    inputHeight: 40,
-    noOfGlobalsBGHeight: 18,
-    leftRightPadding: 10,
-    iconSize: 20,
-    globalsNoFontSize: 13,
-    globalItemHeight: 30,
-    globalItemLeftPadding: 10,
-    iconLeftPadding: 12,
-    noOfGlobalsLeftPadding: 12,
-    noOfGlobalsTextPadding: 10,
-    globalDeclarationWidth: 310,
-    globalDefDecorationWidth: 3,
-    importDeclarationHeight: 30,
-    importInputHeight: 40,
-    yGutterSize: 10,
-    xGutterSize: 15,
-    badgeWidth: 150,
-};
-
-export const enumPanel = {
-    width: 600,
-    height: 200,
-    contentOperations: {
-        w: 300,
-    },
-    titleWidthOffset: 100,
-};
-
-export const enumIdentifierStatement = {
-    height: 25,
-    padding: {
-        top: 5,
-        left: 10,
-        bottom: 2,
-        right: 2,
-    },
-    textPadding: {
-        top: 5,
-        left: 5,
-        bottom: 5,
-        right: 5,
     },
 };

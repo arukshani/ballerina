@@ -1,37 +1,38 @@
-function testIfStmt(int a, int b, int c) (int, int) {
+function testIfStmt(int a, int b, int c) returns (int, int) {
 
     int x;
     x = 10;
 
+    int a1;
     if ( a == b) {
-        a = 100;
+        a1 = 100;
 
     } else if (a == b + 1){
-        a = 200;
+        a1 = 200;
 
     } else  if (a == b + 2){
-        a = 300;
+        a1 = 300;
 
     }  else {
-        a = 400;
+        a1 = 400;
     }
 
-    b = c;
+    int b1 = c;
 
-    return a + x, b + 1;
+    return (a1 + x, b1 + 1);
 }
 
-function testAgeGroup(int age) (string) {
-    string group;
+function testAgeGroup(int age) returns (string) {
+    string avgGroup;
     if (age > 18) {
-        group = "elder";
+        avgGroup = "elder";
     } else {
-        group = "minor";
+        avgGroup = "minor";
     }
-    return group;
+    return avgGroup;
 }
 
-function ifElseScope(int number)(int) {
+function ifElseScope(int number) returns (int) {
 int i = number;
     if(i == 1) {
         i = -10;
@@ -53,7 +54,7 @@ int i = number;
     return i;
 }
 
-function nestedIfElseScope(int number1, int number2)(int) {
+function nestedIfElseScope(int number1, int number2) returns (int) {
     int i = number1;
     if(i == 1) {
         int j = number2;
@@ -88,9 +89,9 @@ function nestedIfElseScope(int number1, int number2)(int) {
     return i;
 }
 
-const int a = 6;
+@final int a = 6;
 
-function testConditionScope(int b)(int) {
+function testConditionScope(int b) returns (int) {
     int output = 0;
     if (a > b) {
         int a = 1;

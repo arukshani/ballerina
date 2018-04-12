@@ -1,21 +1,21 @@
-struct Person {
+type Person {
     string name;
     int age;
-    Person parent;
+    Person? parent;
     json info;
     map address;
     int[] marks;
-}
+};
 
 
-struct Student {
+type Student {
     string name;
     int age;
     map address;
     int[] marks;
-}
+};
 
-function testStructToStruct() (Person) {
+function testStructToStruct() returns (Person) {
     Student s = { name:"Supun", 
                   age:25, 
                   address:{"city":"Kandy", "country":"SriLanka"}, 

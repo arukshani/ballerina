@@ -19,21 +19,25 @@
 package org.ballerinalang.mime.nativeimpl;
 
 import org.ballerinalang.bre.Context;
+import org.ballerinalang.bre.bvm.BlockingNativeCallableUnit;
 import org.ballerinalang.mime.util.EntityBodyHandler;
+import org.ballerinalang.mime.util.HeaderUtil;
 import org.ballerinalang.mime.util.MimeUtil;
 import org.ballerinalang.model.types.TypeKind;
 import org.ballerinalang.model.values.BString;
 import org.ballerinalang.model.values.BStruct;
-import org.ballerinalang.model.values.BValue;
-import org.ballerinalang.natives.AbstractNativeFunction;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 import org.ballerinalang.natives.annotations.Receiver;
 import org.ballerinalang.natives.annotations.ReturnType;
 import org.ballerinalang.runtime.message.MessageDataSource;
 import org.ballerinalang.runtime.message.StringDataSource;
 
+import java.util.Locale;
+
+import static org.ballerinalang.mime.util.Constants.APPLICATION_FORM;
 import static org.ballerinalang.mime.util.Constants.ENTITY_BYTE_CHANNEL;
 import static org.ballerinalang.mime.util.Constants.FIRST_PARAMETER_INDEX;
+import static org.ballerinalang.mime.util.Constants.TEXT_AS_PRIMARY_TYPE;
 
 /**
  * Get the entity body as a string.
@@ -41,35 +45,40 @@ import static org.ballerinalang.mime.util.Constants.FIRST_PARAMETER_INDEX;
  * @since 0.963.0
  */
 @BallerinaFunction(
-        packageName = "ballerina.mime",
+        orgName = "ballerina", packageName = "mime",
         functionName = "getText",
         receiver = @Receiver(type = TypeKind.STRUCT, structType = "Entity", structPackage = "ballerina.mime"),
         returnType = {@ReturnType(type = TypeKind.STRING), @ReturnType(type = TypeKind.STRUCT)},
         isPublic = true
 )
-public class GetText extends AbstractNativeFunction {
+public class GetText extends BlockingNativeCallableUnit {
 
     @Override
-    public BValue[] execute(Context context) {
-        BString result = null;
+    public void execute(Context context) {
+        BString result;
         try {
-            BStruct entityStruct = (BStruct) this.getRefArgument(context, FIRST_PARAMETER_INDEX);
-            MessageDataSource dataSource = EntityBodyHandler.getMessageDataSource(entityStruct);
-            if (dataSource != null) {
-                result = new BString(dataSource.getMessageAsString());
-            } else {
-                StringDataSource stringDataSource = EntityBodyHandler.constructStringDataSource(entityStruct);
-                if (stringDataSource != null) {
+            BStruct entityStruct = (BStruct) context.getRefArgument(FIRST_PARAMETER_INDEX);
+            String baseType = HeaderUtil.getBaseType(entityStruct);
+            if (baseType != null && (baseType.toLowerCase(Locale.getDefault()).startsWith(TEXT_AS_PRIMARY_TYPE) ||
+                    baseType.equalsIgnoreCase(APPLICATION_FORM))) {
+                MessageDataSource dataSource = EntityBodyHandler.getMessageDataSource(entityStruct);
+                if (dataSource != null) {
+                    result = new BString(dataSource.getMessageAsString());
+                } else {
+                    StringDataSource stringDataSource = EntityBodyHandler.constructStringDataSource(entityStruct);
                     result = new BString(stringDataSource.getMessageAsString());
                     EntityBodyHandler.addMessageDataSource(entityStruct, stringDataSource);
                     //Set byte channel to null, once the message data source has been constructed
                     entityStruct.addNativeData(ENTITY_BYTE_CHANNEL, null);
                 }
+                context.setReturnValues(result);
+            } else {
+                context.setReturnValues(MimeUtil.createEntityError(context, "Entity body is not text " +
+                        "compatible since the received content-type is : " + baseType));
             }
         } catch (Throwable e) {
-            return this.getBValues(null, MimeUtil.createEntityError(context,
+            context.setReturnValues(MimeUtil.createEntityError(context,
                     "Error occurred while retrieving text data from entity : " + e.getMessage()));
         }
-        return this.getBValues(result, null);
     }
 }

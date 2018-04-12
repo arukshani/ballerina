@@ -1,32 +1,37 @@
-import ballerina.io;
-import ballerina.net.http;
-service<http> FooService {
+import ballerina/io;
+import ballerina/http;
 
-    resource test1 (string dummyParam) {
+endpoint http:NonListener echoEP {
+    port:9090
+};
+
+service<http:Service> FooService {
+
+    test1 (string dummyParam) {
         io:println("test1-before");
         break;
         io:println("test1-after");
     }
 
-    resource test2 (string dummyParam) {
+    test2 (string dummyParam) {
         io:println("test2-before");
         next;
         io:println("test2-after");
     }
 
-    resource test3 (string dummyParam) {
+    test3 (string dummyParam) {
         io:println("test3-before");
         abort;
         io:println("test3-after");
     }
 
-    resource test4 (string dummyParam) {
+    test4 (string dummyParam) {
         io:println("test4-before");
-        return;
+        done;
         io:println("test4-after");
     }
 
-    resource test5 (string dummyParam) {
+    test5 (string dummyParam) {
         worker w1 {
             var a = "a";
             a -> w2;
@@ -35,5 +40,10 @@ service<http> FooService {
             var b = "b";
             b -> w1;
         }
+    }
+
+    test6 (string dummyParam) {
+        io:println("test4-return");
+        return;
     }
 }

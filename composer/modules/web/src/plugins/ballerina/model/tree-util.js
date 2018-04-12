@@ -19,7 +19,6 @@ import _ from 'lodash';
 import AbstractTreeUtil from './abstract-tree-util';
 import TreeBuilder from './tree-builder';
 import FragmentUtils from '../utils/fragment-utils';
-import { statement } from 'plugins/ballerina/diagram/views/default/designer-defaults';
 
 /**
  * Util class for tree related functionality.
@@ -183,8 +182,7 @@ class TreeUtil extends AbstractTreeUtil {
      * @return {*}
      */
     isEndpointTypeVariableDef(node) {
-        const typeNode = _.get(node, 'variable.typeNode');
-        return typeNode && this.isEndpointType(typeNode);
+        return this.isEndpointType(node);
     }
 
     /**
@@ -242,8 +240,50 @@ class TreeUtil extends AbstractTreeUtil {
         } else if (this.isVariableDef(node)) {
             invocationExpression = _.get(node, 'variable.initialExpression');
         }
+
+        if (invocationExpression && this.isCheckExpr(invocationExpression)) {
+            invocationExpression = invocationExpression.expression;
+        }
         return (invocationExpression && this.isInvocation(invocationExpression)
-        && invocationExpression.invocationType === 'ACTION');
+        && invocationExpression.actionInvocation);
+    }
+
+    /**
+     * Get variable ref of Action Invocation
+     * @param {object} node - variable def node object
+     * @returns {object} - whether the node is an invocation node
+     */
+    getVariableReference(node) {
+        let invocationExpression;
+        if (this.isAssignment(node) || this.isExpressionStatement(node)) {
+            invocationExpression = _.get(node, 'expression');
+        } else if (this.isVariableDef(node)) {
+            invocationExpression = _.get(node, 'variable.initialExpression');
+        }
+
+        if (invocationExpression && this.isCheckExpr(invocationExpression)) {
+            invocationExpression = invocationExpression.expression;
+        }
+        return invocationExpression.expression.variableName.value;
+    }
+
+    /**
+     * Get variable ref
+     * @param {object} node - variable def node object
+     * @returns {object} - whether the node is an invocation node
+     */
+    getInvocationSignature(node) {
+        let invocationExpression;
+        if (this.isAssignment(node) || this.isExpressionStatement(node)) {
+            invocationExpression = _.get(node, 'expression');
+        } else if (this.isVariableDef(node)) {
+            invocationExpression = _.get(node, 'variable.initialExpression');
+        }
+
+        if (invocationExpression && this.isCheckExpr(invocationExpression)) {
+            invocationExpression = invocationExpression.expression;
+        }
+        return invocationExpression.getInvocationSignature();
     }
 
     /**
@@ -255,23 +295,20 @@ class TreeUtil extends AbstractTreeUtil {
         if (this.isReturn(node)) {
             return true;
         }
-        // TODO improve this logic to handle new respond client invocation
-        if (this.isAssignment(node) && this.isInvocation(node.getExpression())) {
-            const exp = node.getExpression();
-            if ((exp.invocationType === 'FUNCTION')
-                && ((exp.name.value === 'forward') || (exp.name.value === 'send') || (exp.name.value === 'respond'))) {
-                return true;
+        let resource = node;
+        while (resource) {
+            resource = resource.parent;
+            if (resource && this.isResource(resource)) {
+                // visit and find ACTION Invocation.
+                const param = resource.parameters[0];
+                if (param === undefined) return false;
+                const c = param.name.value;
+                const action = node.find((e) => { return this.isInvocation(e); });
+                if (action && c === _.get(action, 'expression.variableName.value', '++')) {
+                    return true;
+                }
+                break;
             }
-            return false;
-        }
-        if (this.isVariableDef(node) && node.variable.getInitialExpression()
-                && this.isInvocation(node.variable.getInitialExpression())) {
-            const exp = node.variable.getInitialExpression();
-            if ((exp.invocationType === 'FUNCTION')
-                && ((exp.name.value === 'forward') || (exp.name.value === 'send'))) {
-                return true;
-            }
-            return false;
         }
         return false;
     }
@@ -335,25 +372,12 @@ class TreeUtil extends AbstractTreeUtil {
         if (!parent) {
             return [];
         }
-        let statements;
-        if (this.isConnector(parent)) {
-            statements = _.get(parent, 'variableDefs');
-        } else if (this.isService(parent)) {
-            statements = _.get(parent, 'variables');
-        } else if (this.isBlock(parent)) {
-            statements = _.get(parent, 'statements');
-        } else {
-            statements = _.get(parent.body, 'statements');
+        const visibleEndpoints = [];
+        if (this.isFunction(parent) || this.isResource(parent) || this.isService(parent)) {
+            return visibleEndpoints.concat(_.get(parent, 'endpointNodes'));
         }
 
-        let filteredItems = [];
-        if (statements) {
-            filteredItems = _.filter(statements, (stmt) => {
-                const typeNode = _.get(stmt, 'variable.typeNode');
-                return typeNode && this.isEndpointType(typeNode);
-            });
-        }
-        return filteredItems.concat(this.getAllVisibleEndpoints(parent.parent));
+        return visibleEndpoints.concat(this.getAllVisibleEndpoints(parent.parent));
     }
 
     /**
@@ -510,7 +534,7 @@ class TreeUtil extends AbstractTreeUtil {
     }
 
     getNewTempVarName(node, varPrefix, numberOfVars = 1) {
-        const fileData = node.getRoot().getFile();
+        // const fileData = node.getRoot().getFile();
         // FIXME
         // return getLangServerClientInstance()
         //     .then((client) => {
@@ -623,19 +647,7 @@ class TreeUtil extends AbstractTreeUtil {
      */
     getCurrentEndpoints(model) {
         if (this.isResource(model) || this.isFunction(model)) {
-            return model.getBody().getStatements()
-            .filter(stmt => this.isVariableDef(stmt) && this.isEndpointType(stmt.getVariable().getTypeNode()));
-        } else if (this.isConnector(model)) {
-            const statements = [];
-            model.getActions().forEach((action) => {
-                action.getBody().getStatements().forEach((stmt) => {
-                    if (this.isVariableDef(stmt)
-                        && this.isEndpointType(stmt.getVariable().getTypeNode())) {
-                        statements.push(stmt);
-                    }
-                });
-            });
-            return statements;
+            return model.getEndpointNodes();
         } else if (model.parent) {
             return this.getCurrentEndpoints(model.parent);
         } else {
@@ -756,10 +768,10 @@ class TreeUtil extends AbstractTreeUtil {
      * @param {Node} node - current node.
      * */
     generateEndpointName(parent, node) {
-        const defaultName = 'endpoint';
+        const defaultName = 'ep';
         let defaultIndex = 0;
         const names = this.getCurrentEndpoints(parent)
-                        .map((endpoint) => { return endpoint.getVariableName().getValue(); })
+                        .map((endpoint) => { return endpoint.getName().getValue(); })
                         .sort();
         names.every((endpoint, i) => {
             if (names[i] !== defaultName + (i + 1)) {
@@ -769,7 +781,7 @@ class TreeUtil extends AbstractTreeUtil {
                 return true;
             }
         });
-        node.getVariableName()
+        node.getName()
         .setValue(`${defaultName + (defaultIndex === 0 ? names.length + 1 : defaultIndex)}`, true);
     }
 
@@ -806,6 +818,21 @@ class TreeUtil extends AbstractTreeUtil {
         });
         return `${defaultName
             + (defaultIndex === 0 ? names.length + 1 + indexIncreament : defaultIndex + indexIncreament)}`;
+    }
+
+    getAllEndpoints(node) {
+        let endpoints = [];
+        if (node.kind === 'CompilationUnit') {
+            endpoints = endpoints.concat(_.filter(node.topLevelNodes, (topLevelNode) => {
+                return topLevelNode.kind === 'Endpoint';
+            }));
+        } else if (node.endpointNodes) {
+            endpoints = endpoints.concat(node.endpointNodes);
+        }
+        if (node.parent) {
+            endpoints = endpoints.concat(this.getAllEndpoints(node.parent));
+        }
+        return endpoints;
     }
 }
 

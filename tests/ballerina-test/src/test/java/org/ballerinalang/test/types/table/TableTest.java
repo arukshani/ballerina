@@ -109,8 +109,8 @@ public class TableTest {
         BValue[] returns = BRunUtil.invoke(result, "testToXmlWithAdd");
         Assert.assertEquals(returns.length, 1);
         Assert.assertTrue(returns[0] instanceof BXML);
-        Assert.assertEquals(returns[0].stringValue(), "<results><result><INT_TYPE>1</INT_TYPE></result></results>"
-                + "<results><result><INT_TYPE>1</INT_TYPE></result></results>");
+        Assert.assertEquals(returns[0].stringValue(), "<results><result><INT_TYPE>1</INT_TYPE></result>"
+                + "</results><results><result><INT_TYPE>1</INT_TYPE></result></results>");
     }
 
     @Test(groups = "TableTest", description = "Check xml streaming when result set consumed once.")
@@ -587,7 +587,6 @@ public class TableTest {
     public void testTableRemoveInvalid() {
         BRunUtil.invoke(result, "testTableRemoveInvalid");
     }
-
     @AfterSuite
     public void cleanup() {
         SQLDBUtils.deleteDirectory(new File(SQLDBUtils.DB_DIRECTORY));

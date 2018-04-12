@@ -1,5 +1,5 @@
-import ballerina.task;
-import ballerina.io;
+import ballerina/task;
+import ballerina/io;
 
 int w1Count;
 int w2Count;
@@ -8,45 +8,60 @@ error errorW2;
 string errorMsgW1;
 string errorMsgW2;
 
-function scheduleTimer (int w1Delay, int w1Interval, int w2Delay, int w2Interval, string errMsgW1, string errMsgW2)
-returns (string w1TaskId, string w2TaskId) {
+task:Timer? timer1;
+task:Timer? timer2;
+
+function scheduleTimer(int w1Delay, int w1Interval, int w2Delay, int w2Interval, string errMsgW1, string errMsgW2) {
     worker default {
+        task:Timer? t1;
+        task:Timer? t2;
         errorMsgW1 = errMsgW1;
         errorMsgW2 = errMsgW2;
-        w1TaskId <- w1;
-        w2TaskId <- w2;
-        return;
+        t1 <- w1;
+        t2 <- w2;
+
+        timer1 = t1;
+        timer2 = t2;
     }
     worker w1 {
-        function () returns (error) onTriggerFunction = onTriggerW1;
-        string w1TaskIdX;
-        if(errMsgW1 == ""){
-            w1TaskIdX, _= task:scheduleTimer(onTriggerFunction, null, {delay:w1Delay, interval:w1Interval});
+        task:Timer? t;
+        (function() returns error?) onTriggerFunction = onTriggerW1;
+        if (errMsgW1 == "") {
+            task:Timer t1 = new(onTriggerFunction, (), w1Interval, delay = w1Delay);
+            t1.start();
+            t = t1;
         } else {
             function (error) onErrorFunction = onErrorW1;
-            w1TaskIdX, _ = task:scheduleTimer(onTriggerFunction, onErrorFunction, {delay:w1Delay, interval:w1Interval});
+            task:Timer t1 = new(onTriggerFunction, onErrorFunction, w1Interval, delay = w1Delay);
+            t1.start();
+            t = t1;
         }
-        w1TaskIdX -> default;
+        t -> default;
     }
     worker w2 {
-        function () returns (error) onTriggerFunction = onTriggerW2;
-        string w2TaskIdX;
-        if(errMsgW2 == ""){
-            w2TaskIdX, _= task:scheduleTimer(onTriggerFunction, null, {delay:w2Delay, interval:w2Interval});
+        task:Timer? t;
+        (function() returns error?) onTriggerFunction = onTriggerW2;
+        if (errMsgW2 == "") {
+            task:Timer t2 = new(onTriggerFunction, (), w2Interval, delay = w2Delay);
+            t2.start();
+            t = t2;
         } else {
             function (error) onErrorFunction = onErrorW2;
-            w2TaskIdX, _= task:scheduleTimer(onTriggerFunction, onErrorFunction, {delay:w2Delay, interval:w2Interval});
+            task:Timer t2 = new(onTriggerFunction, onErrorFunction, w2Interval, delay = w2Delay);
+            t2.start();
+            t = t2;
         }
-        w2TaskIdX -> default;
+        t -> default;
     }
 }
 
-function onTriggerW1 () returns (error e) {
+function onTriggerW1() returns error? {
     w1Count = w1Count + 1;
     io:println("w1:onTriggerW1");
-    if(errorMsgW1 != "") {
+    if (errorMsgW1 != "") {
         io:println("w1:onTriggerW1 returning error");
-        e = {message:errorMsgW1};
+        error e = {message:errorMsgW1};
+        return e;
     }
     return;
 }
@@ -56,12 +71,13 @@ function onErrorW1(error e) {
     errorW1 = e;
 }
 
-function onTriggerW2 () returns (error e) {
+function onTriggerW2() returns error? {
     w2Count = w2Count + 1;
     io:println("w2:onTriggerW2");
-    if(errorMsgW2 != "") {
+    if (errorMsgW2 != "") {
         io:println("w2:onTriggerW2 returning error");
-        e = {message:errorMsgW2};
+        error e = {message:errorMsgW2};
+        return e;
     }
     return;
 }
@@ -71,28 +87,37 @@ function onErrorW2(error e) {
     errorW2 = e;
 }
 
-function getCounts () returns (int, int) {
-    return w1Count, w2Count;
+function getCounts() returns (int, int) {
+    return (w1Count, w2Count);
 }
 
-function getErrors() returns (string w1ErrMsg, string w2ErrMsg) {
-    if(errorW1 != null) {
+function getErrors() returns (string, string) {
+    string w1ErrMsg;
+    string w2ErrMsg;
+    if (errorW1 != null) {
         w1ErrMsg = errorW1.message;
     }
-    if(errorW2 != null) {
+    if (errorW2 != null) {
         w2ErrMsg = errorW2.message;
     }
-    return;
+    return (w1ErrMsg, w2ErrMsg);
 }
 
-function stopTasks (string w1TaskId, string w2TaskId) returns (error w1StopError, error w2StopError) {
-    w1StopError = task:stopTask(w1TaskId);
-    if(w1StopError == null) {
-        w1Count = -1;
-    }
-    w2StopError = task:stopTask(w2TaskId);
-    if(w2StopError == null) {
-        w2Count = -1;
-    }
-    return;
+function stopTasks() {
+    _ = timer1.stop();
+    _ = timer2.stop();
+    w1Count = -1;
+    w2Count = -1;
+
+    //error? w1StopError = task:stopTask(w1TaskId);
+    //match w1StopError {
+    //    error err => {}
+    //    () => w1Count = -1;
+    //}
+    //error? w2StopError = task:stopTask(w2TaskId);
+    //match w2StopError {
+    //    error err => {}
+    //    () => w2Count = -1;
+    //}
+    //return (w1StopError, w2StopError);
 }

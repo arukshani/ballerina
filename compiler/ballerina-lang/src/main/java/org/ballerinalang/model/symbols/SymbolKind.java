@@ -23,6 +23,8 @@ package org.ballerinalang.model.symbols;
 public enum SymbolKind {
     PACKAGE,
     STRUCT,
+    OBJECT,
+    RECORD,
     ENUM,
     CONNECTOR,
     ACTION,
@@ -35,6 +37,7 @@ public enum SymbolKind {
     CONSTANT,
     PACKAGE_VARIABLE,
     TRANSFORMER,
+    TYPE_DEF,
 
     PARAMETER,
     LOCAL_VARIABLE,

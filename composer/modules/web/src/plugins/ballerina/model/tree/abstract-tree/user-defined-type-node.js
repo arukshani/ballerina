@@ -46,6 +46,7 @@ class AbstractUserDefinedTypeNode extends Node {
     }
 
 
+
     setPackageAlias(newValue, silent, title) {
         const oldValue = this.packageAlias;
         title = (_.isNil(title)) ? `Modify ${this.kind}` : title;
@@ -70,6 +71,7 @@ class AbstractUserDefinedTypeNode extends Node {
     getPackageAlias() {
         return this.packageAlias;
     }
+
 
 
     setTypeName(newValue, silent, title) {
@@ -97,6 +99,53 @@ class AbstractUserDefinedTypeNode extends Node {
         return this.typeName;
     }
 
+
+
+
+    isNullable() {
+        return this.nullable;
+    }
+
+    setNullable(newValue, silent, title) {
+        const oldValue = this.nullable;
+        title = (_.isNil(title)) ? `Modify ${this.kind}` : title;
+        this.nullable = newValue;
+        if (!silent) {
+            this.trigger('tree-modified', {
+                origin: this,
+                type: 'modify-node',
+                title,
+                data: {
+                    attributeName: 'nullable',
+                    newValue,
+                    oldValue,
+                },
+            });
+        }
+    }
+
+
+    isGrouped() {
+        return this.grouped;
+    }
+
+    setGrouped(newValue, silent, title) {
+        const oldValue = this.grouped;
+        title = (_.isNil(title)) ? `Modify ${this.kind}` : title;
+        this.grouped = newValue;
+        if (!silent) {
+            this.trigger('tree-modified', {
+                origin: this,
+                type: 'modify-node',
+                title,
+                data: {
+                    attributeName: 'grouped',
+                    newValue,
+                    oldValue,
+                },
+            });
+        }
+    }
 
 }
 

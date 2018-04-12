@@ -1,4 +1,4 @@
-function testForkJoinAnyOfSpecific () (string[]) {
+function testForkJoinAnyOfSpecific () returns string[] {
 
     string[] results = [];
     fork {
@@ -16,19 +16,13 @@ function testForkJoinAnyOfSpecific () (string[]) {
         }
     } join (some 1 ABC_Airline, XYZ_Airline) (map airlineResponses) {
         if (airlineResponses["ABC_Airline"] != null) {
-            any[] abc;
-            abc, _ = (any[])airlineResponses["ABC_Airline"];
-            results[0], _ = (string)abc[0];
+            results[0] = <string>airlineResponses["ABC_Airline"];
         }
         if (airlineResponses["XYZ_Airline"] != null) {
-            any[] xyz;
-            xyz, _ = (any[])airlineResponses["XYZ_Airline"];
-            results[0], _ = (string)xyz[0];
+            results[0] = <string> airlineResponses["XYZ_Airline"];
         }
         if (airlineResponses["PQR_Airline"] != null) {
-            any[] pqr;
-            pqr, _ = (any[])airlineResponses["PQR_Airline"];
-            results[0], _ = (string)pqr[0];
+            results[0] = <string> airlineResponses["PQR_Airline"];
         }
         return results;
     } timeout (30) (map airlineResponses) {

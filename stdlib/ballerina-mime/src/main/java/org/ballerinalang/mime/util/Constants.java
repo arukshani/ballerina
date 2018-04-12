@@ -74,8 +74,20 @@ public class Constants {
      */
     public static final String MULTIPART_MIXED = "multipart/mixed";
 
+    public static final String JSON_SUFFIX = "+json";
+
+    public static final String JSON_TYPE_IDENTIFIER = "/json";
+
+    public static final String XML_SUFFIX = "+xml";
+
+    public static final String XML_TYPE_IDENTIFIER = "/xml";
+
+    public static final String TEXT_AS_PRIMARY_TYPE = "text/";
+
     public static final String MULTIPART_AS_PRIMARY_TYPE = "multipart/";
+    public static final String MESSAGE_AS_PRIMARY_TYPE = "message/";
     public static final String BOUNDARY = "boundary";
+    public static final String FORM_DATA_PARAM = "form-data";
 
     public static final String DEFAULT_PRIMARY_TYPE = "application";
     public static final String DEFAULT_SUB_TYPE = "octet-stream";
@@ -87,6 +99,7 @@ public class Constants {
     public static final String ENTITY_BYTE_CHANNEL = "entity_byte_channel";
     public static final String MULTIPART_ENCODER = "MultipartEncoder";
     public static final String BODY_PARTS = "body_parts";
+    public static final String ENTITY_HEADERS = "entity_headers";
 
     //Native argument indexes
     public static final int FIRST_PARAMETER_INDEX = 0;
@@ -95,9 +108,8 @@ public class Constants {
     //Entity properties
     public static final int MEDIA_TYPE_INDEX = 0;
     public static final int CONTENT_ID_INDEX = 0;
-    public static final int ENTITY_HEADERS_INDEX = 1;
     public static final int SIZE_INDEX = 0;
-    public static final int CONTENT_DISPOSITION_INDEX = 2;
+    public static final int CONTENT_DISPOSITION_INDEX = 1;
 
     public static final int FIRST_BODY_PART_INDEX = 0;
 
@@ -137,6 +149,7 @@ public class Constants {
     public static final String SEMICOLON = ";";
     public static final String COMMA = ",";
     public static final String ASSIGNMENT = "=";
+    public static final String DOUBLE_QUOTE = "\"";
     public static final String PARSER_ERROR = "failed to parse: ";
     public static final String BUILTIN_PACKAGE = "ballerina.builtin";
     public static final String STRUCT_GENERIC_ERROR = "error";

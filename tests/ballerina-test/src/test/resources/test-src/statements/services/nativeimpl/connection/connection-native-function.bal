@@ -1,15 +1,16 @@
-import ballerina.net.http;
+import ballerina/http;
 
-@http:configuration {
-    basePath:"/hello"
-}
-service<http> helloServer {
-    @http:resourceConfig {
+endpoint http:NonListener mockEP {
+    port:9090
+};
+
+service<http:Service> hello bind mockEP {
+    @http:ResourceConfig {
         path:"/redirect",
         methods:["GET"]
     }
-    resource redirect(http:Connection conn, http:InRequest req) {
-        http:OutResponse res = {};
-        _ = conn.redirect(res, http:RedirectCode.MOVED_PERMANENTLY_301, ["location1"]);
+    redirect (endpoint conn, http:Request req) {
+        http:Response res = new;
+        _ = conn -> redirect(res, http:REDIRECT_MOVED_PERMANENTLY_301, ["location1"]);
     }
 }

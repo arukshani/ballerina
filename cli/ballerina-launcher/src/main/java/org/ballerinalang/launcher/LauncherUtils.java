@@ -21,17 +21,20 @@ import org.ballerinalang.BLangProgramLoader;
 import org.ballerinalang.BLangProgramRunner;
 import org.ballerinalang.compiler.CompilerPhase;
 import org.ballerinalang.config.ConfigRegistry;
-import org.ballerinalang.config.utils.ConfigFileParserException;
 import org.ballerinalang.connector.impl.ServerConnectorRegistry;
 import org.ballerinalang.logging.BLogManager;
 import org.ballerinalang.runtime.threadpool.ThreadPoolFactory;
 import org.ballerinalang.util.BLangConstants;
+import org.ballerinalang.util.LaunchListener;
 import org.ballerinalang.util.codegen.ProgramFile;
 import org.ballerinalang.util.codegen.ProgramFileReader;
 import org.ballerinalang.util.exceptions.BallerinaException;
+import org.ballerinalang.util.observability.ObservabilityConstants;
 import org.wso2.ballerinalang.compiler.Compiler;
+import org.wso2.ballerinalang.compiler.tree.BLangPackage;
 import org.wso2.ballerinalang.compiler.util.CompilerContext;
 import org.wso2.ballerinalang.compiler.util.CompilerOptions;
+import org.wso2.ballerinalang.programfile.CompiledBinaryFile;
 import org.wso2.ballerinalang.programfile.ProgramFileWriter;
 
 import java.io.BufferedReader;
@@ -49,12 +52,16 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.LogManager;
 
 import static org.ballerinalang.compiler.CompilerOptionName.COMPILER_PHASE;
+import static org.ballerinalang.compiler.CompilerOptionName.OFFLINE;
 import static org.ballerinalang.compiler.CompilerOptionName.PRESERVE_WHITESPACE;
-import static org.ballerinalang.compiler.CompilerOptionName.SOURCE_ROOT;
+import static org.ballerinalang.compiler.CompilerOptionName.PROJECT_DIR;
+import static org.wso2.ballerinalang.compiler.util.ProjectDirConstants.DOT_BALLERINA_DIR_NAME;
 
 /**
  * Contains utility methods for executing a Ballerina program.
@@ -63,17 +70,26 @@ import static org.ballerinalang.compiler.CompilerOptionName.SOURCE_ROOT;
  */
 public class LauncherUtils {
 
-    public static void runProgram(Path sourceRootPath, Path sourcePath, boolean runServices, String[] args) {
+    public static void runProgram(Path sourceRootPath, Path sourcePath, boolean runServices,
+                                  Map<String, String> runtimeParams, String configFilePath, String[] args,
+                                  boolean offline, boolean observeFlag, Map<String, String> metricsParams,
+                                  Map<String, String> tracingParams) {
         ProgramFile programFile;
         String srcPathStr = sourcePath.toString();
+        Path fullPath = sourceRootPath.resolve(sourcePath);
+        loadConfigurations(sourceRootPath, runtimeParams, configFilePath, observeFlag, metricsParams, tracingParams);
+
         if (srcPathStr.endsWith(BLangConstants.BLANG_EXEC_FILE_SUFFIX)) {
             programFile = BLangProgramLoader.read(sourcePath);
-        } else if (Files.isDirectory(sourceRootPath.resolve(sourcePath))
-                || srcPathStr.endsWith(BLangConstants.BLANG_SRC_FILE_SUFFIX)) {
-            programFile = compile(sourceRootPath, sourcePath);
+        } else if (Files.isRegularFile(fullPath) &&
+                srcPathStr.endsWith(BLangConstants.BLANG_SRC_FILE_SUFFIX) &&
+                !Files.isDirectory(sourceRootPath.resolve(DOT_BALLERINA_DIR_NAME))) {
+            programFile = compile(fullPath.getParent(), fullPath.getFileName(), offline);
+        } else if (Files.isDirectory(sourceRootPath)) {
+            programFile = compile(sourceRootPath, sourcePath, offline);
         } else {
             throw new BallerinaException("Invalid Ballerina source path, it should either be a directory or a file " +
-                    "with a \'" + BLangConstants.BLANG_SRC_FILE_SUFFIX + "\' extension.");
+                                                 "with a \'" + BLangConstants.BLANG_SRC_FILE_SUFFIX + "\' extension.");
         }
 
         // If there is no main or service entry point, throw an error
@@ -81,14 +97,13 @@ public class LauncherUtils {
             throw new RuntimeException("main function not found in '" + programFile.getProgramFilePath() + "'");
         }
 
-        try {
-            ConfigRegistry.getInstance().loadConfigurations();
-            ((BLogManager) LogManager.getLogManager()).loadUserProvidedLogConfiguration();
-        } catch (ConfigFileParserException e) {
-            throw new RuntimeException("failed to start ballerina runtime: " + e.getMessage(), e);
-        }
+        boolean runServicesOrNoMainEP = runServices || !programFile.isMainEPAvailable();
 
-        if (runServices || !programFile.isMainEPAvailable()) {
+        // Load launcher listeners
+        ServiceLoader<LaunchListener> listeners = ServiceLoader.load(LaunchListener.class);
+        listeners.forEach(listener -> listener.beforeRunProgram(runServicesOrNoMainEP));
+
+        if (runServicesOrNoMainEP) {
             if (args.length > 0) {
                 throw LauncherUtils.createUsageException("too many arguments");
             }
@@ -96,6 +111,8 @@ public class LauncherUtils {
         } else {
             runMain(programFile, args);
         }
+
+        listeners.forEach(listener -> listener.afterRunProgram(runServicesOrNoMainEP));
     }
 
     public static void runMain(ProgramFile programFile, String[] args) {
@@ -116,7 +133,7 @@ public class LauncherUtils {
         programFile.setServerConnectorRegistry(serverConnectorRegistry);
         serverConnectorRegistry.initServerConnectors();
 
-        outStream.println("ballerina: deploying service(s) in '" + programFile.getProgramFilePath() + "'");
+        outStream.println("ballerina: initiating service(s) in '" + programFile.getProgramFilePath() + "'");
         BLangProgramRunner.runService(programFile);
 
         serverConnectorRegistry.deploymentComplete();
@@ -217,20 +234,21 @@ public class LauncherUtils {
      * 
      * @param sourceRootPath Path to the source root
      * @param sourcePath Path to the source from the source root
+     * @param offline Should the build call remote repos
      * @return Executable program
      */
-    private static ProgramFile compile(Path sourceRootPath, Path sourcePath) {
+    public static ProgramFile compile(Path sourceRootPath, Path sourcePath, boolean offline) {
         CompilerContext context = new CompilerContext();
         CompilerOptions options = CompilerOptions.getInstance(context);
-        options.put(SOURCE_ROOT, sourceRootPath.toString());
+        options.put(PROJECT_DIR, sourceRootPath.toString());
         options.put(COMPILER_PHASE, CompilerPhase.CODE_GEN.toString());
         options.put(PRESERVE_WHITESPACE, "false");
+        options.put(OFFLINE, Boolean.toString(offline));
 
         // compile
         Compiler compiler = Compiler.getInstance(context);
-        compiler.compile(sourcePath.toString());
-        org.wso2.ballerinalang.programfile.ProgramFile programFile = compiler.getCompiledProgram();
-
+        BLangPackage entryPkgNode = compiler.compile(sourcePath.toString());
+        CompiledBinaryFile.ProgramFile programFile = compiler.getExecutableProgram(entryPkgNode);
         if (programFile == null) {
             throw createLauncherException("compilation contains errors");
         }
@@ -242,12 +260,12 @@ public class LauncherUtils {
 
     /**
      * Get the executable program ({@link ProgramFile}) given the compiled program 
-     * ({@link org.wso2.ballerinalang.programfile.ProgramFile}).
+     * ({@link CompiledBinaryFile.ProgramFile}).
      * 
      * @param programFile Compiled program
      * @return Executable program
      */
-    public static ProgramFile getExecutableProgram(org.wso2.ballerinalang.programfile.ProgramFile programFile) {
+    public static ProgramFile getExecutableProgram(CompiledBinaryFile.ProgramFile programFile) {
         ByteArrayInputStream byteIS = null;
         ByteArrayOutputStream byteOutStream = new ByteArrayOutputStream();
         try {
@@ -270,6 +288,43 @@ public class LauncherUtils {
                 byteOutStream.close();
             } catch (IOException ignore) {
             }
+        }
+    }
+
+    /**
+     * Initializes the {@link ConfigRegistry} and loads {@link LogManager} configs.
+     *
+     * @param sourceRootPath source directory
+     * @param runtimeParams  run time parameters
+     * @param configFilePath config file path
+     * @param observeFlag    to indicate whether observability is enabled
+     * @param metricsParams  configuration parameters for metrics
+     * @param tracingParams  configuration parameters for tracing
+     */
+    private static void loadConfigurations(Path sourceRootPath, Map<String, String> runtimeParams,
+                                           String configFilePath, boolean observeFlag,
+                                           Map<String, String> metricsParams, Map<String, String> tracingParams) {
+        Path ballerinaConfPath = sourceRootPath.resolve("ballerina.conf");
+        try {
+            ConfigRegistry.getInstance().initRegistry(runtimeParams, configFilePath, ballerinaConfPath);
+            ((BLogManager) LogManager.getLogManager()).loadUserProvidedLogConfiguration();
+
+            if (observeFlag) {
+                ConfigRegistry.getInstance()
+                        .addConfiguration(ObservabilityConstants.CONFIG_METRICS_ENABLED, Boolean.TRUE);
+                ConfigRegistry.getInstance()
+                        .addConfiguration(ObservabilityConstants.CONFIG_TRACING_ENABLED, Boolean.TRUE);
+                metricsParams.forEach(
+                        (key, value) -> ConfigRegistry.getInstance()
+                                .addConfiguration(ObservabilityConstants.CONFIG_TABLE_METRICS + "." + key, value));
+                tracingParams.forEach(
+                        (key, value) -> ConfigRegistry.getInstance()
+                                .addConfiguration(ObservabilityConstants.CONFIG_TABLE_TRACING + "." + key, value));
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    "failed to read the specified configuration file: " + ballerinaConfPath.toString(), e);
         }
     }
 }

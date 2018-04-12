@@ -1,11 +1,15 @@
-import lang.annotations.doc;
-
-@doc:Description{args: @Args{}}
-@Args{value:"args: input parameter"}
-function foo (@Args{} string args) {
+@Args{val: {}}
+function foo (string args) {
     // do nothing
 }
 
-annotation Args {
+type Arguments {
     string value;
-}
+    Property prop;
+};
+
+type Property {
+    string name;
+};
+
+annotation Args Arguments;

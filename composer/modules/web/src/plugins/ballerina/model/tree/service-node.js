@@ -133,6 +133,34 @@ class ServiceNode extends AbstractServiceNode {
     getFullPackageName(fullPackageName) {
         return this._fullPackageName;
     }
+
+
+    /**
+     * Returns the type of the service.
+     *
+     * @memberof ServiceNode
+     */
+    getType() {
+        let pkg;
+        let name;
+        if (this.serviceTypeStruct) {
+            pkg = this.serviceTypeStruct.packageAlias.value;
+            name = this.serviceTypeStruct.typeName.value;
+        } else {
+            const epName = this.boundEndpoints[0].variableName.value;
+            const root = this.getRoot();
+            const endpoint = root.find((node) => {
+                if (TreeUtil.isEndpoint(node)) {
+                    return epName === node.name.value;
+                }
+                return false;
+            });
+            pkg = endpoint.endPointType.packageAlias.value;
+            name = endpoint.endPointType.typeName.value;
+        }
+        return pkg;
+    }
+
 }
 
 export default ServiceNode;

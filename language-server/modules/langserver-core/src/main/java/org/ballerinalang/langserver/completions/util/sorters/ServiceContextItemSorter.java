@@ -17,15 +17,13 @@
 */
 package org.ballerinalang.langserver.completions.util.sorters;
 
-import org.ballerinalang.langserver.TextDocumentServiceContext;
+import org.ballerinalang.langserver.LSServiceOperationContext;
 import org.ballerinalang.langserver.completions.CompletionKeys;
 import org.ballerinalang.langserver.completions.util.ItemResolverConstants;
 import org.ballerinalang.langserver.completions.util.Priority;
 import org.ballerinalang.langserver.completions.util.Snippet;
 import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.InsertTextFormat;
-import org.wso2.ballerinalang.compiler.semantics.model.types.BEndpointType;
-import org.wso2.ballerinalang.compiler.semantics.model.types.BType;
 import org.wso2.ballerinalang.compiler.tree.BLangNode;
 import org.wso2.ballerinalang.compiler.tree.BLangResource;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangVariableDef;
@@ -39,7 +37,7 @@ import java.util.List;
  */
 public class ServiceContextItemSorter extends CompletionItemSorter {
     @Override
-    public void sortItems(TextDocumentServiceContext ctx, List<CompletionItem> completionItems) {
+    public void sortItems(LSServiceOperationContext ctx, List<CompletionItem> completionItems) {
         BLangNode previousNode = ctx.get(CompletionKeys.PREVIOUS_NODE_KEY);
         
         /*
@@ -52,15 +50,15 @@ public class ServiceContextItemSorter extends CompletionItemSorter {
         if (previousNode == null) {
             this.populateWhenCursorBeforeOrAfterEp(completionItems);
         } else if (previousNode instanceof BLangVariableDef) {
-            BType bLangType = ((BLangVariableDef) previousNode).var.type;
-            if (bLangType instanceof BEndpointType) {
-                this.populateWhenCursorBeforeOrAfterEp(completionItems);
-            } else {
+//            BType bLangType = ((BLangVariableDef) previousNode).var.type;
+//            if (bLangType instanceof BEndpointType) {
+//                this.populateWhenCursorBeforeOrAfterEp(completionItems);
+//            } else {
                 this.setPriorities(completionItems);
                 CompletionItem resItem = this.getResourceSnippet();
                 resItem.setSortText(Priority.PRIORITY160.toString());
                 completionItems.add(resItem);
-            }
+//            }
         } else if (previousNode instanceof BLangResource) {
             completionItems.clear();
             completionItems.add(this.getResourceSnippet());

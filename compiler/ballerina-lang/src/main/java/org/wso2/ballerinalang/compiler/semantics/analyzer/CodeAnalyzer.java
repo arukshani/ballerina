@@ -35,6 +35,7 @@ import org.wso2.ballerinalang.compiler.tree.BLangAnnotation;
 import org.wso2.ballerinalang.compiler.tree.BLangAnnotationAttachment;
 import org.wso2.ballerinalang.compiler.tree.BLangCompilationUnit;
 import org.wso2.ballerinalang.compiler.tree.BLangConnector;
+import org.wso2.ballerinalang.compiler.tree.BLangEndpoint;
 import org.wso2.ballerinalang.compiler.tree.BLangEnum;
 import org.wso2.ballerinalang.compiler.tree.BLangFunction;
 import org.wso2.ballerinalang.compiler.tree.BLangIdentifier;
@@ -42,20 +43,26 @@ import org.wso2.ballerinalang.compiler.tree.BLangImportPackage;
 import org.wso2.ballerinalang.compiler.tree.BLangInvokableNode;
 import org.wso2.ballerinalang.compiler.tree.BLangNode;
 import org.wso2.ballerinalang.compiler.tree.BLangNodeVisitor;
+import org.wso2.ballerinalang.compiler.tree.BLangObject;
 import org.wso2.ballerinalang.compiler.tree.BLangPackage;
 import org.wso2.ballerinalang.compiler.tree.BLangPackageDeclaration;
+import org.wso2.ballerinalang.compiler.tree.BLangRecord;
 import org.wso2.ballerinalang.compiler.tree.BLangResource;
 import org.wso2.ballerinalang.compiler.tree.BLangService;
 import org.wso2.ballerinalang.compiler.tree.BLangStruct;
 import org.wso2.ballerinalang.compiler.tree.BLangTransformer;
+import org.wso2.ballerinalang.compiler.tree.BLangTypeDefinition;
 import org.wso2.ballerinalang.compiler.tree.BLangVariable;
 import org.wso2.ballerinalang.compiler.tree.BLangWorker;
 import org.wso2.ballerinalang.compiler.tree.BLangXMLNS;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangAnnotAttachmentAttribute;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangAnnotAttachmentAttributeValue;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangArrayLiteral;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangAwaitExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangBinaryExpr;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangConnectorInit;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangBracedOrTupleExpr;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangCheckedExpr;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangElvisExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangExpression;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangFieldBasedAccess;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangIndexBasedAccess;
@@ -64,13 +71,19 @@ import org.wso2.ballerinalang.compiler.tree.expressions.BLangInvocation;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangInvocation.BLangActionInvocation;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangLambdaFunction;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangLiteral;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangMatchExpression;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangNamedArgsExpression;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangRecordLiteral;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangRestArgsExpression;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangSimpleVarRef;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangStringTemplateLiteral;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangTableLiteral;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangTableQueryExpression;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangTernaryExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangTypeCastExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangTypeConversionExpr;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangTypeofExpr;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangTypeInit;
+import org.wso2.ballerinalang.compiler.tree.expressions.BLangTypedescExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangUnaryExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLAttribute;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLAttributeAccess;
@@ -86,17 +99,25 @@ import org.wso2.ballerinalang.compiler.tree.statements.BLangBind;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangBlockStmt;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangBreak;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangCatch;
+import org.wso2.ballerinalang.compiler.tree.statements.BLangCompoundAssignment;
+import org.wso2.ballerinalang.compiler.tree.statements.BLangDone;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangExpressionStmt;
+import org.wso2.ballerinalang.compiler.tree.statements.BLangFail;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangForeach;
+import org.wso2.ballerinalang.compiler.tree.statements.BLangForever;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangForkJoin;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangIf;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangLock;
+import org.wso2.ballerinalang.compiler.tree.statements.BLangMatch;
+import org.wso2.ballerinalang.compiler.tree.statements.BLangMatch.BLangMatchStmtPatternClause;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangNext;
+import org.wso2.ballerinalang.compiler.tree.statements.BLangPostIncrement;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangReturn;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangStatement;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangThrow;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangTransaction;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangTryCatchFinally;
+import org.wso2.ballerinalang.compiler.tree.statements.BLangTupleDestructure;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangVariableDef;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangWhile;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangWorkerReceive;
@@ -115,28 +136,26 @@ import org.wso2.ballerinalang.compiler.util.diagnotic.DiagnosticPos;
 import org.wso2.ballerinalang.util.Flags;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
-import java.util.stream.Collectors;
 
 /**
- * This represents the code analyzing pass of semantic analysis. 
- * 
+ * This represents the code analyzing pass of semantic analysis.
+ * <p>
  * The following validations are done here:-
- * 
+ * <p>
  * (*) Loop continuation statement validation.
  * (*) Function return path existence and unreachable code validation.
  * (*) Worker send/receive validation.
  */
 public class CodeAnalyzer extends BLangNodeVisitor {
-    
+
     private static final CompilerContext.Key<CodeAnalyzer> CODE_ANALYZER_KEY =
             new CompilerContext.Key<>();
-    
+
     private int loopCount;
     private int transactionCount;
     private boolean statementReturns;
@@ -145,11 +164,16 @@ public class CodeAnalyzer extends BLangNodeVisitor {
     private int workerCount;
     private SymbolEnter symbolEnter;
     private SymbolTable symTable;
+    private Types types;
     private BLangDiagnosticLog dlog;
     private TypeChecker typeChecker;
     private Stack<WorkerActionSystem> workerActionSystemStack = new Stack<>();
     private Stack<Boolean> loopWithintransactionCheckStack = new Stack<>();
+    private Stack<Boolean> returnWithintransactionCheckStack = new Stack<>();
+    private Stack<Boolean> doneWithintransactionCheckStack = new Stack<>();
+    private BLangNode parent;
     private Names names;
+    private SymbolEnv env;
 
     public static CodeAnalyzer getInstance(CompilerContext context) {
         CodeAnalyzer codeGenerator = context.get(CODE_ANALYZER_KEY);
@@ -163,6 +187,7 @@ public class CodeAnalyzer extends BLangNodeVisitor {
         context.put(CODE_ANALYZER_KEY, this);
         this.symbolEnter = SymbolEnter.getInstance(context);
         this.symTable = SymbolTable.getInstance(context);
+        this.types = Types.getInstance(context);
         this.dlog = BLangDiagnosticLog.getInstance(context);
         this.typeChecker = TypeChecker.getInstance(context);
         this.names = Names.getInstance(context);
@@ -171,7 +196,7 @@ public class CodeAnalyzer extends BLangNodeVisitor {
     private void resetFunction() {
         this.resetStatementReturns();
     }
-    
+
     private void resetStatementReturns() {
         this.statementReturns = false;
     }
@@ -184,37 +209,59 @@ public class CodeAnalyzer extends BLangNodeVisitor {
         pkgNode.accept(this);
         return pkgNode;
     }
-    
+
     @Override
     public void visit(BLangPackage pkgNode) {
         if (pkgNode.completedPhases.contains(CompilerPhase.CODE_ANALYZE)) {
             return;
         }
-        pkgNode.imports.forEach(impPkgNode -> impPkgNode.accept(this));
-
-        pkgNode.topLevelNodes.forEach(e -> ((BLangNode) e).accept(this));
+        parent = pkgNode;
+        SymbolEnv pkgEnv = symTable.pkgEnvMap.get(pkgNode.symbol);
+        pkgNode.imports.forEach(impPkgNode -> analyzeNode(impPkgNode, pkgEnv));
+        pkgNode.topLevelNodes.forEach(topLevelNode -> analyzeNode((BLangNode) topLevelNode, pkgEnv));
         pkgNode.completedPhases.add(CompilerPhase.CODE_ANALYZE);
+        parent = null;
     }
-    
+
+    private void analyzeNode(BLangNode node, SymbolEnv env) {
+        SymbolEnv prevEnv = this.env;
+        this.env = env;
+        BLangNode myParent = parent;
+        node.parent = parent;
+        parent = node;
+        node.accept(this);
+        parent = myParent;
+        this.env = prevEnv;
+    }
+
     @Override
     public void visit(BLangCompilationUnit compUnitNode) {
-        compUnitNode.topLevelNodes.forEach(e -> ((BLangNode) e).accept(this));
+        compUnitNode.topLevelNodes.forEach(e -> analyzeNode((BLangNode) e, env));
+    }
+
+    public void visit(BLangTypeDefinition typeDefinition) {
+        //TODO
     }
 
     @Override
     public void visit(BLangFunction funcNode) {
-        this.visitInvocable(funcNode);
+        this.returnWithintransactionCheckStack.push(true);
+        this.doneWithintransactionCheckStack.push(true);
+        SymbolEnv funcEnv = SymbolEnv.createFunctionEnv(funcNode, funcNode.symbol.scope, env);
+        this.visitInvocable(funcNode, funcEnv);
+        this.returnWithintransactionCheckStack.pop();
+        this.doneWithintransactionCheckStack.pop();
     }
 
-    private void visitInvocable(BLangInvokableNode invNode) {
+    private void visitInvocable(BLangInvokableNode invNode, SymbolEnv invokableEnv) {
         this.resetFunction();
         this.initNewWorkerActionSystem();
         if (Symbols.isNative(invNode.symbol)) {
             return;
         }
-        boolean invokableReturns = invNode.retParams.size() > 0;
+        boolean invokableReturns = invNode.returnTypeNode.type != symTable.nilType;
         if (invNode.workers.isEmpty()) {
-            invNode.body.accept(this);
+            analyzeNode(invNode.body, invokableEnv);
             /* the function returns, but none of the statements surely returns */
             if (invokableReturns && !this.statementReturns) {
                 this.dlog.error(invNode.pos, DiagnosticCode.INVOKABLE_MUST_RETURN,
@@ -223,7 +270,7 @@ public class CodeAnalyzer extends BLangNodeVisitor {
         } else {
             boolean workerReturns = false;
             for (BLangWorker worker : invNode.workers) {
-                worker.accept(this);
+                analyzeNode(worker, invokableEnv);
                 workerReturns = workerReturns || this.statementReturns;
                 this.resetStatementReturns();
             }
@@ -234,18 +281,18 @@ public class CodeAnalyzer extends BLangNodeVisitor {
         }
         this.finalizeCurrentWorkerActionSystem();
     }
-    
+
     @Override
     public void visit(BLangForkJoin forkJoin) {
         this.forkJoinCount++;
         this.initNewWorkerActionSystem();
         this.checkStatementExecutionValidity(forkJoin);
-        forkJoin.workers.forEach(e -> e.accept(this));
-        forkJoin.joinedBody.accept(this);
+        forkJoin.workers.forEach(e -> analyzeNode(e, env));
+        analyzeNode(forkJoin.joinedBody, env);
         if (forkJoin.timeoutBody != null) {
             boolean joinReturns = this.statementReturns;
             this.resetStatementReturns();
-            forkJoin.timeoutBody.accept(this);
+            analyzeNode(forkJoin.timeoutBody, env);
             this.statementReturns = joinReturns && this.statementReturns;
         }
         this.checkForkJoinWorkerCount(forkJoin);
@@ -257,7 +304,7 @@ public class CodeAnalyzer extends BLangNodeVisitor {
     private boolean inForkJoin() {
         return this.forkJoinCount > 0;
     }
-    
+
     private void checkForkJoinWorkerCount(BLangForkJoin forkJoin) {
         if (forkJoin.joinType == ForkJoinNode.JoinType.SOME) {
             int wc = forkJoin.joinedWorkers.size();
@@ -269,7 +316,7 @@ public class CodeAnalyzer extends BLangNodeVisitor {
             }
         }
     }
-    
+
     private boolean inWorker() {
         return this.workerCount > 0;
     }
@@ -278,32 +325,60 @@ public class CodeAnalyzer extends BLangNodeVisitor {
     public void visit(BLangWorker worker) {
         this.workerCount++;
         this.workerActionSystemStack.peek().startWorkerActionStateMachine(worker.name.value, worker.pos);
-        worker.body.accept(this);
+        analyzeNode(worker.body, env);
         this.workerActionSystemStack.peek().endWorkerActionStateMachine();
         this.workerCount--;
+    }
+
+    @Override
+    public void visit(BLangEndpoint endpointNode) {
     }
 
     @Override
     public void visit(BLangTransaction transactionNode) {
         this.checkStatementExecutionValidity(transactionNode);
         this.loopWithintransactionCheckStack.push(false);
+        this.returnWithintransactionCheckStack.push(false);
+        this.doneWithintransactionCheckStack.push(false);
         this.transactionCount++;
-        transactionNode.transactionBody.accept(this);
+        analyzeNode(transactionNode.transactionBody, env);
         this.transactionCount--;
         this.resetLastStatement();
-        if (transactionNode.failedBody != null) {
-            transactionNode.failedBody.accept(this);
+        if (transactionNode.onRetryBody != null) {
+            analyzeNode(transactionNode.onRetryBody, env);
             this.resetStatementReturns();
             this.resetLastStatement();
         }
+        this.returnWithintransactionCheckStack.pop();
         this.loopWithintransactionCheckStack.pop();
+        this.doneWithintransactionCheckStack.pop();
         analyzeExpr(transactionNode.retryCount);
+        analyzeExpr(transactionNode.onCommitFunction);
+        analyzeExpr(transactionNode.onAbortFunction);
     }
 
     @Override
     public void visit(BLangAbort abortNode) {
         if (this.transactionCount == 0) {
             this.dlog.error(abortNode.pos, DiagnosticCode.ABORT_CANNOT_BE_OUTSIDE_TRANSACTION_BLOCK);
+            return;
+        }
+        this.lastStatement = true;
+    }
+
+    @Override
+    public void visit(BLangDone doneNode) {
+        if (checkReturnValidityInTransaction()) {
+            this.dlog.error(doneNode.pos, DiagnosticCode.DONE_CANNOT_BE_USED_TO_EXIT_TRANSACTION);
+            return;
+        }
+        this.lastStatement = true;
+    }
+
+    @Override
+    public void visit(BLangFail failNode) {
+        if (this.transactionCount == 0) {
+            this.dlog.error(failNode.pos, DiagnosticCode.FAIL_CANNOT_BE_OUTSIDE_TRANSACTION_BLOCK);
             return;
         }
         this.lastStatement = true;
@@ -319,41 +394,127 @@ public class CodeAnalyzer extends BLangNodeVisitor {
             this.resetLastStatement();
         }
     }
-    
+
     private void checkStatementExecutionValidity(BLangStatement stmt) {
         this.checkUnreachableCode(stmt);
     }
-    
+
     @Override
     public void visit(BLangBlockStmt blockNode) {
-        blockNode.stmts.forEach(e -> {
-            e.accept(this);
-        });
+        final SymbolEnv blockEnv = SymbolEnv.createBlockEnv(blockNode, env);
+        blockNode.stmts.forEach(e -> analyzeNode(e, blockEnv));
         this.resetLastStatement();
     }
-    
+
     @Override
     public void visit(BLangReturn returnStmt) {
         this.checkStatementExecutionValidity(returnStmt);
+
+        // Check whether this return statement is in resource
+        if (this.env.enclInvokable.getKind() == NodeKind.RESOURCE) {
+            this.dlog.error(returnStmt.pos, DiagnosticCode.RETURN_STMT_NOT_VALID_IN_RESOURCE);
+            return;
+        }
+
         if (this.inForkJoin() && this.inWorker()) {
             this.dlog.error(returnStmt.pos, DiagnosticCode.FORK_JOIN_WORKER_CANNOT_RETURN);
             return;
         }
+        if (checkReturnValidityInTransaction()) {
+            this.dlog.error(returnStmt.pos, DiagnosticCode.RETURN_CANNOT_BE_USED_TO_EXIT_TRANSACTION);
+            return;
+        }
         this.statementReturns = true;
-        analyzeExprs(returnStmt.exprs);
+        analyzeExpr(returnStmt.expr);
     }
-    
+
     @Override
     public void visit(BLangIf ifStmt) {
         this.checkStatementExecutionValidity(ifStmt);
-        ifStmt.body.accept(this);
+        analyzeNode(ifStmt.body, env);
         boolean ifStmtReturns = this.statementReturns;
         this.resetStatementReturns();
         if (ifStmt.elseStmt != null) {
-            ifStmt.elseStmt.accept(this);
+            analyzeNode(ifStmt.elseStmt, env);
             this.statementReturns = ifStmtReturns && this.statementReturns;
         }
         analyzeExpr(ifStmt.expr);
+    }
+
+    @Override
+    public void visit(BLangMatch matchStmt) {
+        this.returnWithintransactionCheckStack.push(true);
+        boolean unmatchedExprTypesAvailable = false;
+        analyzeExpr(matchStmt.expr);
+
+        // TODO Handle **any** as a expr type.. special case it..
+        // TODO Complete the exhaustive tests with any, struct and connector types
+        // TODO Handle the case where there are incompatible types. e.g. input string : pattern int and pattern string
+
+        List<BType> unmatchedExprTypes = new ArrayList<>();
+        for (BType exprType : matchStmt.exprTypes) {
+            boolean assignable = false;
+            for (BLangMatchStmtPatternClause pattern : matchStmt.patternClauses) {
+                BType patternType = pattern.variable.type;
+                if (exprType.tag == TypeTags.ERROR || patternType.tag == TypeTags.ERROR) {
+                    return;
+                }
+
+                assignable = this.types.isAssignable(exprType, patternType);
+                if (assignable) {
+                    pattern.matchedTypesDirect.add(exprType);
+                    break;
+                } else if (exprType.tag == TypeTags.ANY) {
+                    pattern.matchedTypesIndirect.add(exprType);
+                } else if (exprType.tag == TypeTags.JSON &&
+                        this.types.isAssignable(patternType, exprType)) {
+                    pattern.matchedTypesIndirect.add(exprType);
+                } else if (exprType.tag == TypeTags.STRUCT &&
+                        this.types.isAssignable(patternType, exprType)) {
+                    pattern.matchedTypesIndirect.add(exprType);
+                } else {
+                    // TODO Support other assignable types
+                }
+            }
+
+            if (!assignable) {
+                unmatchedExprTypes.add(exprType);
+            }
+        }
+
+        if (!unmatchedExprTypes.isEmpty()) {
+            unmatchedExprTypesAvailable = true;
+            dlog.error(matchStmt.pos, DiagnosticCode.MATCH_STMT_CANNOT_GUARANTEE_A_MATCHING_PATTERN,
+                    unmatchedExprTypes);
+        }
+
+        boolean matchedPatternsAvailable = false;
+        for (int i = matchStmt.patternClauses.size() - 1; i >= 0; i--) {
+            BLangMatchStmtPatternClause pattern = matchStmt.patternClauses.get(i);
+            if (pattern.matchedTypesDirect.isEmpty() && pattern.matchedTypesIndirect.isEmpty()) {
+                if (matchedPatternsAvailable) {
+                    dlog.error(pattern.pos, DiagnosticCode.MATCH_STMT_UNMATCHED_PATTERN);
+                } else {
+                    dlog.error(pattern.pos, DiagnosticCode.MATCH_STMT_UNREACHABLE_PATTERN);
+                }
+            } else {
+                matchedPatternsAvailable = true;
+            }
+        }
+
+        // Execute the following block if there are no unmatched expression types
+        if (!unmatchedExprTypesAvailable) {
+            this.checkStatementExecutionValidity(matchStmt);
+            boolean matchStmtReturns = true;
+            for (BLangMatchStmtPatternClause patternClause : matchStmt.patternClauses) {
+                analyzeNode(patternClause.body, env);
+                matchStmtReturns = matchStmtReturns && this.statementReturns;
+                this.resetStatementReturns();
+            }
+
+            this.statementReturns = matchStmtReturns;
+        }
+        this.returnWithintransactionCheckStack.pop();
     }
 
     @Override
@@ -361,7 +522,7 @@ public class CodeAnalyzer extends BLangNodeVisitor {
         this.loopWithintransactionCheckStack.push(true);
         this.checkStatementExecutionValidity(foreach);
         this.loopCount++;
-        foreach.body.stmts.forEach(e -> e.accept(this));
+        foreach.body.stmts.forEach(e -> analyzeNode(e, env));
         this.loopCount--;
         this.resetLastStatement();
         this.loopWithintransactionCheckStack.pop();
@@ -374,7 +535,7 @@ public class CodeAnalyzer extends BLangNodeVisitor {
         this.loopWithintransactionCheckStack.push(true);
         this.checkStatementExecutionValidity(whileNode);
         this.loopCount++;
-        whileNode.body.stmts.forEach(e -> e.accept(this));
+        whileNode.body.stmts.forEach(e -> analyzeNode(e, env));
         this.loopCount--;
         this.resetLastStatement();
         this.loopWithintransactionCheckStack.pop();
@@ -384,9 +545,9 @@ public class CodeAnalyzer extends BLangNodeVisitor {
     @Override
     public void visit(BLangLock lockNode) {
         this.checkStatementExecutionValidity(lockNode);
-        lockNode.body.stmts.forEach(e -> e.accept(this));
+        lockNode.body.stmts.forEach(e -> analyzeNode(e, env));
     }
-    
+
     @Override
     public void visit(BLangNext nextNode) {
         this.checkStatementExecutionValidity(nextNode);
@@ -412,7 +573,7 @@ public class CodeAnalyzer extends BLangNodeVisitor {
             return;
         }
 
-        pkgEnv.node.accept(this);
+        analyzeNode(pkgEnv.node, env);
     }
 
     public void visit(BLangXMLNS xmlnsNode) {
@@ -420,22 +581,35 @@ public class CodeAnalyzer extends BLangNodeVisitor {
     }
 
     public void visit(BLangService serviceNode) {
-        serviceNode.resources.forEach(res -> res.accept(this));
+        SymbolEnv serviceEnv = SymbolEnv.createServiceEnv(serviceNode, serviceNode.symbol.scope, env);
+        serviceNode.resources.forEach(res -> analyzeNode(res, serviceEnv));
     }
 
     public void visit(BLangResource resourceNode) {
-        this.visitInvocable(resourceNode);
+        SymbolEnv resourceEnv = SymbolEnv.createResourceActionSymbolEnv(resourceNode,
+                resourceNode.symbol.scope, env);
+        this.visitInvocable(resourceNode, resourceEnv);
     }
 
     public void visit(BLangConnector connectorNode) {
-        connectorNode.actions.forEach(a -> a.accept(this));
+    }
+
+    public void visit(BLangForever foreverStatement) {
+        this.lastStatement = true;
     }
 
     public void visit(BLangAction actionNode) {
-        this.visitInvocable(actionNode);
     }
 
     public void visit(BLangStruct structNode) {
+        /* ignore */
+    }
+
+    public void visit(BLangObject objectNode) {
+        /* ignore */
+    }
+
+    public void visit(BLangRecord record) {
         /* ignore */
     }
 
@@ -474,7 +648,7 @@ public class CodeAnalyzer extends BLangNodeVisitor {
     public void visit(BLangTransformer transformerNode) {
         List<BVarSymbol> inputs = new ArrayList<>();
         inputs.add(transformerNode.source.symbol);
-        transformerNode.params.forEach(param -> inputs.add(param.symbol));
+        transformerNode.requiredParams.forEach(param -> inputs.add(param.symbol));
 
         List<BVarSymbol> outputs = new ArrayList<>();
         transformerNode.retParams.forEach(param -> outputs.add(param.symbol));
@@ -489,16 +663,14 @@ public class CodeAnalyzer extends BLangNodeVisitor {
                     break;
                 case ASSIGNMENT:
                     BLangAssignment assignStmt = (BLangAssignment) stmt;
-                    assignStmt.varRefs.forEach(varRef -> {
-                        varRef.accept(new TransformerVarRefValidator(inputs,
-                                DiagnosticCode.TRANSFORMER_INVALID_INPUT_UPDATE));
+                    assignStmt.varRef.accept(new TransformerVarRefValidator(inputs,
+                            DiagnosticCode.TRANSFORMER_INVALID_INPUT_UPDATE));
 
-                        // If the stmt is declared using var, all the variable refs on lhs should be treated as inputs
-                        if (assignStmt.declaredWithVar && varRef.getKind() == NodeKind.SIMPLE_VARIABLE_REF
-                                && !inputs.contains(((BLangSimpleVarRef) varRef).symbol)) {
-                            inputs.add(((BLangSimpleVarRef) varRef).symbol);
-                        }
-                    });
+                    // If the stmt is declared using var, all the variable refs on lhs should be treated as inputs
+                    if (assignStmt.declaredWithVar && assignStmt.varRef.getKind() == NodeKind.SIMPLE_VARIABLE_REF
+                            && !inputs.contains(((BLangSimpleVarRef) assignStmt.varRef).symbol)) {
+                        inputs.add(((BLangSimpleVarRef) assignStmt.varRef).varSymbol);
+                    }
                     assignStmt.expr.accept(
                             new TransformerVarRefValidator(outputs, DiagnosticCode.TRANSFORMER_INVALID_OUTPUT_USAGE));
                     break;
@@ -517,13 +689,32 @@ public class CodeAnalyzer extends BLangNodeVisitor {
 
     public void visit(BLangVariableDef varDefNode) {
         this.checkStatementExecutionValidity(varDefNode);
-        varDefNode.var.accept(this);
+        analyzeNode(varDefNode.var, env);
+    }
+
+    public void visit(BLangCompoundAssignment compoundAssignment) {
+        this.checkStatementExecutionValidity(compoundAssignment);
+        analyzeExpr(compoundAssignment.varRef);
+        analyzeExpr(compoundAssignment.expr);
+    }
+
+    public void visit(BLangPostIncrement postIncrement) {
+        this.checkStatementExecutionValidity(postIncrement);
+        analyzeExpr(postIncrement.varRef);
+        analyzeExpr(postIncrement.increment);
     }
 
     public void visit(BLangAssignment assignNode) {
         this.checkStatementExecutionValidity(assignNode);
-        analyzeExprs(assignNode.varRefs);
+        analyzeExpr(assignNode.varRef);
         analyzeExpr(assignNode.expr);
+    }
+
+    @Override
+    public void visit(BLangTupleDestructure stmt) {
+        this.checkStatementExecutionValidity(stmt);
+        analyzeExprs(stmt.varRefs);
+        analyzeExpr(stmt.expr);
     }
 
     public void visit(BLangBind bindNode) {
@@ -547,6 +738,7 @@ public class CodeAnalyzer extends BLangNodeVisitor {
 
     public void visit(BLangThrow throwNode) {
         this.checkStatementExecutionValidity(throwNode);
+        this.statementReturns = true;
         analyzeExpr(throwNode.expr);
     }
 
@@ -557,11 +749,31 @@ public class CodeAnalyzer extends BLangNodeVisitor {
     public void visit(BLangExpressionStmt exprStmtNode) {
         this.checkStatementExecutionValidity(exprStmtNode);
         analyzeExpr(exprStmtNode.expr);
+        validateExprStatementExpression(exprStmtNode);
+    }
+
+    private void validateExprStatementExpression(BLangExpressionStmt exprStmtNode) {
+        BLangExpression expr = exprStmtNode.expr;
+        while (expr.getKind() == NodeKind.MATCH_EXPRESSION || expr.getKind() == NodeKind.CHECK_EXPR) {
+            if (expr.getKind() == NodeKind.MATCH_EXPRESSION) {
+                expr = ((BLangMatchExpression) expr).expr;
+            } else if (expr.getKind() == NodeKind.CHECK_EXPR) {
+                expr = ((BLangCheckedExpr) expr).expr;
+            }
+        }
+        // Allowed expression kinds
+        if (expr.getKind() == NodeKind.INVOCATION || expr.getKind() == NodeKind.AWAIT_EXPR) {
+            return;
+        }
+        // For other expressions, error is logged already.
+        if (expr.type == symTable.nilType) {
+            dlog.error(exprStmtNode.pos, DiagnosticCode.INVALID_EXPR_STATEMENT);
+        }
     }
 
     public void visit(BLangTryCatchFinally tryNode) {
         this.checkStatementExecutionValidity(tryNode);
-        tryNode.tryBody.accept(this);
+        analyzeNode(tryNode.tryBody, env);
         this.resetStatementReturns();
         List<BType> caughtTypes = new ArrayList<>();
         for (BLangCatch bLangCatch : tryNode.getCatchBlocks()) {
@@ -570,11 +782,11 @@ public class CodeAnalyzer extends BLangNodeVisitor {
                         bLangCatch.getParameter().type);
             }
             caughtTypes.add(bLangCatch.getParameter().type);
-            bLangCatch.body.accept(this);
+            analyzeNode(bLangCatch.body, env);
             this.resetStatementReturns();
         }
         if (tryNode.finallyBody != null) {
-            tryNode.finallyBody.accept(this);
+            analyzeNode(tryNode.finallyBody, env);
             this.resetStatementReturns();
         }
     }
@@ -588,7 +800,7 @@ public class CodeAnalyzer extends BLangNodeVisitor {
             return;
         }
         this.workerActionSystemStack.peek().addWorkerAction(workerSendNode);
-        analyzeExprs(workerSendNode.exprs);
+        analyzeExpr(workerSendNode.expr);
     }
 
     @Override
@@ -597,7 +809,7 @@ public class CodeAnalyzer extends BLangNodeVisitor {
             return;
         }
         this.workerActionSystemStack.peek().addWorkerAction(workerReceiveNode);
-        analyzeExprs(workerReceiveNode.exprs);
+        analyzeExpr(workerReceiveNode.expr);
     }
 
     public void visit(BLangLiteral literalExpr) {
@@ -612,6 +824,11 @@ public class CodeAnalyzer extends BLangNodeVisitor {
         recordLiteral.keyValuePairs.forEach(kv -> {
             analyzeExpr(kv.valueExpr);
         });
+        checkAccess(recordLiteral);
+    }
+
+    public void visit(BLangTableLiteral tableLiteral) {
+        /* ignore */
     }
 
     public void visit(BLangSimpleVarRef varRefExpr) {
@@ -619,6 +836,9 @@ public class CodeAnalyzer extends BLangNodeVisitor {
     }
 
     public void visit(BLangFieldBasedAccess fieldAccessExpr) {
+        if (fieldAccessExpr.safeNavigate && fieldAccessExpr.lhsVar) {
+            dlog.error(fieldAccessExpr.pos, DiagnosticCode.INVALID_SAFE_NAVIGATION_ON_LHS);
+        }
         analyzeExpr(fieldAccessExpr.expr);
     }
 
@@ -629,7 +849,12 @@ public class CodeAnalyzer extends BLangNodeVisitor {
 
     public void visit(BLangInvocation invocationExpr) {
         analyzeExpr(invocationExpr.expr);
-        analyzeExprs(invocationExpr.argExprs);
+        analyzeExprs(invocationExpr.requiredArgs);
+        analyzeExprs(invocationExpr.namedArgs);
+        analyzeExprs(invocationExpr.restArgs);
+
+        checkDuplicateNamedArgs(invocationExpr.namedArgs);
+
         // Null check is to ignore Negative path where symbol does not get resolved at TypeChecker.
         if ((invocationExpr.symbol != null) && invocationExpr.symbol.kind == SymbolKind.FUNCTION) {
             BSymbol funcSymbol = invocationExpr.symbol;
@@ -638,10 +863,37 @@ public class CodeAnalyzer extends BLangNodeVisitor {
                         names.fromIdNode(invocationExpr.name));
             }
         }
+
+        if (invocationExpr.actionInvocation) {
+            validateActionInvocation(invocationExpr.pos, invocationExpr);
+        }
     }
 
-    public void visit(BLangConnectorInit cIExpr) {
+    private void validateActionInvocation(DiagnosticPos pos, BLangNode bLangNode) {
+        BLangNode parent = bLangNode.parent;
+        while (parent != null) {
+            final NodeKind kind = parent.getKind();
+            // Allowed node types.
+            if (kind == NodeKind.ASSIGNMENT || kind == NodeKind.EXPRESSION_STATEMENT
+                    || kind == NodeKind.TUPLE_DESTRUCTURE || kind == NodeKind.VARIABLE) {
+                return;
+            } else if (kind == NodeKind.CHECK_EXPR || kind == NodeKind.MATCH_EXPRESSION) {
+                parent = parent.parent;
+                continue;
+            } else if (kind == NodeKind.ELVIS_EXPR
+                    && ((BLangElvisExpr) parent).lhsExpr.getKind() == NodeKind.INVOCATION
+                    && ((BLangInvocation) ((BLangElvisExpr) parent).lhsExpr).actionInvocation) {
+                parent = parent.parent;
+                continue;
+            }
+            break;
+        }
+        dlog.error(pos, DiagnosticCode.INVALID_ACTION_INVOCATION_AS_EXPR);
+    }
+
+    public void visit(BLangTypeInit cIExpr) {
         analyzeExprs(cIExpr.argsExpr);
+        analyzeExpr(cIExpr.objectInitInvocation);
     }
 
     public void visit(BLangTernaryExpr ternaryExpr) {
@@ -650,16 +902,30 @@ public class CodeAnalyzer extends BLangNodeVisitor {
         analyzeExpr(ternaryExpr.elseExpr);
     }
 
+    public void visit(BLangAwaitExpr awaitExpr) {
+        analyzeExpr(awaitExpr.expr);
+    }
+
     public void visit(BLangBinaryExpr binaryExpr) {
         analyzeExpr(binaryExpr.lhsExpr);
         analyzeExpr(binaryExpr.rhsExpr);
+    }
+
+    public void visit(BLangElvisExpr elvisExpr) {
+        analyzeExpr(elvisExpr.lhsExpr);
+        analyzeExpr(elvisExpr.rhsExpr);
+    }
+
+    @Override
+    public void visit(BLangBracedOrTupleExpr bracedOrTupleExpr) {
+        analyzeExprs(bracedOrTupleExpr.expressions);
     }
 
     public void visit(BLangUnaryExpr unaryExpr) {
         analyzeExpr(unaryExpr.expr);
     }
 
-    public void visit(BLangTypeofExpr accessExpr) {
+    public void visit(BLangTypedescExpr accessExpr) {
         /* ignore */
     }
 
@@ -743,12 +1009,55 @@ public class CodeAnalyzer extends BLangNodeVisitor {
         /* ignore */
     }
 
+    @Override
+    public void visit(BLangTableQueryExpression tableQueryExpression) {
+        /* ignore */
+    }
+
+    @Override
+    public void visit(BLangRestArgsExpression bLangVarArgsExpression) {
+        /* ignore */
+    }
+
+    @Override
+    public void visit(BLangNamedArgsExpression bLangNamedArgsExpression) {
+        /* ignore */
+    }
+
+    @Override
+    public void visit(BLangMatchExpression bLangMatchExpression) {
+        // TODO
+    }
+
+    @Override
+    public void visit(BLangCheckedExpr checkedExpr) {
+        // TODO
+    }
+
+    // private methods
+
     private <E extends BLangExpression> void analyzeExpr(E node) {
         if (node == null) {
             return;
         }
-
+        BLangNode myParent = parent;
+        node.parent = parent;
+        parent = node;
         node.accept(this);
+        parent = myParent;
+        checkAccess(node);
+    }
+
+    private <E extends BLangExpression> void checkAccess(E node) {
+        if (node.type == null || node.type.tsymbol == null) {
+            return;
+        }
+
+        BSymbol symbol = node.type.tsymbol;
+
+        if (!(env.enclPkg.symbol.pkgID == symbol.pkgID || (Symbols.isPublic(symbol)))) {
+            dlog.error(node.pos, DiagnosticCode.ATTEMPT_REFER_NON_PUBLIC_SYMBOL, symbol.name);
+        }
     }
 
     private <E extends BLangExpression> void analyzeExprs(List<E> nodeList) {
@@ -760,20 +1069,20 @@ public class CodeAnalyzer extends BLangNodeVisitor {
     private void initNewWorkerActionSystem() {
         this.workerActionSystemStack.push(new WorkerActionSystem());
     }
-    
+
     private void finalizeCurrentWorkerActionSystem() {
         WorkerActionSystem was = this.workerActionSystemStack.pop();
         this.validateWorkerInteractions(was);
     }
-    
+
     private static boolean isWorkerSend(BLangStatement action) {
         return action.getKind() == NodeKind.WORKER_SEND;
     }
-    
+
     private static boolean isWorkerForkSend(BLangStatement action) {
         return ((BLangWorkerSend) action).isForkJoinSend;
     }
-    
+
     private String extractWorkerId(BLangStatement action) {
         if (isWorkerSend(action)) {
             return ((BLangWorkerSend) action).workerIdentifier.value;
@@ -781,8 +1090,9 @@ public class CodeAnalyzer extends BLangNodeVisitor {
             return ((BLangWorkerReceive) action).workerIdentifier.value;
         }
     }
-    
+
     private void validateWorkerInteractions(WorkerActionSystem workerActionSystem) {
+        this.validateForkJoinSendsToFork(workerActionSystem);
         BLangStatement currentAction;
         WorkerActionStateMachine currentSM;
         String currentWorkerId;
@@ -803,7 +1113,7 @@ public class CodeAnalyzer extends BLangNodeVisitor {
                     } else {
                         WorkerActionStateMachine otherSM = workerActionSystem.get(this.extractWorkerId(currentAction));
                         if (otherSM.currentIsReceive(currentWorkerId)) {
-                            this.validateWorkerActionParameters((BLangWorkerSend) currentAction, 
+                            this.validateWorkerActionParameters((BLangWorkerSend) currentAction,
                                     (BLangWorkerReceive) otherSM.currentAction());
                             otherSM.next();
                             currentSM.next();
@@ -818,72 +1128,106 @@ public class CodeAnalyzer extends BLangNodeVisitor {
         }
     }
 
+    private void validateForkJoinSendsToFork(WorkerActionSystem workerActionSystem) {
+        for (Map.Entry<String, WorkerActionStateMachine> entry : workerActionSystem.entrySet()) {
+            this.validateForkJoinSendsToFork(entry.getValue());
+        }
+    }
+
+    private void validateForkJoinSendsToFork(WorkerActionStateMachine sm) {
+        boolean sentToFork = false;
+        for (BLangStatement action : sm.actions) {
+            if (isWorkerSend(action) && isWorkerForkSend(action)) {
+                if (sentToFork) {
+                    this.dlog.error(action.pos, DiagnosticCode.INVALID_MULTIPLE_FORK_JOIN_SEND);
+                } else {
+                    sentToFork = true;
+                }
+            }
+        }
+    }
+
     private void reportInvalidWorkerInteractionDiagnostics(WorkerActionSystem workerActionSystem) {
         this.dlog.error(workerActionSystem.getRootPosition(), DiagnosticCode.INVALID_WORKER_INTERACTION,
                 workerActionSystem.toString());
     }
 
     private void validateWorkerActionParameters(BLangWorkerSend send, BLangWorkerReceive receive) {
-        List<BType> typeList = receive.exprs.stream().map(e -> e.type).collect(Collectors.toList());
-        if (send.exprs.size() != typeList.size()) {
-            this.dlog.error(send.pos, DiagnosticCode.WORKER_SEND_RECEIVE_PARAMETER_COUNT_MISMATCH);
-        }
-        for (int i = 0; i < typeList.size(); i++) {
-            this.typeChecker.checkExpr(send.exprs.get(i), send.env, Arrays.asList(typeList.get(i)));
-        }
+        this.typeChecker.checkExpr(send.expr, send.env, receive.expr.type);
     }
 
     private boolean checkNextBreakValidityInTransaction() {
         return !this.loopWithintransactionCheckStack.peek() && transactionCount > 0;
     }
 
+    private boolean checkReturnValidityInTransaction() {
+        return (this.returnWithintransactionCheckStack.empty() || !this.returnWithintransactionCheckStack.peek())
+                && transactionCount > 0;
+    }
+
+    private boolean checkDoneValidityInTransaction() {
+        return (this.doneWithintransactionCheckStack.empty() || !this.doneWithintransactionCheckStack.peek())
+                && transactionCount > 0;
+    }
+
+    private void checkDuplicateNamedArgs(List<BLangExpression> args) {
+        List<BLangIdentifier> existingArgs = new ArrayList<>();
+        args.forEach(arg -> {
+            BLangNamedArgsExpression namedArg = (BLangNamedArgsExpression) arg;
+            if (existingArgs.contains(namedArg.name)) {
+                dlog.error(namedArg.pos, DiagnosticCode.DUPLICATE_NAMED_ARGS, namedArg.name);
+            }
+            existingArgs.add(namedArg.name);
+        });
+    }
+
     /**
      * This class contains the state machines for a set of workers.
      */
     private static class WorkerActionSystem {
-        
+
         public Map<String, WorkerActionStateMachine> workerActionStateMachines = new LinkedHashMap<>();
-        
+
         private WorkerActionStateMachine currentSM;
-        
+
         private String currentWorkerId;
-        
+
         public void startWorkerActionStateMachine(String workerId, DiagnosticPos pos) {
             this.currentWorkerId = workerId;
             this.currentSM = new WorkerActionStateMachine(pos);
         }
-        
+
         public void endWorkerActionStateMachine() {
             this.workerActionStateMachines.put(this.currentWorkerId, this.currentSM);
         }
-        
+
         public void addWorkerAction(BLangStatement action) {
             this.currentSM.actions.add(action);
         }
-        
+
         public WorkerActionStateMachine get(String workerId) {
             return this.workerActionStateMachines.get(workerId);
         }
-        
+
         public Set<Map.Entry<String, WorkerActionStateMachine>> entrySet() {
             return this.workerActionStateMachines.entrySet();
         }
-        
+
         public boolean everyoneDone() {
             return this.workerActionStateMachines.values().stream().allMatch(WorkerActionStateMachine::done);
         }
-        
+
         public DiagnosticPos getRootPosition() {
             return this.workerActionStateMachines.values().iterator().next().pos;
         }
-        
+
         @Override
         public String toString() {
             return this.workerActionStateMachines.toString();
         }
-        
+
     }
-    
+
     /**
      * This class represents a state machine to maintain the state of the send/receive
      * actions of a worker.
@@ -897,7 +1241,7 @@ public class CodeAnalyzer extends BLangNodeVisitor {
         public List<BLangStatement> actions = new ArrayList<>();
 
         public DiagnosticPos pos;
-        
+
         public WorkerActionStateMachine(DiagnosticPos pos) {
             this.pos = pos;
         }
@@ -940,9 +1284,9 @@ public class CodeAnalyzer extends BLangNodeVisitor {
 
     /**
      * Visit all the nested expressions and validate variable references against a given set of symbols.
-     * This visitor is used to check whether an expression contains inputs/output variables, that are not 
+     * This visitor is used to check whether an expression contains inputs/output variables, that are not
      * suppose to be there.
-     * 
+     *
      * @since 0.94.2
      */
     private class TransformerVarRefValidator extends BLangNodeVisitor {
@@ -952,8 +1296,8 @@ public class CodeAnalyzer extends BLangNodeVisitor {
 
         /**
          * Create a new {@link TransformerVarRefValidator}.
-         * 
-         * @param symbols List of symbols to validate the expression against
+         *
+         * @param symbols         List of symbols to validate the expression against
          * @param diagCodeOnError Diagnostic code to be logged on error
          */
         public TransformerVarRefValidator(List<BVarSymbol> symbols, DiagnosticCode diagCodeOnError) {
@@ -971,66 +1315,70 @@ public class CodeAnalyzer extends BLangNodeVisitor {
         @Override
         public void visit(BLangInvocation invocationExpr) {
             if (invocationExpr.expr != null) {
-                if (invocationExpr.expr.type.tag == TypeTags.CONNECTOR
-                        || invocationExpr.expr.type.tag == TypeTags.ENDPOINT) {
+                if (invocationExpr.isActionInvocation()) {
                     dlog.error(invocationExpr.pos, DiagnosticCode.INVALID_STATEMENT_IN_TRANSFORMER,
                             "action invocation");
                 }
-                invocationExpr.expr.accept(this);
+                analyzeExpr(invocationExpr.expr);
             }
-            invocationExpr.argExprs.forEach(argExpr -> argExpr.accept(this));
+            invocationExpr.argExprs.forEach(CodeAnalyzer.this::analyzeExpr);
         }
 
         @Override
         public void visit(BLangTernaryExpr ternaryExpr) {
-            ternaryExpr.expr.accept(this);
-            ternaryExpr.thenExpr.accept(this);
-            ternaryExpr.elseExpr.accept(this);
+            analyzeExpr(ternaryExpr.expr);
+            analyzeExpr(ternaryExpr.thenExpr);
+            analyzeExpr(ternaryExpr.elseExpr);
         }
 
         @Override
         public void visit(BLangBinaryExpr binaryExpr) {
-            binaryExpr.rhsExpr.accept(this);
-            binaryExpr.lhsExpr.accept(this);
+            analyzeExpr(binaryExpr.rhsExpr);
+            analyzeExpr(binaryExpr.lhsExpr);
+        }
+
+        @Override
+        public void visit(BLangBracedOrTupleExpr bracedOrTupleExpr) {
+            bracedOrTupleExpr.expressions.forEach(CodeAnalyzer.this::analyzeExpr);
         }
 
         @Override
         public void visit(BLangUnaryExpr unaryExpr) {
-            unaryExpr.expr.accept(this);
+            analyzeExpr(unaryExpr.expr);
         }
 
         @Override
         public void visit(BLangTypeConversionExpr conversionExpr) {
-            conversionExpr.expr.accept(this);
+            analyzeExpr(conversionExpr.expr);
             if (conversionExpr.transformerInvocation != null) {
-                conversionExpr.transformerInvocation.accept(this);
+                analyzeExpr(conversionExpr.transformerInvocation);
             }
         }
 
         @Override
         public void visit(BLangTypeCastExpr castExpr) {
-            castExpr.expr.accept(this);
+            analyzeExpr(castExpr.expr);
         }
 
         @Override
         public void visit(BLangRecordLiteral recordLiteral) {
-            recordLiteral.keyValuePairs.forEach(keyVal -> keyVal.valueExpr.accept(this));
+            recordLiteral.keyValuePairs.forEach(keyVal -> analyzeExpr(keyVal.valueExpr));
         }
 
         public void visit(BLangArrayLiteral arrayLiteral) {
-            arrayLiteral.exprs.forEach(exprs -> exprs.accept(this));
+            arrayLiteral.exprs.forEach(CodeAnalyzer.this::analyzeExpr);
         }
 
         public void visit(BLangFieldBasedAccess fieldAccessExpr) {
-            fieldAccessExpr.expr.accept(this);
+            analyzeExpr(fieldAccessExpr.expr);
         }
 
         public void visit(BLangIndexBasedAccess indexAccessExpr) {
-            indexAccessExpr.expr.accept(this);
-            indexAccessExpr.indexExpr.accept(this);
+            analyzeExpr(indexAccessExpr.expr);
+            analyzeExpr(indexAccessExpr.indexExpr);
         }
 
-        public void visit(BLangConnectorInit connectorInitExpr) {
+        public void visit(BLangTypeInit connectorInitExpr) {
             dlog.error(connectorInitExpr.pos, DiagnosticCode.INVALID_STATEMENT_IN_TRANSFORMER, "connector init");
         }
 
@@ -1044,46 +1392,46 @@ public class CodeAnalyzer extends BLangNodeVisitor {
         }
 
         public void visit(BLangXMLAttribute xmlAttribute) {
-            xmlAttribute.name.accept(this);
-            xmlAttribute.value.accept(this);
+            analyzeExpr(xmlAttribute.name);
+            analyzeExpr(xmlAttribute.value);
         }
 
         public void visit(BLangXMLElementLiteral xmlElementLiteral) {
-            xmlElementLiteral.startTagName.accept(this);
-            xmlElementLiteral.attributes.forEach(attribute -> attribute.accept(this));
-            xmlElementLiteral.children.forEach(child -> child.accept(this));
+            analyzeExpr(xmlElementLiteral.startTagName);
+            xmlElementLiteral.attributes.forEach(CodeAnalyzer.this::analyzeExpr);
+            xmlElementLiteral.children.forEach(CodeAnalyzer.this::analyzeExpr);
             if (xmlElementLiteral.endTagName != null) {
-                xmlElementLiteral.endTagName.accept(this);
+                analyzeExpr(xmlElementLiteral.endTagName);
             }
         }
 
         public void visit(BLangXMLTextLiteral xmlTextLiteral) {
-            xmlTextLiteral.textFragments.forEach(expr -> expr.accept(this));
+            xmlTextLiteral.textFragments.forEach(CodeAnalyzer.this::analyzeExpr);
         }
 
         public void visit(BLangXMLCommentLiteral xmlCommentLiteral) {
-            xmlCommentLiteral.textFragments.forEach(expr -> expr.accept(this));
+            xmlCommentLiteral.textFragments.forEach(CodeAnalyzer.this::analyzeExpr);
         }
 
         public void visit(BLangXMLProcInsLiteral xmlProcInsLiteral) {
-            xmlProcInsLiteral.dataFragments.forEach(expr -> expr.accept(this));
-            xmlProcInsLiteral.target.accept(this);
+            xmlProcInsLiteral.dataFragments.forEach(CodeAnalyzer.this::analyzeExpr);
+            analyzeExpr(xmlProcInsLiteral.target);
         }
 
         public void visit(BLangXMLQuotedString xmlQuotedString) {
-            xmlQuotedString.textFragments.forEach(expr -> expr.accept(this));
+            xmlQuotedString.textFragments.forEach(CodeAnalyzer.this::analyzeExpr);
         }
 
         public void visit(BLangStringTemplateLiteral stringTemplateLiteral) {
-            stringTemplateLiteral.exprs.forEach(expr -> expr.accept(this));
+            stringTemplateLiteral.exprs.forEach(CodeAnalyzer.this::analyzeExpr);
         }
 
         public void visit(BLangWorkerSend workerSendNode) {
-            workerSendNode.exprs.forEach(expr -> expr.accept(this));
+            analyzeExpr(workerSendNode.expr);
         }
 
         public void visit(BLangWorkerReceive workerReceiveNode) {
-            workerReceiveNode.exprs.forEach(expr -> expr.accept(this));
+            analyzeExpr(workerReceiveNode.expr);
         }
 
         public void visit(BLangLambdaFunction bLangLambdaFunction) {
@@ -1091,9 +1439,9 @@ public class CodeAnalyzer extends BLangNodeVisitor {
         }
 
         public void visit(BLangXMLAttributeAccess xmlAttributeAccessExpr) {
-            xmlAttributeAccessExpr.expr.accept(this);
+            analyzeExpr(xmlAttributeAccessExpr.expr);
             if (xmlAttributeAccessExpr.indexExpr != null) {
-                xmlAttributeAccessExpr.indexExpr.accept(this);
+                analyzeExpr(xmlAttributeAccessExpr.indexExpr);
             }
         }
 

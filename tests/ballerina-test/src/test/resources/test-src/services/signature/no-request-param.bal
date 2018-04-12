@@ -1,9 +1,15 @@
-import ballerina.net.http;
+import ballerina/http;
 
-@http:configuration {basePath:"/signature"}
-service<http> echo {
-    resource echo1 (http:Connection conn) {
-        http:OutResponse res = {};
-        _ = conn.respond(res);
+endpoint http:NonListeningService echoEP {
+    port:9090
+};
+
+@http:ServiceConfig {
+    basePath:"/signature"
+}
+service<http:Service> echo bind echoEP {
+    echo1 (http:ServerConnector conn) {
+        http:Response res = new;
+        _ = conn -> respond(res);
     }
 }

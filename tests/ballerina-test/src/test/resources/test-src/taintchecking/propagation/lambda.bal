@@ -1,6 +1,6 @@
 public function main (string[] args) {
     function (string, string) returns (string) testLambda =
-    function (string x, string y) returns (string) {
+    (string x, string y) => (string) {
         string r = x + y;
         return r;
     };
@@ -8,6 +8,6 @@ public function main (string[] args) {
     secureFunction(testLambda("Hello ", "world.!!!"), testLambda("Hello ", "world.!!!"));
 }
 
-public function secureFunction (@sensitive{} string secureIn, string insecureIn) {
+public function secureFunction (@sensitive string secureIn, string insecureIn) {
     string data = secureIn + insecureIn;
 }

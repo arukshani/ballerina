@@ -1,4 +1,4 @@
-function testForkJoinWithoutTimeoutExpression()(int, float) {
+function testForkJoinWithoutTimeoutExpression() returns (int, float) {
     int x;
     float y;
     fork {
@@ -9,12 +9,8 @@ function testForkJoinWithoutTimeoutExpression()(int, float) {
             1.23 -> fork;
         }
     } join (all) (map results) {
-        any[] w1;
-        any[] w2;
-        w1,_ = (any[]) results["W1"];
-        w2,_ = (any[]) results["W2"];
-        x, _ = (int) w1[0];
-        y, _ = (float) w2[0];
+        x =check <int> results["W1"];
+        y =check <float> results["W2"];
     }
-    return x, y;
+    return (x, y);
 }

@@ -18,12 +18,13 @@
 package org.ballerinalang.nativeimpl.time;
 
 import org.ballerinalang.bre.Context;
+import org.ballerinalang.bre.bvm.BlockingNativeCallableUnit;
 import org.ballerinalang.model.values.BStruct;
 import org.ballerinalang.nativeimpl.Utils;
-import org.ballerinalang.natives.AbstractNativeFunction;
 import org.ballerinalang.util.codegen.StructInfo;
 import org.ballerinalang.util.exceptions.BallerinaException;
 
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -37,7 +38,7 @@ import java.time.temporal.TemporalAccessor;
  *
  * @since 0.89
  */
-public abstract class AbstractTimeFunction extends AbstractNativeFunction {
+public abstract class AbstractTimeFunction extends BlockingNativeCallableUnit {
 
     public static final String KEY_ZONED_DATETIME = "ZonedDateTime";
 
@@ -98,20 +99,21 @@ public abstract class AbstractTimeFunction extends AbstractNativeFunction {
             if (temporalAccessor.isSupported(ChronoField.NANO_OF_SECOND)) {
                 nanoSecond = temporalAccessor.get(ChronoField.NANO_OF_SECOND);
             }
+
             ZoneId zoneId = null;
-            if (temporalAccessor.isSupported(ChronoField.OFFSET_SECONDS)) {
+            try {
                 zoneId = ZoneId.from(temporalAccessor);
+            } catch (DateTimeException e) {
+                zoneId = ZoneId.systemDefault(); // Initialize to the default system timezone
             }
-            if (zoneId == null) { //If timezone is not given, it will initialize to system default
-                zoneId = ZoneId.systemDefault();
-            }
+
             ZonedDateTime zonedDateTime = ZonedDateTime.of(year, month, day, hour, minute, second, nanoSecond, zoneId);
             long timeValue = zonedDateTime.toInstant().toEpochMilli();
             return Utils.createTimeStruct(getTimeZoneStructInfo(context), getTimeStructInfo(context), timeValue,
                     zoneId.toString());
 
         } catch (DateTimeParseException e) {
-            throw new BallerinaException("parse date " + dateValue + " for the format " + pattern  + " failed ");
+            throw new BallerinaException("parse date \"" + dateValue + "\" for the format \"" + pattern  + "\" failed");
         } catch (IllegalArgumentException e) {
             throw new BallerinaException("invalid pattern for parsing " + pattern);
         }
@@ -206,7 +208,7 @@ public abstract class AbstractTimeFunction extends AbstractNativeFunction {
         return dateTime.getDayOfWeek().toString();
     }
 
-    private ZonedDateTime getZonedDateTime(BStruct timeStruct) {
+    protected ZonedDateTime getZonedDateTime(BStruct timeStruct) {
         ZonedDateTime dateTime = (ZonedDateTime) timeStruct.getNativeData(KEY_ZONED_DATETIME);
         if (dateTime != null) {
             return dateTime;

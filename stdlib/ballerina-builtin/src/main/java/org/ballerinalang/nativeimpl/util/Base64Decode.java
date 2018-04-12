@@ -17,16 +17,13 @@
 package org.ballerinalang.nativeimpl.util;
 
 import org.ballerinalang.bre.Context;
+import org.ballerinalang.bre.bvm.BlockingNativeCallableUnit;
 import org.ballerinalang.model.types.TypeKind;
-import org.ballerinalang.model.values.BString;
 import org.ballerinalang.model.values.BValue;
-import org.ballerinalang.natives.AbstractNativeFunction;
+import org.ballerinalang.nativeimpl.Utils;
 import org.ballerinalang.natives.annotations.Argument;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 import org.ballerinalang.natives.annotations.ReturnType;
-
-import java.nio.charset.Charset;
-import java.util.Base64;
 
 /**
  * Native function ballerina.util:base64Decode.
@@ -34,18 +31,19 @@ import java.util.Base64;
  * @since 0.8.0
  */
 @BallerinaFunction(
-        packageName = "ballerina.util",
+        orgName = "ballerina", packageName = "util",
         functionName = "base64Decode",
-        args = {@Argument(name = "s", type = TypeKind.STRING)},
-        returnType = {@ReturnType(type = TypeKind.STRING)},
+        args = {@Argument(name = "contentToBeDecoded", type = TypeKind.UNION), @Argument(name = "charset",
+                type = TypeKind.STRING)},
+        returnType = {@ReturnType(type = TypeKind.UNION)},
         isPublic = true
 )
-public class Base64Decode extends AbstractNativeFunction {
+public class Base64Decode extends BlockingNativeCallableUnit {
 
     @Override
-    public BValue[] execute(Context context) {
-        String value = getStringArgument(context, 0);
-        byte[] decodedValue = Base64.getDecoder().decode(value.getBytes(Charset.defaultCharset()));
-        return getBValues(new BString(new String(decodedValue, Charset.defaultCharset())));
+    public void execute(Context context) {
+        BValue result = context.getRefArgument(0);
+        String charset = context.getStringArgument(0);
+        Utils.decode(context, result, charset, false);
     }
 }

@@ -27,7 +27,6 @@ import org.wso2.ballerinalang.compiler.semantics.model.types.BType;
 import org.wso2.ballerinalang.compiler.tree.BLangIdentifier;
 import org.wso2.ballerinalang.compiler.tree.BLangNodeVisitor;
 import org.wso2.ballerinalang.compiler.util.diagnotic.DiagnosticPos;
-import org.wso2.ballerinalang.programfile.Instruction.RegIndex;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,23 +37,27 @@ import java.util.List;
  *
  * @since 0.94
  */
-public class BLangInvocation extends BLangVariableReference implements InvocationNode, MultiReturnExpr {
+public class BLangInvocation extends BLangAccessExpression implements InvocationNode {
 
     public BLangIdentifier pkgAlias;
     public BLangIdentifier name;
     public List<BLangExpression> argExprs = new ArrayList<>();
-    public BLangVariableReference expr;
-    public List<BType> types = new ArrayList<>(0);
-    public BSymbol symbol;
+    //caching since at desugar level we need to identify whether this is actually attached function or not
+    public BSymbol exprSymbol;
     public boolean functionPointerInvocation;
     /* Variables Required for Iterable Operation */
     public boolean iterableOperationInvocation;
     public IterableContext iContext;
-    protected RegIndex[] regIndexes;
+    public boolean actionInvocation;
+    public boolean async;
 
-    public boolean isMultiReturnExpr() {
-        return true;
-    }
+    /*
+     * Below expressions are used by typechecker, desugar and codegen phases.
+     * Above phases must rely on below expr lists, rather than {@link #argExprs}
+     */
+    public List<BLangExpression> requiredArgs = new ArrayList<>();
+    public List<BLangExpression> namedArgs = new ArrayList<>();
+    public List<BLangExpression> restArgs = new ArrayList<>();
 
     @Override
     public IdentifierNode getPackageAlias() {
@@ -106,27 +109,18 @@ public class BLangInvocation extends BLangVariableReference implements Invocatio
     }
 
     @Override
-    public List<BType> getTypes() {
-        return types;
-    }
-
-    @Override
-    public void setTypes(List<BType> types) {
-        this.types = types;
-    }
-
-    public RegIndex[] getRegIndexes() {
-        return regIndexes;
-    }
-
-    public void setRegIndexes(RegIndex[] regIndexes) {
-        this.regIndexes = regIndexes;
-        this.regIndex = regIndexes != null && regIndexes.length > 0 ? regIndexes[0] : null;
-    }
-
-    @Override
     public boolean isIterableOperation() {
         return iterableOperationInvocation;
+    }
+
+    @Override
+    public boolean isActionInvocation() {
+        return this.actionInvocation;
+    }
+    
+    @Override
+    public boolean isAsync() {
+        return async;
     }
 
     /**
@@ -137,14 +131,13 @@ public class BLangInvocation extends BLangVariableReference implements Invocatio
         public BFunctionPointerInvocation(BLangInvocation parent, BLangVariableReference varRef) {
             this.pos = parent.pos;
             this.name = parent.name;
-            this.argExprs = parent.argExprs;
-            this.types = parent.types;
-            this.regIndexes = parent.regIndexes;
+            this.requiredArgs = parent.requiredArgs;
+            this.namedArgs = parent.namedArgs;
+            this.restArgs = parent.restArgs;
+            this.regIndex = parent.regIndex;
             this.symbol = parent.symbol;
             this.expr = varRef;
-            if (types.size() > 0) {
-                this.type = types.get(0);
-            }
+            this.type = parent.type;
         }
 
         @Override
@@ -160,18 +153,21 @@ public class BLangInvocation extends BLangVariableReference implements Invocatio
         public BLangExpression expr;
 
         public BLangAttachedFunctionInvocation(DiagnosticPos pos,
-                                               List<BLangExpression> argExprs,
+                                               List<BLangExpression> requiredArgs,
+                                               List<BLangExpression> namedArgs,
+                                               List<BLangExpression> restArgs,
                                                BSymbol symbol,
-                                               List<BType> types,
-                                               BLangExpression expr) {
+                                               BType type,
+                                               BLangExpression expr,
+                                               boolean async) {
             this.pos = pos;
-            this.argExprs = argExprs;
+            this.requiredArgs = requiredArgs;
+            this.namedArgs = namedArgs;
+            this.restArgs = restArgs;
             this.symbol = symbol;
-            this.types = types;
-            if (types.size() > 0) {
-                this.type = types.get(0);
-            }
+            this.type = type;
             this.expr = expr;
+            this.async = async;
         }
 
         @Override
@@ -186,16 +182,19 @@ public class BLangInvocation extends BLangVariableReference implements Invocatio
     public static class BLangActionInvocation extends BLangInvocation {
 
         public BLangActionInvocation(DiagnosticPos pos,
-                                       List<BLangExpression> argExprs,
-                                       BSymbol symbol,
-                                       List<BType> types) {
+                                     List<BLangExpression> requiredArgs,
+                                     List<BLangExpression> namedArgs,
+                                     List<BLangExpression> restArgs,
+                                     BSymbol symbol,
+                                     BType type,
+                                     boolean async) {
             this.pos = pos;
-            this.argExprs = argExprs;
+            this.requiredArgs = requiredArgs;
+            this.namedArgs = namedArgs;
+            this.restArgs = restArgs;
             this.symbol = symbol;
-            this.types = types;
-            if (types.size() > 0) {
-                this.type = types.get(0);
-            }
+            this.type = type;
+            this.async = async;
         }
 
         @Override
@@ -210,16 +209,24 @@ public class BLangInvocation extends BLangVariableReference implements Invocatio
     public static class BLangTransformerInvocation extends BLangInvocation {
 
         public BLangTransformerInvocation(DiagnosticPos pos,
-                                          List<BLangExpression> argExprs,
+                                          List<BLangExpression> requiredArgs,
                                           BSymbol symbol,
-                                          List<BType> types) {
+                                          BType type) {
             this.pos = pos;
-            this.argExprs = argExprs;
+            this.requiredArgs = requiredArgs;
             this.symbol = symbol;
-            this.types = types;
-            if (types.size() > 0) {
-                this.type = types.get(0);
-            }
+            this.type = type;
+        }
+
+        public BLangTransformerInvocation(DiagnosticPos pos,
+                                          List<BLangExpression> requiredArgs,
+                                          List<BLangExpression> namedArgs,
+                                          List<BLangExpression> restArgs,
+                                          BSymbol symbol,
+                                          BType type) {
+            this(pos, requiredArgs, symbol, type);
+            this.namedArgs = namedArgs;
+            this.restArgs = restArgs;
         }
 
         @Override
@@ -227,4 +234,5 @@ public class BLangInvocation extends BLangVariableReference implements Invocatio
             visitor.visit(this);
         }
     }
+
 }

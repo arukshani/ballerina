@@ -26,6 +26,7 @@ import org.ballerinalang.model.values.BJSON;
 import org.ballerinalang.model.values.BRefValueArray;
 import org.ballerinalang.model.values.BStruct;
 import org.ballerinalang.model.values.BXML;
+import org.ballerinalang.nativeimpl.io.BallerinaIOException;
 import org.ballerinalang.nativeimpl.io.IOConstants;
 import org.ballerinalang.nativeimpl.io.channels.TempFileIOChannel;
 import org.ballerinalang.nativeimpl.io.channels.base.Channel;
@@ -57,7 +58,6 @@ import static org.ballerinalang.mime.util.Constants.ENTITY_BYTE_CHANNEL;
 import static org.ballerinalang.mime.util.Constants.FIRST_BODY_PART_INDEX;
 import static org.ballerinalang.mime.util.Constants.MESSAGE_DATA_SOURCE;
 import static org.ballerinalang.mime.util.Constants.MULTIPART_AS_PRIMARY_TYPE;
-import static org.ballerinalang.mime.util.Constants.SIZE_INDEX;
 
 /**
  * Entity body related operations are included here.
@@ -72,19 +72,18 @@ public class EntityBodyHandler {
      * a file channel. After that delete the temp file. If the size does not exceed, then wrap the inputstream with an
      * EntityBodyChannel.
      *
-     * @param entityStruct Represent an 'Entity'
-     * @param inputStream  Represent input stream coming from the request/response
+     * @param entityStruct      Represent an 'Entity'
+     * @param inputStream       Represent input stream coming from the request/response
+     * @param numberOfBytesRead Number of bytes read
      */
     public static void setDiscreteMediaTypeBodyContent(BStruct entityStruct, InputStream inputStream,
-                                                       Map<String, Object> overflowSettings) {
-        long contentLength = entityStruct.getIntField(SIZE_INDEX);
+                                                       int numberOfBytesRead, Map<String, Object> overflowSettings) {
         int maxPayloadSizeInMemory = MimeUtil.getMaxPayloadSizeInMemory(overflowSettings);
-        if (contentLength > maxPayloadSizeInMemory) {
-            String temporaryFilePath = MimeUtil.writeToTemporaryFile(inputStream, BALLERINA_TEMP_FILE,
-                    overflowSettings);
-            entityStruct.addNativeData(ENTITY_BYTE_CHANNEL, getByteChannelForTempFile(temporaryFilePath));
-        } else {
+        if (numberOfBytesRead < maxPayloadSizeInMemory) {
             entityStruct.addNativeData(ENTITY_BYTE_CHANNEL, new EntityWrapper(new EntityBodyChannel(inputStream)));
+        } else {
+            String temporaryFilePath = MimeUtil.writeToTemporaryFile(inputStream, BALLERINA_TEMP_FILE, overflowSettings);
+            entityStruct.addNativeData(ENTITY_BYTE_CHANNEL, getByteChannelForTempFile(temporaryFilePath));
         }
     }
 
@@ -163,13 +162,17 @@ public class EntityBodyHandler {
      * @return BJSON data source which is kept in memory
      */
     public static BJSON constructJsonDataSource(BStruct entityStruct) {
-        Channel byteChannel = getByteChannel(entityStruct);
-        if (byteChannel == null) {
-            return null;
+        try {
+            Channel byteChannel = getByteChannel(entityStruct);
+            if (byteChannel == null) {
+                return null;
+            }
+            BJSON jsonData = new BJSON(byteChannel.getInputStream());
+            byteChannel.close();
+            return jsonData;
+        } catch (IOException e) {
+            throw new BallerinaIOException("Error occurred while closing connection", e);
         }
-        BJSON jsonData = new BJSON(byteChannel.getInputStream());
-        byteChannel.close();
-        return jsonData;
     }
 
     /**
@@ -179,13 +182,17 @@ public class EntityBodyHandler {
      * @return BXML data source which is kept in memory
      */
     public static BXML constructXmlDataSource(BStruct entityStruct) {
-        Channel byteChannel = getByteChannel(entityStruct);
-        if (byteChannel == null) {
-            return null;
+        try {
+            Channel byteChannel = getByteChannel(entityStruct);
+            if (byteChannel == null) {
+                throw new BallerinaIOException("Empty xml payload");
+            }
+            BXML xmlContent = XMLUtils.parse(byteChannel.getInputStream());
+            byteChannel.close();
+            return xmlContent;
+        } catch (IOException e) {
+            throw new BallerinaIOException("Error occurred while closing the channel", e);
         }
-        BXML xmlContent = XMLUtils.parse(byteChannel.getInputStream());
-        byteChannel.close();
-        return xmlContent;
     }
 
     /**
@@ -195,13 +202,17 @@ public class EntityBodyHandler {
      * @return StringDataSource which represent the entity body which is kept in memory
      */
     public static StringDataSource constructStringDataSource(BStruct entityStruct) {
-        Channel byteChannel = getByteChannel(entityStruct);
-        if (byteChannel == null) {
-            return null;
+        try {
+            Channel byteChannel = getByteChannel(entityStruct);
+            if (byteChannel == null) {
+                throw new BallerinaIOException("Payload is null");
+            }
+            String textContent = StringUtils.getStringFromInputStream(byteChannel.getInputStream());
+            byteChannel.close();
+            return new StringDataSource(textContent);
+        } catch (IOException e) {
+            throw new BallerinaIOException("Error occurred while closing the channel", e);
         }
-        String textContent = StringUtils.getStringFromInputStream(byteChannel.getInputStream());
-        byteChannel.close();
-        return new StringDataSource(textContent);
     }
 
     /**
@@ -272,8 +283,7 @@ public class EntityBodyHandler {
             return;
         }
 
-        MultipartDecoder.parseBody(context, entityStruct, contentType, byteChannel.getInputStream(),
-                null);
+        MultipartDecoder.parseBody(context, entityStruct, contentType, byteChannel.getInputStream());
     }
 
     /**
@@ -284,7 +294,7 @@ public class EntityBodyHandler {
      */
     public static BRefValueArray getBodyPartArray(BStruct entityStruct) {
         return entityStruct.getNativeData(BODY_PARTS) != null ?
-                (BRefValueArray) entityStruct.getNativeData(BODY_PARTS) : null;
+                (BRefValueArray) entityStruct.getNativeData(BODY_PARTS) : new BRefValueArray();
     }
 
     public static Channel getByteChannel(BStruct entityStruct) {

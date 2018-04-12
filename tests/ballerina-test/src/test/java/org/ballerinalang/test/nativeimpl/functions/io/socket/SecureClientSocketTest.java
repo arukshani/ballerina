@@ -46,7 +46,7 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * Test class for secure client socket related actions.
  */
-@Test(enabled = false)
+@Test
 public class SecureClientSocketTest {
 
     private static final Logger log = LoggerFactory.getLogger(SecureClientSocketTest.class);
@@ -58,7 +58,7 @@ public class SecureClientSocketTest {
     @BeforeClass
     public void setup() {
         port = ThreadLocalRandom.current().nextInt(47000, 55000);
-        socketClient = BCompileUtil.compile("test-src/io/secureclientsocketio.bal");
+        socketClient = BCompileUtil.compileAndSetup("test-src/io/secure_client_socket_io.bal");
         boolean connectionStatus;
         int numberOfRetryAttempts = 10;
         try {
@@ -134,7 +134,7 @@ public class SecureClientSocketTest {
         server.destroy();
     }
 
-//    @Test(description = "Test connection open with properties")
+    @Test(description = "Test connection open with properties")
     public void testOpenSecureClientSocket() throws URISyntaxException {
         PackageInfo ioPackageInfo = socketClient.getProgFile().getPackageInfo("ballerina.io");
         StructInfo socketProperties = ioPackageInfo.getStructInfo("SocketProperties");
@@ -145,29 +145,29 @@ public class SecureClientSocketTest {
         propertyStruct.setStringField(2, Paths.get(resource.toURI()).toFile().getAbsolutePath());
         propertyStruct.setStringField(3, "ballerina");
         BValue[] args = { new BString("localhost"), new BInteger(port), propertyStruct };
-        BRunUtil.invoke(socketClient, "openSocketConnection", args);
+        BRunUtil.invokeStateful(socketClient, "openSocketConnection", args);
     }
 
-//    @Test(dependsOnMethods = "testOpenSecureClientSocket",
-//          description = "Test content read/write")
+    @Test(dependsOnMethods = "testOpenSecureClientSocket", description = "Test content read/write")
     public void testWriteReadContent() {
         final String newline = System.lineSeparator();
         String content = "Hello World" + newline;
-        BValue[] args = { new BBlob(content.getBytes()) };
-        final BValue[] writeReturns = BRunUtil.invoke(socketClient, "write", args);
+        final byte[] contentBytes = content.getBytes();
+        BValue[] args = { new BBlob(contentBytes)};
+        final BValue[] writeReturns = BRunUtil.invokeStateful(socketClient, "write", args);
         BInteger returnedSize = (BInteger) writeReturns[0];
         Assert.assertEquals(returnedSize.intValue(), content.length(), "Write content size is not match.");
         args = new BValue[] { new BInteger(content.length()) };
-        final BValue[] readReturns = BRunUtil.invoke(socketClient, "read", args);
+        final BValue[] readReturns = BRunUtil.invokeStateful(socketClient, "read", args);
         final BBlob readContent = (BBlob) readReturns[0];
         returnedSize = (BInteger) readReturns[1];
         Assert.assertEquals(readContent.stringValue(), content, "Return content are not match with written content.");
         Assert.assertEquals(returnedSize.intValue(), content.length(), "Read size not match with the request size");
     }
 
-//    @Test(dependsOnMethods = "testWriteReadContent",
-//          description = "Test the connection closure")
+    @Test(dependsOnMethods = "testWriteReadContent",
+          description = "Test the connection closure")
     public void testClosure() {
-        BRunUtil.invoke(socketClient, "closeSocket");
+        BRunUtil.invokeStateful(socketClient, "closeSocket");
     }
 }

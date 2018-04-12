@@ -19,11 +19,10 @@
 package org.ballerinalang.nativeimpl.task.appointment;
 
 import org.ballerinalang.bre.Context;
+import org.ballerinalang.model.NativeCallableUnit;
 import org.ballerinalang.nativeimpl.task.SchedulingException;
-import org.ballerinalang.nativeimpl.task.TaskException;
 import org.ballerinalang.nativeimpl.task.TaskIdGenerator;
 import org.ballerinalang.nativeimpl.task.TaskRegistry;
-import org.ballerinalang.natives.AbstractNativeFunction;
 import org.ballerinalang.util.codegen.cpentries.FunctionRefCPEntry;
 import org.quartz.SchedulerException;
 
@@ -32,19 +31,17 @@ import org.quartz.SchedulerException;
  */
 public class Appointment {
     private String id = TaskIdGenerator.generate();
-    private Context balParentContext;
 
-    Appointment(AbstractNativeFunction fn, Context balParentContext,
+    Appointment(NativeCallableUnit fn, Context balParentContext,
                 String cronExpression, FunctionRefCPEntry onTriggerFunction,
                 FunctionRefCPEntry onErrorFunction) throws SchedulingException {
-        this.balParentContext = balParentContext;
         TaskRegistry.getInstance().addAppointment(this);
 
         try {
-            balParentContext.startTrackWorker();
             AppointmentManager.getInstance().
                     schedule(id, fn, AppointmentJob.class,
                             balParentContext, onTriggerFunction, onErrorFunction, cronExpression);
+            //BLangScheduler.workerCountUp();
         } catch (SchedulerException e) {
             throw new SchedulingException(e);
         }
@@ -54,9 +51,9 @@ public class Appointment {
         return id;
     }
 
-    public void stop() throws TaskException {
+    public void stop() {
+        //BLangScheduler.workerCountDown();
         AppointmentManager.getInstance().stop(id);
         TaskRegistry.getInstance().remove(id);
-        balParentContext.endTrackWorker();
     }
 }

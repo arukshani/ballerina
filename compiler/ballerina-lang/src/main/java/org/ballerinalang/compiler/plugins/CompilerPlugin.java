@@ -21,9 +21,12 @@ import org.ballerinalang.model.tree.ActionNode;
 import org.ballerinalang.model.tree.AnnotationAttachmentNode;
 import org.ballerinalang.model.tree.AnnotationNode;
 import org.ballerinalang.model.tree.ConnectorNode;
+import org.ballerinalang.model.tree.EndpointNode;
 import org.ballerinalang.model.tree.EnumNode;
 import org.ballerinalang.model.tree.FunctionNode;
+import org.ballerinalang.model.tree.ObjectNode;
 import org.ballerinalang.model.tree.PackageNode;
+import org.ballerinalang.model.tree.RecordNode;
 import org.ballerinalang.model.tree.ResourceNode;
 import org.ballerinalang.model.tree.ServiceNode;
 import org.ballerinalang.model.tree.StructNode;
@@ -104,6 +107,22 @@ public interface CompilerPlugin {
     void process(StructNode structNode, List<AnnotationAttachmentNode> annotations);
 
     /**
+     * Processes a list of annotations attached to a object node.
+     *
+     * @param objectNode  the object node being annotated
+     * @param annotations a list of annotations attached to the object node
+     */
+    void process(ObjectNode objectNode, List<AnnotationAttachmentNode> annotations);
+
+    /**
+     * Processes a list of annotations attached to a record node.
+     *
+     * @param recordNode  the record node being annotated
+     * @param annotations a list of annotations attached to the record node
+     */
+    void process(RecordNode recordNode, List<AnnotationAttachmentNode> annotations);
+
+    /**
      * Processes a list of annotations attached to a enum node.
      *
      * @param enumNode    the enum node being annotated
@@ -142,6 +161,14 @@ public interface CompilerPlugin {
      * @param annotations     a list of annotations attached to the transformer node
      */
     void process(TransformerNode transformerNode, List<AnnotationAttachmentNode> annotations);
+
+    /**
+     * Processes a list of annotations attached to an endpoint node.
+     *
+     * @param endpointNode the endpoint node being annotated
+     * @param annotations  a list of annotations attached to the transformer node
+     */
+    void process(EndpointNode endpointNode, List<AnnotationAttachmentNode> annotations);
 
     /**
      * Notifies when the code generated phase is completed.

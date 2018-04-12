@@ -41,9 +41,8 @@ public class ConstantAssignmentTest {
 
     @BeforeClass
     public void setup() {
-        positiveCompileResult = BCompileUtil.compile(this, "test-src", "types/constant/constant-assignment.bal");
-        negativeCompileResult = BCompileUtil.compile(this, "test-src",
-                "types/constant/constant-assignment-negative.bal");
+        positiveCompileResult = BCompileUtil.compile("test-src/types/constant/constant-assignment.bal");
+        negativeCompileResult = BCompileUtil.compile("test-src/types/constant/constant-assignment-negative.bal");
     }
 
     @Test(description = "Test accessing constant evaluated by an expression.")
@@ -107,10 +106,10 @@ public class ConstantAssignmentTest {
     @Test
     public void testConstantAssignmentNegative() {
         // Todo - Fix duplicate errors issue
-        BAssertUtil.validateError(negativeCompileResult, 0, "incompatible types: expected 'int', found 'float'", 1, 16);
+        BAssertUtil.validateError(negativeCompileResult, 0, "incompatible types: expected 'int', found 'float'", 1, 17);
         BAssertUtil.validateError(negativeCompileResult, 1, "incompatible types: expected 'float', found 'string'", 3,
-                31);
+                32);
         BAssertUtil.validateError(negativeCompileResult, 2,
-                "incompatible types: expected 'int', found 'string'", 5, 27);
+                "incompatible types: expected 'int', found 'string'", 5, 28);
     }
 }

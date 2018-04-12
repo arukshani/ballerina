@@ -1,5 +1,5 @@
-import ballerina.io;
-import ballerina.runtime;
+import ballerina/io;
+import ballerina/runtime;
 function workerDeclTest() {
    worker wx {
      int a = 20;
@@ -16,7 +16,7 @@ function workerDeclTest() {
    worker wy { }
 }
 
-function forkJoinWithMessageParsingTest() (int) {
+function forkJoinWithMessageParsingTest() returns int {
     int x = 5;
     fork {
 	   worker w1 {
@@ -35,7 +35,7 @@ function forkJoinWithMessageParsingTest() (int) {
 	return x;
 }
 
-function forkJoinWithSingleForkMessages() (int) {
+function forkJoinWithSingleForkMessages() returns int {
     int x = 5;
     fork {
 	   worker w1 {
@@ -56,7 +56,7 @@ function forkJoinWithSingleForkMessages() (int) {
 	return x;
 }
 
-function basicForkJoinTest() (int) {
+function basicForkJoinTest() returns int {
     int x = 10;
     fork {
 	   worker w1 {
@@ -71,7 +71,7 @@ function basicForkJoinTest() (int) {
 	return x;
 }
 
-function forkJoinWithMultipleForkMessages() (int) {
+function forkJoinWithMultipleForkMessages() returns int {
     int x = 5;
     fork {
 	   worker w1 {
@@ -79,14 +79,14 @@ function forkJoinWithMultipleForkMessages() (int) {
 	     int b = 0;
 	     a -> w2;
 	     b <- w2;
-	     a, b -> fork;
+	     (a, b) -> fork;
 	   }
 	   worker w2 {
 	     int a = 0;
 	     int b = 15;
 	     a <- w1;
 	     b -> w1;
-	     a, b -> fork;
+	     (a, b) -> fork;
 	   }
 	} join (all) (map results) {  io:println(results);  }
 	return x;
@@ -106,9 +106,10 @@ function simpleWorkerMessagePassingTest() {
    }
 }
 
-function forkJoinWithSomeJoin() (map) {
-    map m = {};
+function forkJoinWithSomeJoin() returns int | error {
+    map m;
     m["x"] = 25;
+    int ret;
     fork {
 	   worker w1 {
 	     int a = 5;
@@ -128,13 +129,15 @@ function forkJoinWithSomeJoin() (map) {
 	     m["x"] = b;
 	   }
 	} join (some 1) (map results) {  io:println(results);  }
-	return m;
+	match <int> m["x"] {
+	    int a => return a;
+	    error err => return err;
+	}
 }
 
-function workerReturnTest() (int) {
+function workerReturnTest() returns int {
     worker wx {
 	    int x = 50;
 	    return x + 1;
     }
 }
-

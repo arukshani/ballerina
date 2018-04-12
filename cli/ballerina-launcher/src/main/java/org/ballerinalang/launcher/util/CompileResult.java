@@ -16,12 +16,13 @@
  */
 package org.ballerinalang.launcher.util;
 
-import org.ballerinalang.bre.Context;
+import org.ballerinalang.bre.bvm.WorkerExecutionContext;
 import org.ballerinalang.model.tree.PackageNode;
 import org.ballerinalang.util.codegen.ProgramFile;
 import org.ballerinalang.util.diagnostic.Diagnostic;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -35,7 +36,7 @@ public class CompileResult {
     private PackageNode pkgNode;
     private ProgramFile progFile;
     //Used for stateful function invocation.
-    private Context context;
+    private WorkerExecutionContext context;
     private int errorCount = 0;
     private int warnCount = 0;
 
@@ -58,6 +59,7 @@ public class CompileResult {
     }
 
     public Diagnostic[] getDiagnostics() {
+        diagnostics.sort(Comparator.comparingInt(a -> a.getPosition().getStartLine()));
         return diagnostics.toArray(new Diagnostic[diagnostics.size()]);
     }
 
@@ -85,11 +87,26 @@ public class CompileResult {
         this.pkgNode = pkgNode;
     }
 
-    public Context getContext() {
+    public WorkerExecutionContext getContext() {
         return context;
     }
 
-    public void setContext(Context context) {
+    public void setContext(WorkerExecutionContext context) {
         this.context = context;
     }
+    
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        if (this.errorCount == 0) {
+            builder.append("Compilation Successful");
+        } else {
+            builder.append("Compilation Failed:\n");
+            for (Diagnostic diag : this.getDiagnostics()) {
+                builder.append(diag + "\n");
+            }
+        }
+        return builder.toString();
+    }
+    
 }

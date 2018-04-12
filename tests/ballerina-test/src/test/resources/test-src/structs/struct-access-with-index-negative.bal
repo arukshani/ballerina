@@ -5,11 +5,11 @@ function testUndeclaredStructAccess() {
 
 function testUndeclaredAttributeAccess() {     
     string name;        
-    Department dpt;     
+    Department dpt = {};
     dpt["id"] = "HR";       
 }     
       
-struct Department {       
+type Department {
     string dptName;     
     int count;      
-}
+};

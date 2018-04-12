@@ -1,5 +1,4 @@
-
-function testForkJoinAny()(string[]) {
+function testForkJoinAny() returns string[] {
 
         string[] results = [];
         int i = 0;
@@ -12,14 +11,10 @@ function testForkJoinAny()(string[]) {
             }
         } join (some 1) (map airlineResponses) {
             if (airlineResponses["ABC_Airline"] != null) {
-                any[] abc;
-                abc,_ = (any[]) airlineResponses["ABC_Airline"];
-                results[0], _ = (string) abc[0];
+                results[0] = <string> airlineResponses["ABC_Airline"];
             }
             if (airlineResponses["XYZ_Airline"] != null) {
-                any[] xyz;
-                xyz,_ = (any[]) airlineResponses["XYZ_Airline"];
-                results[0], _ = (string) xyz[0];
+                results[0] = <string> airlineResponses["XYZ_Airline"];
             }
             return results;
         } timeout (30000) (map airlineResponses) {

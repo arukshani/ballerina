@@ -1,216 +1,218 @@
-import ballerina.time;
+import ballerina/time;
 
-function testCurrentTime () (int timeValue, string zoneId, int zoneoffset) {
-    time:Time timeStruct = time:currentTime();
-    timeValue = timeStruct.time;
-    zoneId = timeStruct.zone.zoneId;
-    zoneoffset = timeStruct.zone.zoneOffset;
-    return;
+function testCurrentTime () returns (int, string, int){
+    time:Time time = time:currentTime();
+    int timeValue = time.time;
+    string zoneId = time.zone.zoneId;
+    int zoneoffset = time.zone.zoneOffset;
+    return (timeValue, zoneId, zoneoffset);
 }
 
-function testCreateTimeWithZoneID () (int timeValue, string zoneId, int zoneoffset) {
+function testNanoTime() returns (int) {
+    int nanoTime = time:nanoTime();
+    return nanoTime;
+}
+
+function testCreateTimeWithZoneID () returns (int, string, int) {
     time:Timezone zoneValue = {zoneId:"America/Panama"};
-    time:Time timeStruct = {time:1498488382000, zone:zoneValue};
-    timeValue = timeStruct.time;
-    zoneId = timeStruct.zone.zoneId;
-    zoneoffset = timeStruct.zone.zoneOffset;
-    return;
+    time:Time time = new (1498488382000, zoneValue);
+    int timeValue = time.time;
+    string zoneId = time.zone.zoneId;
+    int zoneoffset = time.zone.zoneOffset;
+    return (timeValue, zoneId, zoneoffset);
 }
 
-function testCreateTimeWithOffset () (int timeValue, string zoneId, int zoneoffset) {
+function testCreateTimeWithOffset () returns (int, string, int) {
     time:Timezone zoneValue = {zoneId:"-05:00"};
-    time:Time timeStruct = {time:1498488382000, zone:zoneValue};
-    timeValue = timeStruct.time;
-    zoneId = timeStruct.zone.zoneId;
-    zoneoffset = timeStruct.zone.zoneOffset;
-    return;
+    time:Time time =new (1498488382000, zoneValue);
+    int timeValue = time.time;
+    string zoneId = time.zone.zoneId;
+    int zoneoffset = time.zone.zoneOffset;
+    return (timeValue, zoneId, zoneoffset);
 }
 
-function testCreateTimeWithNoZone () (int timeValue, string zoneId, int zoneoffset) {
+function testCreateTimeWithNoZone () returns (int, string, int) {
     time:Timezone zoneValue = {zoneId:""};
-    time:Time timeStruct = {time:1498488382000, zone:zoneValue};
-    timeValue = timeStruct.time;
-    zoneId = timeStruct.zone.zoneId;
-    zoneoffset = timeStruct.zone.zoneOffset;
-    return;
+    time:Time time = new (1498488382000, zoneValue);
+    int timeValue = time.time;
+    string zoneId = time.zone.zoneId;
+    int zoneoffset = time.zone.zoneOffset;
+    return (timeValue, zoneId, zoneoffset);
 }
 
-function testCreateTimeWithNullZone () (int year) {
-    time:Time timeStruct = time:createTime(2017, 3, 28, 23, 42, 45, 554, "America/Panama");
-    timeStruct.zone = null;
-    year = timeStruct.year();
-    return;
-}
-
-function testCreateDateTime () (string timeString) {
-    time:Time timeStruct = time:createTime(2017, 3, 28, 23, 42, 45, 554, "America/Panama");
-    timeString = timeStruct.toString();
-    return;
+function testCreateDateTime () returns (string) {
+    time:Time time = time:createTime(2017, 3, 28, 23, 42, 45, 554, "America/Panama");
+    return time.toString();
 }
 
 
-function testParseTime () (int timeValue, string zoneId, int zoneoffset) {
-    time:Time timeStruct = time:parse("2017-06-26T09:46:22.444-0500", "yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-    timeValue = timeStruct.time;
-    zoneId = timeStruct.zone.zoneId;
-    zoneoffset = timeStruct.zone.zoneOffset;
-    return;
+function testParseTime () returns (int, string, int) {
+    time:Time time = time:parse("2017-06-26T09:46:22.444-0500", "yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+    int timeValue = time.time;
+    string zoneId = time.zone.zoneId;
+    int zoneoffset = time.zone.zoneOffset;
+    return (timeValue, zoneId, zoneoffset);
 }
 
-function testToStringWithCreateTime () (string timeString) {
+function testParseRFC1123Time (string timestamp) returns (int, string, int) {
+    time:Time time = time:parseTo(timestamp, time:TIME_FORMAT_RFC_1123);
+    int timeValue = time.time;
+    string zoneId = time.zone.zoneId;
+    int zoneoffset = time.zone.zoneOffset;
+    return (timeValue, zoneId, zoneoffset);
+}
+
+function testToStringWithCreateTime () returns (string) {
     time:Timezone zoneValue = {zoneId:"America/Panama"};
-    time:Time timeStruct = {time:1498488382000, zone:zoneValue};
-    timeString = timeStruct.toString();
-    return;
+    time:Time time = new (1498488382000, zoneValue);
+    return time.toString();
 }
 
-function testFormatTime () (string timeString) {
+function testFormatTime () returns (string) {
     time:Timezone zoneValue = {zoneId:"America/Panama"};
-    time:Time timeStruct = {time:1498488382444, zone:zoneValue};
-    timeString = timeStruct.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-    return;
+    time:Time time = new (1498488382444, zoneValue);
+    return time.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
 }
 
-function testGetFunctions () (int year, int month, int day, int hour, int minute, int second, int milliSecond,
-                              string weekday) {
+function testFormatTimeToRFC1123 () returns (string) {
     time:Timezone zoneValue = {zoneId:"America/Panama"};
-    time:Time timeStruct = {time:1456876583555, zone:zoneValue};
-    year = timeStruct.year();
-    month = timeStruct.month();
-    day = timeStruct.day();
-    hour = timeStruct.hour();
-    minute = timeStruct.minute();
-    second = timeStruct.second();
-    milliSecond = timeStruct.milliSecond();
-    weekday = timeStruct.weekday();
-    return;
+    time:Time time = new (1498488382444, zoneValue);
+    return time.formatTo(time:TIME_FORMAT_RFC_1123);
 }
 
-function testGetDateFunction () (int year, int month, int day) {
+function testGetFunctions () returns (int, int, int, int, int, int, int, string) {
     time:Timezone zoneValue = {zoneId:"America/Panama"};
-    time:Time timeStruct = {time:1456876583555, zone:zoneValue};
-    year, month, day = timeStruct.getDate();
-    return;
+    time:Time time = new (1456876583555, zoneValue);
+    int year = time.year();
+    int month = time.month();
+    int day = time.day();
+    int hour = time.hour();
+    int minute = time.minute();
+    int second = time.second();
+    int milliSecond = time.milliSecond();
+    string weekday = time.weekday();
+    return (year, month, day, hour, minute, second, milliSecond, weekday);
 }
 
-function testGetTimeFunction () (int hour, int minute, int second, int milliSecond) {
+function testGetDateFunction () returns (int, int, int) {
     time:Timezone zoneValue = {zoneId:"America/Panama"};
-    time:Time timeStruct = {time:1456876583555, zone:zoneValue};
-    hour, minute, second, milliSecond = timeStruct.getTime();
-    return;
+    time:Time time = new (1456876583555, zoneValue);
+    int year; int month; int day;
+    (year, month, day) = time.getDate();
+    return (year, month, day);
 }
 
-function testAddDuration () (string timeString) {
-    time:Time timeStruct = time:parse("2017-06-26T09:46:22.444-0500", "yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-    timeStruct = timeStruct.addDuration(1, 1, 1, 1, 1, 1, 1);
-    timeString = timeStruct.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-    return;
-}
-
-function testSubtractDuration () (string timeString) {
-    time:Time timeStruct = time:parse("2016-03-01T09:46:22.444-0500", "yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-    timeStruct = timeStruct.subtractDuration(1, 1, 1, 1, 1, 1, 1);
-    timeString = timeStruct.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-    return;
-}
-
-function testToTimezone () (string timeStrBefore, string timeStrAfter) {
+function testGetTimeFunction () returns (int, int, int, int) {
     time:Timezone zoneValue = {zoneId:"America/Panama"};
-    time:Time timeStruct = {time:1456876583555, zone:zoneValue};
-    timeStrBefore = timeStruct.toString();
-    timeStruct = timeStruct.toTimezone("Asia/Colombo");
-    timeStrAfter = timeStruct.toString();
-    return;
+    time:Time time = new (1456876583555, zoneValue);
+    int hour; int minute; int second; int milliSecond;
+    (hour, minute, second, milliSecond) = time.getTime();
+    return (hour, minute, second, milliSecond);
 }
 
-function testToTimezoneWithInvalidZone () (string timeString) {
+function testAddDuration () returns (string) {
+    time:Time time = time:parse("2017-06-26T09:46:22.444-0500", "yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+    time = time.addDuration(1, 1, 1, 1, 1, 1, 1);
+    return time.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+}
+
+function testSubtractDuration () returns (string) {
+    time:Time time = time:parse("2016-03-01T09:46:22.444-0500", "yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+    time = time.subtractDuration(1, 1, 1, 1, 1, 1, 1);
+    return time.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+}
+
+function testToTimezone () returns (string, string) {
     time:Timezone zoneValue = {zoneId:"America/Panama"};
-    time:Time timeStruct = {time:1456876583555, zone:zoneValue};
-    timeStruct = timeStruct.toTimezone("test");
-    timeString = timeStruct.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-    return;
+    time:Time time = new (1456876583555, zoneValue);
+    string timeStrBefore = time.toString();
+    time = time.toTimezone("Asia/Colombo");
+    string timeStrAfter = time.toString();
+    return (timeStrBefore, timeStrAfter);
 }
 
-function testToTimezoneWithDateTime () (string timeString) {
-    time:Time timeStruct = time:parse("2016-03-01T09:46:22.444-0500", "yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-    timeStruct = timeStruct.toTimezone("Asia/Colombo");
-    timeString = timeStruct.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-    return;
-}
-
-function testManualTimeCreate () (string timeString) {
+function testToTimezoneWithInvalidZone () returns (string) {
     time:Timezone zoneValue = {zoneId:"America/Panama"};
-    time:Time time = {time:1498488382000, zone:zoneValue};
-    timeString = time.toString();
-    return;
+    time:Time time = new (1456876583555, zoneValue);
+    time = time.toTimezone("test");
+    return time.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
 }
 
-function testManualTimeCreateWithNoZone () (int year) {
-    time:Time time = {time:1498488382555};
-    year = time.year();
-    return;
+function testToTimezoneWithDateTime () returns (string) {
+    time:Time time = time:parse("2016-03-01T09:46:22.444-0500", "yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+    time = time.toTimezone("Asia/Colombo");
+    return time.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
 }
 
-function testManualTimeCreateWithEmptyZone () (int year) {
+function testManualTimeCreate () returns (string) {
+    time:Timezone zoneValue = {zoneId:"America/Panama"};
+    time:Time time = new (1498488382000, zoneValue);
+    return time.toString();
+}
+
+function testManualTimeCreateWithNoZone () returns (int) {
+    time:Timezone zoneValue = {zoneId: ""};
+    time:Time time = new (1498488382555, zoneValue);
+    return time.year();
+}
+
+function testManualTimeCreateWithEmptyZone () returns (int) {
     time:Timezone zoneValue = {zoneId:""};
-    time:Time time = {time:1498488382555, zone: zoneValue};
-    year = time.year();
-    return;
+    time:Time time = new (1498488382555, zoneValue);
+    return time.year();
 }
 
-function testManualTimeCreateWithInvalidZone () (int year) {
+function testManualTimeCreateWithInvalidZone () returns (int) {
     time:Timezone zoneValue = {zoneId:"test"};
-    time:Time time = {time:1498488382555, zone:zoneValue};
-    year = time.year();
-    return;
+    time:Time time = new (1498488382555, zoneValue);
+    return time.year();
 }
 
-function testParseTimenvalidPattern () (int timeValue, string zoneId, int zoneoffset) {
-    time:Time timeStruct = time:parse("2017-06-26T09:46:22.444-0500", "test");
-    timeValue = timeStruct.time;
-    zoneId = timeStruct.zone.zoneId;
-    zoneoffset = timeStruct.zone.zoneOffset;
-    return;
+function testParseTimenvalidPattern () returns (int, string, int) {
+    time:Time time = time:parse("2017-06-26T09:46:22.444-0500", "test");
+    int timeValue = time.time;
+    string zoneId = time.zone.zoneId;
+    int zoneoffset = time.zone.zoneOffset;
+    return (timeValue, zoneId, zoneoffset);
 }
 
-function testParseTimenFormatMismatch () (int timeValue, string zoneId, int zoneoffset) {
-    time:Time timeStruct = time:parse("2017-06-26T09:46:22.444-0500", "yyyy-MM-dd");
-    timeValue = timeStruct.time;
-    zoneId = timeStruct.zone.zoneId;
-    zoneoffset = timeStruct.zone.zoneOffset;
-    return;
+function testParseTimenFormatMismatch () returns (int, string, int) {
+    time:Time time = time:parse("2017-06-26T09:46:22.444-0500", "yyyy-MM-dd");
+    int timeValue = time.time;
+    string zoneId = time.zone.zoneId;
+    int zoneoffset = time.zone.zoneOffset;
+    return (timeValue, zoneId, zoneoffset);
 }
 
-function testFormatTimeInvalidPattern () (string timeString) {
+function testFormatTimeInvalidPattern () returns (string) {
     time:Timezone zoneValue = {zoneId:"America/Panama"};
-    time:Time timeStruct = {time:1498488382444, zone:zoneValue};
-    timeString = timeStruct.format("test");
-    return;
+    time:Time time = new (1498488382444, zoneValue);
+    return time.format("test");
 }
 
-function testParseTimeWithDifferentFormats () (int year, int month, int day, int hour, int minute, int second, int milliSecond,
-                                               string dateStr, string dateZoneStr, string timeZoneStr, string datetimeStr) {
-    time:Time timeStruct = time:parse("2017", "yyyy");
-    year = timeStruct.year();
-    timeStruct = time:parse("03", "MM");
-    month = timeStruct.month();
-    timeStruct = time:parse("31", "dd");
-    day = timeStruct.day();
-    timeStruct = time:parse("16", "HH");
-    hour = timeStruct.hour();
-    timeStruct = time:parse("59", "mm");
-    minute = timeStruct.minute();
-    timeStruct = time:parse("58", "ss");
-    second = timeStruct.second();
-    timeStruct = time:parse("999", "SSS");
-    milliSecond = timeStruct.milliSecond();
-    timeStruct = time:parse("2017/09/23", "yyyy/MM/dd");
-    dateStr = timeStruct.format("yyyy-MM-dd");
-    timeStruct = time:parse("2015/02/15+0800", "yyyy/MM/ddZ");
-    dateZoneStr = timeStruct.format("yyyy-MM-ddZ");
-    timeStruct = time:parse("08/23/59.544+0700", "HH/mm/ss.SSSZ");
-    timeZoneStr = timeStruct.format("HH-mm-ss-SSS:Z");
-    timeStruct = time:parse("2014/05/29-23:44:59.544", "yyyy/MM/dd-HH:mm:ss.SSS");
-    datetimeStr = timeStruct.format("yyyy-MM-dd-HH:mm:ss.SSS");
-    return;
+function testParseTimeWithDifferentFormats () returns (int, int, int, int, int, int, int, string, string, string,
+                                                       string) {
+    time:Time time = time:parse("2017", "yyyy");
+    int year = time.year();
+    time = time:parse("03", "MM");
+    int month = time.month();
+    time = time:parse("31", "dd");
+    int day = time.day();
+    time = time:parse("16", "HH");
+    int hour = time.hour();
+    time = time:parse("59", "mm");
+    int minute = time.minute();
+    time = time:parse("58", "ss");
+    int second = time.second();
+    time = time:parse("999", "SSS");
+    int milliSecond = time.milliSecond();
+    time = time:parse("2017/09/23", "yyyy/MM/dd");
+    string dateStr = time.format("yyyy-MM-dd");
+    time = time:parse("2015/02/15+0800", "yyyy/MM/ddZ");
+    string dateZoneStr = time.format("yyyy-MM-ddZ");
+    time = time:parse("08/23/59.544+0700", "HH/mm/ss.SSSZ");
+    string timeZoneStr = time.format("HH-mm-ss-SSS:Z");
+    time = time:parse("2014/05/29-23:44:59.544", "yyyy/MM/dd-HH:mm:ss.SSS");
+    string datetimeStr = time.format("yyyy-MM-dd-HH:mm:ss.SSS");
+    return (year, month, day, hour, minute, second, milliSecond, dateStr, dateZoneStr, timeZoneStr, datetimeStr);
 }

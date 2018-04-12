@@ -19,6 +19,7 @@ package org.ballerinalang.nativeimpl.io.channels.base;
 
 import org.ballerinalang.model.values.BStringArray;
 import org.ballerinalang.nativeimpl.io.BallerinaIOException;
+import org.ballerinalang.nativeimpl.io.csv.Format;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +67,13 @@ public class DelimitedRecordChannel {
     private CharacterChannel channel;
 
     /**
+     * <p>
      * Specified whether there're any remaining records left to be read from the channel.
+     * </p>
+     * <p>
+     * This will be false if there're no characters remaining in the persistentCharSequence and the the channel has
+     * reached EoF
+     * </p>
      */
     private boolean remaining = true;
 
@@ -80,14 +87,72 @@ public class DelimitedRecordChannel {
      */
     private int numberOfRecordsWrittenToChannel = 0;
 
+    /**
+     * Specifies the format for the record. This will be optional
+     */
+    private Format format;
+
     private static final Logger log = LoggerFactory.getLogger(DelimitedRecordChannel.class);
 
+    public DelimitedRecordChannel(CharacterChannel channel, Format format) {
+        this.channel = channel;
+        this.format = format;
+        this.persistentCharSequence = new StringBuilder();
+    }
 
     public DelimitedRecordChannel(CharacterChannel channel, String recordSeparator, String fieldSeparator) {
         this.recordSeparator = recordSeparator;
         this.fieldSeparator = fieldSeparator;
         this.channel = channel;
         this.persistentCharSequence = new StringBuilder();
+    }
+
+    /**
+     * Retrieves the record separator for reading records.
+     *
+     * @return the record separator.
+     */
+    private String getRecordSeparatorForReading() {
+        if (null == format) {
+            return recordSeparator;
+        }
+        return format.getReadRecSeparator();
+    }
+
+    /**
+     * Retrieves field separator for reading.
+     *
+     * @return the field separator.
+     */
+    private String getFieldSeparatorForReading() {
+        if (null == format) {
+            return fieldSeparator;
+        }
+        return format.getReadFieldSeparator();
+    }
+
+    /**
+     * Retrieves record separator for writing.
+     *
+     * @return the record separator.
+     */
+    private String getRecordSeparatorForWriting() {
+        if (null == format) {
+            return recordSeparator;
+        }
+        return format.getWriteRecSeparator();
+    }
+
+    /**
+     * Retrieves field separator for writing.
+     *
+     * @return the field separator.
+     */
+    private String getFieldSeparatorForWriting() {
+        if (null == format) {
+            return fieldSeparator;
+        }
+        return format.getWriteFieldSeparator();
     }
 
     /**
@@ -98,7 +163,7 @@ public class DelimitedRecordChannel {
      * @return the requested record.
      * @throws BallerinaIOException during I/O error.
      */
-    private String readRecord() throws BallerinaIOException {
+    private String readRecord() throws BallerinaIOException, IOException {
         String record = null;
         String readCharacters = "";
         final int minimumRecordCount = 1;
@@ -108,7 +173,8 @@ public class DelimitedRecordChannel {
                 log.trace("char[] remaining in memory " + persistentCharSequence);
             }
             //We need to split the string into 2
-            String[] delimitedRecord = persistentCharSequence.toString().split(recordSeparator, numberOfSplits);
+            String[] delimitedRecord = persistentCharSequence.toString().
+                    split(getRecordSeparatorForReading(), numberOfSplits);
             if (delimitedRecord.length > minimumRecordCount) {
                 record = processIdentifiedRecord(delimitedRecord);
                 int recordCharacterLength = record.length();
@@ -146,6 +212,8 @@ public class DelimitedRecordChannel {
         //If there're any remaining characters left we provide it as the last record
         if (persistentCharSequence.length() > minimumRemainingLength) {
             record = persistentCharSequence.toString();
+            //Once the final record is processed there will be no chars left
+            persistentCharSequence.setLength(minimumRemainingLength);
             if (log.isTraceEnabled()) {
                 log.trace("char [] remaining in memory, will be marked as the last record " + record);
             }
@@ -164,7 +232,7 @@ public class DelimitedRecordChannel {
      *
      * @return the record content.
      */
-    private String readRecordFromChannel() {
+    private String readRecordFromChannel() throws IOException {
         String readCharacters;
         readCharacters = channel.read(recordCharacterCount);
         if (log.isTraceEnabled()) {
@@ -211,7 +279,7 @@ public class DelimitedRecordChannel {
      * @return fields which are separated as records.
      */
     private String[] getFields(String record) {
-        return record.split(fieldSeparator);
+        return record.split(getFieldSeparatorForReading());
     }
 
     /**
@@ -224,8 +292,9 @@ public class DelimitedRecordChannel {
      * </p>
      *
      * @return the list of fields.
+     * @throws IOException during I/O error.
      */
-    public String[] read() throws BallerinaIOException {
+    public String[] read() throws IOException {
         final int emptyArrayIndex = 0;
         String[] fields = new String[emptyArrayIndex];
         if (remaining) {
@@ -276,7 +345,7 @@ public class DelimitedRecordChannel {
             recordConsolidator.append(currentFieldString);
             if (fieldCount < secondLastFieldIndex) {
                 //The idea here is to omit appending the field separator after the final field
-                recordConsolidator.append(fieldSeparator);
+                recordConsolidator.append(getFieldSeparatorForWriting());
             }
         }
         finalizedRecord = recordConsolidator.toString();
@@ -292,7 +361,7 @@ public class DelimitedRecordChannel {
     public void write(BStringArray fields) throws IOException {
         final int writeOffset = 0;
         String record = composeRecord(fields);
-        record = record + recordSeparator;
+        record = record + getRecordSeparatorForWriting();
         if (log.isTraceEnabled()) {
             log.trace("The record " + numberOfRecordsWrittenToChannel + " composed for writing, " + record);
         }
@@ -305,8 +374,10 @@ public class DelimitedRecordChannel {
 
     /**
      * Closes the record channel.
+     *
+     * @throws IOException error occur while closing the connection.
      */
-    public void close() {
+    public void close() throws IOException {
         channel.close();
     }
 
@@ -314,8 +385,17 @@ public class DelimitedRecordChannel {
      * Check whether there are more records or not.
      *
      * @return true if more records in the channel else false.
+     * @throws IOException if an error occurs while reading from channel.
      */
-    public boolean hasNext() {
+    public boolean hasNext() throws IOException {
+        if (remaining && persistentCharSequence.length() == 0) {
+            //If this is the case we need to further verify whether there will be more bytes left to be read
+            //Remaining can become false in the next iteration
+            String readChars = readRecordFromChannel();
+            if (readChars.isEmpty()) {
+                remaining = false;
+            }
+        }
         return remaining;
     }
 }

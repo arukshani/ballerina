@@ -21,6 +21,7 @@ import React from 'react';
 import cn from 'classnames';
 import PropTypes from 'prop-types';
 import SplitPane from 'react-split-pane';
+import { Loader, Dimmer } from 'semantic-ui-react';
 import CSSTransitionGroup from 'react-transition-group/CSSTransitionGroup';
 import DebugManager from 'plugins/debugger/DebugManager/DebugManager'; // FIXME: Importing from debugger plugin
 import TreeUtil from 'plugins/ballerina/model/tree-util.js';
@@ -42,6 +43,7 @@ import FindBreakpointNodesVisitor from './../visitors/find-breakpoint-nodes-visi
 import SyncLineNumbersVisitor from './../visitors/sync-line-numbers';
 import SyncBreakpointsVisitor from './../visitors/sync-breakpoints';
 import TreeUtils from './../model/tree-util';
+import DefaultNodeFactory from './../model/default-node-factory';
 import TreeBuilder from './../model/tree-builder';
 import CompilationUnitNode from './../model/tree/compilation-unit-node';
 import FragmentUtils from '../utils/fragment-utils';
@@ -75,7 +77,8 @@ class BallerinaFileEditor extends React.Component {
             model: undefined,
             activeView: this.fetchState('activeView', SPLIT_VIEW),
             splitSize: this.fetchState('splitSize', (this.props.width / 2)),
-            zoomLevel: this.fetchState('zoomLevel', 1),
+            diagramMode: this.fetchState('diagramMode', 'action'),
+            diagramFitToWidth: this.fetchState('diagramFitToWidth', true),
             lastRenderedTimestamp: undefined,
         };
         this.skipLoadingOverlay = false;
@@ -151,7 +154,7 @@ class BallerinaFileEditor extends React.Component {
 
         this.resetSwaggerView = this.resetSwaggerView.bind(this);
         this.handleSplitChange = this.handleSplitChange.bind(this);
-        this.setZoom = this.setZoom.bind(this);
+        this.onModeChange = this.onModeChange.bind(this);
     }
 
     /**
@@ -202,9 +205,6 @@ class BallerinaFileEditor extends React.Component {
      * On ast modifications
      */
     onASTModified(evt) {
-        if (evt.type === 'child-added') {
-            this.addAutoImports(evt.data.node);
-        }
         TreeBuilder.modify(evt.origin);
 
         const newContent = this.state.model.getSource();
@@ -222,17 +222,6 @@ class BallerinaFileEditor extends React.Component {
                 ast: this.state.model,
             });
         }
-    }
-
-    /**
-     * Change the diagram zoom level.
-     *
-     * @param {any} newState
-     * @memberof BallerinaFileEditor
-     */
-    setZoom(newState) {
-        this.setState({ zoomLevel: newState });
-        this.persistState();
     }
 
     /**
@@ -276,10 +265,35 @@ class BallerinaFileEditor extends React.Component {
     }
 
     /**
+     * Change the diagram mode.
+     *
+     * @param {any} data event data
+     * @memberof BallerinaFileEditor
+     */
+    onModeChange(data) {
+        this.setState({
+            diagramMode: data.mode,
+            diagramFitToWidth: data.fitToWidth,
+        });
+        this.persistState();
+    }
+
+    /**
      * @returns {File} file associated with the editor
      */
     getFile() {
         return this.props.file;
+    }
+
+    /**
+     * Change the diagram fitto width.
+     *
+     * @param {any} newState
+     * @memberof BallerinaFileEditor
+     */
+    handleFitToWidthChange(state) {
+        this.setState({ diagramFitToWidth: state });
+        this.persistState();
     }
 
     handleSplitChange(size) {
@@ -516,45 +530,6 @@ class BallerinaFileEditor extends React.Component {
     }
 
     /**
-     * Adds relevent imports needed to be automatically imported When a node (eg: a function invocation) is dragged in
-     * @param {Node} node the node added
-     */
-    addAutoImports(node) {
-        let fullPackageName;
-        if (TreeUtils.isAssignment(node) && TreeUtils.isInvocation(node.getExpression())) {
-            fullPackageName = node.getExpression().getFullPackageName();
-        } else if (TreeUtils.isExpressionStatement(node) && TreeUtils.isInvocation(node.getExpression())) {
-            if (node.getExpression().getFullPackageName()) {
-                fullPackageName = node.getExpression().getFullPackageName();
-            } else {
-                return;
-            }
-        } else if (TreeUtils.isVariableDef(node)
-            && node.getVariable().getInitialExpression()
-            && (TreeUtils.isInvocation(node.getVariable().getInitialExpression()) ||
-                TreeUtils.isConnectorInitExpr(node.getVariable().getInitialExpression()))) {
-            fullPackageName = node.getVariable().getInitialExpression().getFullPackageName();
-        } else if (TreeUtils.isEndpointTypeVariableDef(node)) {
-            fullPackageName = node.getVariable().getInitialExpression().getFullPackageName();
-        } else if (TreeUtils.isService(node)) {
-            fullPackageName = node.getFullPackageName();
-        } else {
-            return;
-        }
-
-        if (fullPackageName === 'Current Package' || fullPackageName === ''
-            || fullPackageName === 'ballerina.builtin') {
-            return;
-        }
-
-        const importString = 'import ' + fullPackageName + ';\r\n';
-        const fragment = FragmentUtils.createTopLevelNodeFragment(importString);
-        const parsedJson = FragmentUtils.parseFragment(fragment);
-        this.state.model.addImport(TreeBuilder.build(parsedJson));
-    }
-
-
-    /**
      * Save editor state in to localstorage.
      *
      * @memberof BallerinaFileEditor
@@ -564,7 +539,8 @@ class BallerinaFileEditor extends React.Component {
         appContext.pref.put(this.props.file.id, {
             activeView: this.state.activeView,
             splitSize: this.state.splitSize,
-            zoomLevel: this.state.zoomLevel,
+            diagramFitToWidth: this.state.diagramFitToWidth,
+            diagramMode: this.state.diagramMode,
         });
     }
 
@@ -657,11 +633,9 @@ class BallerinaFileEditor extends React.Component {
                     transitionLeaveTimeout={300}
                 >
                     {showLoadingOverlay &&
-                        <div className='bal-file-editor-loading-container'>
-                            <div id='parse-pending-loader'>
-                                Loading
-                            </div>
-                        </div>
+                        <Dimmer active inverted>
+                            <Loader size='large'>Loading</Loader>
+                        </Dimmer>
                     }
                 </CSSTransitionGroup>
                 <DesignView
@@ -673,8 +647,9 @@ class BallerinaFileEditor extends React.Component {
                     height={this.props.height}
                     panelResizeInProgress={this.props.panelResizeInProgress}
                     disabled={this.state.parseFailed}
-                    setZoom={this.setZoom}
-                    zoomLevel={this.state.zoomLevel}
+                    onModeChange={this.onModeChange}
+                    mode={this.state.diagramMode}
+                    fitToWidth={this.state.diagramFitToWidth}
                 />
             </div>
         );

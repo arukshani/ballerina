@@ -22,11 +22,16 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.TokenStream;
 import org.ballerinalang.langserver.DocumentServiceKeys;
-import org.ballerinalang.langserver.TextDocumentServiceContext;
+import org.ballerinalang.langserver.LSServiceOperationContext;
+import org.ballerinalang.langserver.common.LSNodeVisitor;
+import org.ballerinalang.langserver.common.utils.CommonUtil;
 import org.ballerinalang.langserver.completions.util.ScopeResolverConstants;
 import org.ballerinalang.langserver.completions.util.positioning.resolvers.BlockStatementScopeResolver;
 import org.ballerinalang.langserver.completions.util.positioning.resolvers.ConnectorScopeResolver;
+import org.ballerinalang.langserver.completions.util.positioning.resolvers.MatchStatementScopeResolver;
+import org.ballerinalang.langserver.completions.util.positioning.resolvers.ObjectTypeScopeResolver;
 import org.ballerinalang.langserver.completions.util.positioning.resolvers.PackageNodeScopeResolver;
+import org.ballerinalang.langserver.completions.util.positioning.resolvers.RecordScopeResolver;
 import org.ballerinalang.langserver.completions.util.positioning.resolvers.ResourceParamScopeResolver;
 import org.ballerinalang.langserver.completions.util.positioning.resolvers.ServiceScopeResolver;
 import org.ballerinalang.langserver.completions.util.positioning.resolvers.TopLevelNodeScopeResolver;
@@ -44,53 +49,25 @@ import org.wso2.ballerinalang.compiler.semantics.model.symbols.BPackageSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.Symbols;
 import org.wso2.ballerinalang.compiler.tree.BLangAction;
-import org.wso2.ballerinalang.compiler.tree.BLangAnnotAttribute;
 import org.wso2.ballerinalang.compiler.tree.BLangAnnotation;
 import org.wso2.ballerinalang.compiler.tree.BLangAnnotationAttachment;
-import org.wso2.ballerinalang.compiler.tree.BLangCompilationUnit;
 import org.wso2.ballerinalang.compiler.tree.BLangConnector;
+import org.wso2.ballerinalang.compiler.tree.BLangEndpoint;
 import org.wso2.ballerinalang.compiler.tree.BLangEnum;
 import org.wso2.ballerinalang.compiler.tree.BLangFunction;
-import org.wso2.ballerinalang.compiler.tree.BLangIdentifier;
 import org.wso2.ballerinalang.compiler.tree.BLangImportPackage;
 import org.wso2.ballerinalang.compiler.tree.BLangNode;
-import org.wso2.ballerinalang.compiler.tree.BLangNodeVisitor;
+import org.wso2.ballerinalang.compiler.tree.BLangObject;
 import org.wso2.ballerinalang.compiler.tree.BLangPackage;
-import org.wso2.ballerinalang.compiler.tree.BLangPackageDeclaration;
+import org.wso2.ballerinalang.compiler.tree.BLangRecord;
 import org.wso2.ballerinalang.compiler.tree.BLangResource;
 import org.wso2.ballerinalang.compiler.tree.BLangService;
-import org.wso2.ballerinalang.compiler.tree.BLangStruct;
 import org.wso2.ballerinalang.compiler.tree.BLangTransformer;
 import org.wso2.ballerinalang.compiler.tree.BLangVariable;
 import org.wso2.ballerinalang.compiler.tree.BLangWorker;
 import org.wso2.ballerinalang.compiler.tree.BLangXMLNS;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangAnnotAttachmentAttribute;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangAnnotAttachmentAttributeValue;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangArrayLiteral;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangBinaryExpr;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangConnectorInit;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangFieldBasedAccess;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangIndexBasedAccess;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangIntRangeExpression;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangInvocation;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangLambdaFunction;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangLiteral;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangRecordLiteral;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangSimpleVarRef;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangStringTemplateLiteral;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangTernaryExpr;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangTypeCastExpr;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangTypeConversionExpr;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangTypeofExpr;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangUnaryExpr;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLAttribute;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLAttributeAccess;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLCommentLiteral;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLElementLiteral;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLProcInsLiteral;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLQName;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLQuotedString;
-import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLTextLiteral;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangAbort;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangAssignment;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangBind;
@@ -102,6 +79,7 @@ import org.wso2.ballerinalang.compiler.tree.statements.BLangForeach;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangForkJoin;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangIf;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangLock;
+import org.wso2.ballerinalang.compiler.tree.statements.BLangMatch;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangNext;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangReturn;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangThrow;
@@ -111,21 +89,16 @@ import org.wso2.ballerinalang.compiler.tree.statements.BLangVariableDef;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangWhile;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangWorkerReceive;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangWorkerSend;
-import org.wso2.ballerinalang.compiler.tree.statements.BLangXMLNSStatement;
-import org.wso2.ballerinalang.compiler.tree.types.BLangArrayType;
-import org.wso2.ballerinalang.compiler.tree.types.BLangBuiltInRefTypeNode;
-import org.wso2.ballerinalang.compiler.tree.types.BLangConstrainedType;
 import org.wso2.ballerinalang.compiler.tree.types.BLangEndpointTypeNode;
-import org.wso2.ballerinalang.compiler.tree.types.BLangFunctionTypeNode;
-import org.wso2.ballerinalang.compiler.tree.types.BLangUserDefinedType;
-import org.wso2.ballerinalang.compiler.tree.types.BLangValueType;
 import org.wso2.ballerinalang.compiler.util.CompilerContext;
 import org.wso2.ballerinalang.compiler.util.Name;
+import org.wso2.ballerinalang.compiler.util.Names;
 import org.wso2.ballerinalang.compiler.util.diagnotic.DiagnosticPos;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
@@ -134,7 +107,7 @@ import java.util.stream.Collectors;
 /**
  * @since 0.94
  */
-public class TreeVisitor extends BLangNodeVisitor {
+public class TreeVisitor extends LSNodeVisitor {
     private static final String NODE_TYPE_FUNCTION = "function";
     private static final String NODE_TYPE_ACTION = "action";
     private static final String NODE_TYPE_RESOURCE = "resource";
@@ -151,10 +124,11 @@ public class TreeVisitor extends BLangNodeVisitor {
     private Stack<BLangBlockStmt> blockStmtStack;
     private Stack<Boolean> isCurrentNodeTransactionStack;
     private Class cursorPositionResolver;
-    private TextDocumentServiceContext documentServiceContext;
+    private LSServiceOperationContext documentServiceContext;
     private BLangNode previousNode = null;
+    private BLangNode nextNode = null;
 
-    public TreeVisitor(TextDocumentServiceContext documentServiceContext) {
+    public TreeVisitor(LSServiceOperationContext documentServiceContext) {
         this.documentServiceContext = documentServiceContext;
         init(this.documentServiceContext.get(DocumentServiceKeys.COMPILER_CONTEXT_KEY));
     }
@@ -219,6 +193,10 @@ public class TreeVisitor extends BLangNodeVisitor {
             setTerminateVisitor(true);
         } else if (!ScopeResolverConstants.getResolverByClass(cursorPositionResolver)
                 .isCursorBeforeNode(funcNode.getPosition(), funcNode, this, this.documentServiceContext)) {
+            
+            // Visit the endpoints
+            funcNode.endpoints.forEach(bLangEndpoint -> this.acceptNode(bLangEndpoint, funcEnv));
+            
             this.blockOwnerStack.push(funcNode);
             // Cursor position is calculated against the Block statement scope resolver
             cursorPositionResolver = BlockStatementScopeResolver.class;
@@ -235,25 +213,23 @@ public class TreeVisitor extends BLangNodeVisitor {
         }
     }
 
-    public void visit(BLangStruct structNode) {
+    @Override
+    public void visit(BLangRecord bLangRecord) {
         if (!ScopeResolverConstants.getResolverByClass(cursorPositionResolver)
-                .isCursorBeforeNode(structNode.getPosition(), structNode, this, this.documentServiceContext)) {
-            BSymbol structSymbol = structNode.symbol;
-            SymbolEnv structEnv = SymbolEnv.createPkgLevelSymbolEnv(structNode, structSymbol.scope, symbolEnv);
-
-            if (structNode.fields.isEmpty()) {
-                symbolEnv = structEnv;
+                .isCursorBeforeNode(bLangRecord.getPosition(), bLangRecord, this, this.documentServiceContext)) {
+            BSymbol structSymbol = bLangRecord.symbol;
+            SymbolEnv recordEnv = SymbolEnv.createPkgLevelSymbolEnv(bLangRecord, structSymbol.scope, symbolEnv);
+            if (bLangRecord.fields.isEmpty() && isCursorWithinBlock(bLangRecord.getPosition(), recordEnv)) {
+                symbolEnv = recordEnv;
                 Map<Name, Scope.ScopeEntry> visibleSymbolEntries = this.resolveAllVisibleSymbols(symbolEnv);
                 this.populateSymbols(visibleSymbolEntries, null);
                 this.setTerminateVisitor(true);
-            } else {
-                // Since the struct definition do not have a block statement within, we push null
-                this.blockStmtStack.push(null);
-                this.blockOwnerStack.push(structNode);
-                // Cursor position is calculated against the Block statement scope resolver
-                this.cursorPositionResolver = BlockStatementScopeResolver.class;
-                structNode.fields.forEach(field -> acceptNode(field, structEnv));
-                this.blockStmtStack.pop();
+            } else if (!bLangRecord.fields.isEmpty()) {
+                // Since the record definition do not have a block statement within, we push null
+                cursorPositionResolver = RecordScopeResolver.class;
+                this.blockOwnerStack.push(bLangRecord);
+                bLangRecord.fields.forEach(field -> acceptNode(field, recordEnv));
+                cursorPositionResolver = TopLevelNodeScopeResolver.class;
                 this.blockOwnerStack.pop();
             }
         }
@@ -382,7 +358,12 @@ public class TreeVisitor extends BLangNodeVisitor {
             // Reset the previous node
             this.setPreviousNode(null);
             // TODO: Handle Annotation attachments
-            if (!(connectorNode.actions.isEmpty() && connectorNode.varDefs.isEmpty())) {
+            if (!(connectorNode.actions.isEmpty() && connectorNode.varDefs.isEmpty()
+                    && connectorNode.endpoints.isEmpty())) {
+                
+                // Visit the endpoints
+                connectorNode.endpoints.forEach(bLangEndpoint -> this.acceptNode(bLangEndpoint, connectorEnv));
+                
                 // Since the connector def does not contains a block statement, we consider the block owner only.
                 // Here it is Connector Definition
                 this.blockOwnerStack.push(connectorNode);
@@ -418,6 +399,9 @@ public class TreeVisitor extends BLangNodeVisitor {
                 .isCursorBeforeNode(actionNode.getPosition(), actionNode, this, this.documentServiceContext)) {
 
             // TODO: Handle Annotation attachments
+            // Visit the endpoints
+            actionNode.endpoints.forEach(bLangEndpoint -> this.acceptNode(bLangEndpoint, actionEnv));
+            
             // Cursor position is calculated against the resource parameter scope resolver since both are similar
             cursorPositionResolver = ResourceParamScopeResolver.class;
             actionNode.workers.forEach(w -> this.acceptNode(w, actionEnv));
@@ -430,14 +414,20 @@ public class TreeVisitor extends BLangNodeVisitor {
     }
 
     public void visit(BLangService serviceNode) {
+        BSymbol serviceSymbol = serviceNode.symbol;
+        SymbolEnv serviceEnv = SymbolEnv.createPkgLevelSymbolEnv(serviceNode, serviceSymbol.scope, symbolEnv);
+        
+        serviceNode.annAttachments.forEach(annotationAttachment -> this.acceptNode(annotationAttachment, serviceEnv));
+        
         if (!ScopeResolverConstants.getResolverByClass(cursorPositionResolver)
                 .isCursorBeforeNode(serviceNode.getPosition(), serviceNode, this, this.documentServiceContext)) {
-            BSymbol serviceSymbol = serviceNode.symbol;
-            SymbolEnv serviceEnv = SymbolEnv.createPkgLevelSymbolEnv(serviceNode, serviceSymbol.scope, symbolEnv);
             
             // Reset the previous node
             this.setPreviousNode(null);
-            if (!(serviceNode.resources.isEmpty() && serviceNode.vars.isEmpty())) {
+            if (!(serviceNode.resources.isEmpty() && serviceNode.vars.isEmpty() && serviceNode.endpoints.isEmpty())) {
+                // Visit the endpoints
+                serviceNode.endpoints.forEach(bLangEndpoint -> this.acceptNode(bLangEndpoint, serviceEnv));
+                
                 // Since the service does not contains a block statement, we consider the block owner only.
                 // Here it is service
                 this.blockOwnerStack.push(serviceNode);
@@ -464,6 +454,8 @@ public class TreeVisitor extends BLangNodeVisitor {
         BSymbol resourceSymbol = resourceNode.symbol;
         SymbolEnv resourceEnv = SymbolEnv.createResourceActionSymbolEnv(resourceNode, resourceSymbol.scope, symbolEnv);
 
+        resourceNode.annAttachments.forEach(annotationAttachment -> this.acceptNode(annotationAttachment, resourceEnv));
+        
         if (isWithinParameterContext(resourceName, NODE_TYPE_RESOURCE)) {
             this.populateSymbols(this.resolveAllVisibleSymbols(resourceEnv), resourceEnv);
             setTerminateVisitor(true);
@@ -471,6 +463,9 @@ public class TreeVisitor extends BLangNodeVisitor {
                 .isCursorBeforeNode(resourceNode.getPosition(), resourceNode, this, this.documentServiceContext)) {
 
             // TODO:Handle Annotation attachments
+            // Visit the endpoints
+            resourceNode.endpoints.forEach(bLangEndpoint -> this.acceptNode(bLangEndpoint, resourceEnv));
+            
             // Cursor position is calculated against the resource parameter scope resolver
             cursorPositionResolver = ResourceParamScopeResolver.class;
             resourceNode.workers.forEach(w -> this.acceptNode(w, resourceEnv));
@@ -529,9 +524,9 @@ public class TreeVisitor extends BLangNodeVisitor {
         this.isCurrentNodeTransactionStack.pop();
         this.transactionCount--;
 
-        if (transactionNode.failedBody != null) {
+        if (transactionNode.onRetryBody != null) {
             this.blockOwnerStack.push(transactionNode);
-            this.acceptNode(transactionNode.failedBody, symbolEnv);
+            this.acceptNode(transactionNode.onRetryBody, symbolEnv);
             this.blockOwnerStack.pop();
         }
     }
@@ -540,21 +535,6 @@ public class TreeVisitor extends BLangNodeVisitor {
     public void visit(BLangAbort abortNode) {
         ScopeResolverConstants.getResolverByClass(cursorPositionResolver)
                 .isCursorBeforeNode(abortNode.getPosition(), abortNode, this, this.documentServiceContext);
-    }
-
-    private BLangVariableDef createVarDef(BLangVariable var) {
-        BLangVariableDef varDefNode = new BLangVariableDef();
-        varDefNode.var = var;
-        varDefNode.pos = var.pos;
-        return varDefNode;
-    }
-
-    private BLangBlockStmt generateCodeBlock(StatementNode... statements) {
-        BLangBlockStmt block = new BLangBlockStmt();
-        for (StatementNode stmt : statements) {
-            block.addStatement(stmt);
-        }
-        return block;
     }
 
     @Override
@@ -621,49 +601,9 @@ public class TreeVisitor extends BLangNodeVisitor {
     }
 
     @Override
-    public void visit(BLangCompilationUnit compUnit) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangPackageDeclaration pkgDclNode) {
-        // No Implementation
-    }
-
-    @Override
     public void visit(BLangEnum enumNode) {
         ScopeResolverConstants.getResolverByClass(cursorPositionResolver).isCursorBeforeNode(enumNode.getPosition(),
                 enumNode, this, this.documentServiceContext);
-    }
-
-    @Override
-    public void visit(BLangEnum.BLangEnumerator enumeratorNode) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangIdentifier identifierNode) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangAnnotAttribute annotationAttribute) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangAnnotationAttachment annAttachmentNode) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangAnnotAttachmentAttributeValue annotAttributeValue) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangAnnotAttachmentAttribute annotAttachmentAttribute) {
-        // No Implementation
     }
 
     @Override
@@ -680,264 +620,9 @@ public class TreeVisitor extends BLangNodeVisitor {
     }
 
     @Override
-    public void visit(BLangReturn.BLangWorkerReturn returnNode) {
-        // No Implementation
-    }
-
-    @Override
     public void visit(BLangThrow throwNode) {
         ScopeResolverConstants.getResolverByClass(cursorPositionResolver).isCursorBeforeNode(throwNode.getPosition(),
                 throwNode, this, this.documentServiceContext);
-    }
-
-    @Override
-    public void visit(BLangXMLNSStatement xmlnsStmtNode) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangArrayLiteral arrayLiteral) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangRecordLiteral recordLiteral) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangFieldBasedAccess fieldAccessExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangIndexBasedAccess indexAccessExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangInvocation invocationExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangConnectorInit connectorInitExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangInvocation.BLangActionInvocation actionInvocationExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangTernaryExpr ternaryExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangBinaryExpr binaryExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangUnaryExpr unaryExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangTypeofExpr accessExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangTypeCastExpr castExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangTypeConversionExpr conversionExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangXMLQName xmlQName) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangXMLAttribute xmlAttribute) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangXMLElementLiteral xmlElementLiteral) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangXMLTextLiteral xmlTextLiteral) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangXMLCommentLiteral xmlCommentLiteral) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangXMLProcInsLiteral xmlProcInsLiteral) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangXMLQuotedString xmlQuotedString) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangStringTemplateLiteral stringTemplateLiteral) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangLambdaFunction bLangLambdaFunction) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangXMLAttributeAccess xmlAttributeAccessExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangValueType valueType) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangArrayType arrayType) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangBuiltInRefTypeNode builtInRefType) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangEndpointTypeNode endpointType) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangConstrainedType constrainedType) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangUserDefinedType userDefinedType) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangFunctionTypeNode functionTypeNode) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangSimpleVarRef.BLangLocalVarRef localVarRef) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangSimpleVarRef.BLangFieldVarRef fieldVarRef) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangSimpleVarRef.BLangPackageVarRef packageVarRef) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangSimpleVarRef.BLangFunctionVarRef functionVarRef) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangFieldBasedAccess.BLangStructFieldAccessExpr fieldAccessExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangIndexBasedAccess.BLangMapAccessExpr mapKeyAccessExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangIndexBasedAccess.BLangArrayAccessExpr arrayIndexAccessExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangIndexBasedAccess.BLangXMLAccessExpr xmlIndexAccessExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangRecordLiteral.BLangJSONLiteral jsonLiteral) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangRecordLiteral.BLangMapLiteral mapLiteral) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangRecordLiteral.BLangStructLiteral structLiteral) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangInvocation.BFunctionPointerInvocation bFunctionPointerInvocation) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangInvocation.BLangAttachedFunctionInvocation iExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangInvocation.BLangTransformerInvocation iExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangArrayLiteral.BLangJSONArrayLiteral jsonArrayLiteral) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangIndexBasedAccess.BLangJSONAccessExpr jsonAccessExpr) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangXMLNS.BLangLocalXMLNS xmlnsNode) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangXMLNS.BLangPackageXMLNS xmlnsNode) {
-        // No Implementation
-    }
-
-    @Override
-    public void visit(BLangFieldBasedAccess.BLangEnumeratorAccessExpr enumeratorAccessExpr) {
-        // No Implementation
     }
 
     @Override
@@ -963,8 +648,77 @@ public class TreeVisitor extends BLangNodeVisitor {
     }
 
     @Override
-    public void visit(BLangIntRangeExpression intRangeExpression) {
-        // No Implementation
+    public void visit(BLangEndpoint endpointNode) {
+        if (!ScopeResolverConstants.getResolverByClass(cursorPositionResolver)
+                .isCursorBeforeNode(endpointNode.getPosition(), endpointNode, this, this.documentServiceContext)) {
+            SymbolEnv endpointEnv = SymbolEnv
+                    .createPkgLevelSymbolEnv(endpointNode, symbolEnv.scope, symbolEnv);
+            this.isWithinEndpointContext(endpointNode.getPosition(), endpointEnv, endpointNode.getName().getValue());
+        }
+    }
+
+    @Override
+    public void visit(BLangObject objectNode) {
+        BSymbol objectSymbol = objectNode.symbol;
+        SymbolEnv objectEnv = SymbolEnv.createPkgLevelSymbolEnv(objectNode, objectSymbol.scope, symbolEnv);
+        blockOwnerStack.push(objectNode);
+        objectNode.fields.forEach(field -> {
+            this.cursorPositionResolver = ObjectTypeScopeResolver.class;
+            acceptNode(field, objectEnv);
+        });
+        // TODO: visit annotation and doc attachments
+        objectNode.functions.forEach(f -> {
+            this.cursorPositionResolver = ObjectTypeScopeResolver.class;
+            acceptNode(f, objectEnv);
+        });
+        blockOwnerStack.pop();
+        this.cursorPositionResolver = TopLevelNodeScopeResolver.class;
+    }
+
+    @Override
+    public void visit(BLangMatch matchNode) {
+        if (!ScopeResolverConstants.getResolverByClass(cursorPositionResolver)
+                .isCursorBeforeNode(matchNode.getPosition(), matchNode, this, this.documentServiceContext)) {
+            this.blockOwnerStack.push(matchNode);
+            matchNode.getPatternClauses().forEach(patternClause -> {
+                cursorPositionResolver = MatchStatementScopeResolver.class;
+                acceptNode(patternClause, symbolEnv);
+            });
+            this.blockOwnerStack.pop();
+        }
+    }
+
+    @Override
+    public void visit(BLangMatch.BLangMatchStmtPatternClause patternClause) {
+        if (!ScopeResolverConstants.getResolverByClass(cursorPositionResolver)
+                .isCursorBeforeNode(patternClause.getPosition(), patternClause, this, this.documentServiceContext)) {
+            blockOwnerStack.push(patternClause);
+            // If the variable is not equal to '_', then define the variable in the block scope
+            if (!patternClause.variable.name.value.endsWith(Names.IGNORE.value)) {
+                SymbolEnv blockEnv = SymbolEnv.createBlockEnv(patternClause.body, symbolEnv);
+                cursorPositionResolver = BlockStatementScopeResolver.class;
+                acceptNode(patternClause.body, blockEnv);
+                blockOwnerStack.pop();
+                return;
+            }
+            // TODO: Check with the semantic analyzer implementation as well.
+            acceptNode(patternClause.body, symbolEnv);
+            blockOwnerStack.pop();
+        }
+    }
+
+    @Override
+    public void visit(BLangAnnotationAttachment annAttachmentNode) {
+        SymbolEnv annotationAttachmentEnv = new SymbolEnv(annAttachmentNode, symbolEnv.scope);
+        this.isCursorWithinBlock(annAttachmentNode.getPosition(), annotationAttachmentEnv);
+    }
+
+    public void setPreviousNode(BLangNode previousNode) {
+        this.previousNode = previousNode;
+    }
+
+    public void setNextNode(BLangNode nextNode) {
+        this.nextNode = nextNode;
     }
 
     /**
@@ -1026,6 +780,7 @@ public class TreeVisitor extends BLangNodeVisitor {
     // Private Methods
     private void acceptNode(BLangNode node, SymbolEnv env) {
         if (this.terminateVisitor) {
+            documentServiceContext.put(CompletionKeys.NEXT_NODE_KEY, nextNode);
             return;
         }
 
@@ -1038,16 +793,45 @@ public class TreeVisitor extends BLangNodeVisitor {
 
     private boolean isCursorWithinBlock(DiagnosticPos nodePosition, SymbolEnv symbolEnv) {
         int line = documentServiceContext.get(DocumentServiceKeys.POSITION_KEY).getPosition().getLine();
-        int nodeSLine = nodePosition.sLine;
-        int nodeELine = nodePosition.eLine;
+        DiagnosticPos zeroBasedPosition = CommonUtil.toZeroBasedPosition(nodePosition);
+        int nodeSLine = zeroBasedPosition.sLine;
+        int nodeELine = zeroBasedPosition.eLine;
 
         if ((nodeSLine <= line && nodeELine >= line)) {
-            Map<Name, Scope.ScopeEntry> visibleSymbolEntries = this.resolveAllVisibleSymbols(symbolEnv);
+            Map<Name, Scope.ScopeEntry> visibleSymbolEntries = new HashMap<>();
+            if (symbolEnv.scope != null) {
+                visibleSymbolEntries.putAll(this.resolveAllVisibleSymbols(symbolEnv));
+            }
             this.populateSymbols(visibleSymbolEntries, symbolEnv);
             this.setTerminateVisitor(true);
             return true;
         }
 
+        return false;
+    }
+    
+    private boolean isWithinEndpointContext(DiagnosticPos diagnosticPos, SymbolEnv symbolEnv, String epName) {
+        if (documentServiceContext.get(DocumentServiceKeys.OPERATION_META_CONTEXT_KEY)
+                .get(CompletionKeys.META_CONTEXT_IS_ENDPOINT_KEY) == null) {
+            // No syntax errors has occurred
+            return this.isCursorWithinBlock(diagnosticPos, symbolEnv);
+        } else if (documentServiceContext.get(DocumentServiceKeys.OPERATION_META_CONTEXT_KEY)
+                .get(CompletionKeys.META_CONTEXT_IS_ENDPOINT_KEY)) {
+            // Syntax errors has occurred
+            boolean isWithinEndpoint = documentServiceContext.get(DocumentServiceKeys.OPERATION_META_CONTEXT_KEY)
+                    .get(CompletionKeys.META_CONTEXT_IS_ENDPOINT_KEY);
+            String name = documentServiceContext.get(DocumentServiceKeys.OPERATION_META_CONTEXT_KEY)
+                    .get(CompletionKeys.META_CONTEXT_ENDPOINT_NAME_KEY);
+            
+            if (isWithinEndpoint && epName.equals(name)) {
+                // Evaluating the particular Endpoint
+                this.populateSymbols(new HashMap<>(), symbolEnv);
+                this.setTerminateVisitor(true);
+
+                return true;
+            }
+        }
+        
         return false;
     }
 
@@ -1166,7 +950,18 @@ public class TreeVisitor extends BLangNodeVisitor {
         return isWithinParams;
     }
 
-    public void setPreviousNode(BLangNode previousNode) {
-        this.previousNode = previousNode;
+    private BLangVariableDef createVarDef(BLangVariable var) {
+        BLangVariableDef varDefNode = new BLangVariableDef();
+        varDefNode.var = var;
+        varDefNode.pos = var.pos;
+        return varDefNode;
+    }
+
+    private BLangBlockStmt generateCodeBlock(StatementNode... statements) {
+        BLangBlockStmt block = new BLangBlockStmt();
+        for (StatementNode stmt : statements) {
+            block.addStatement(stmt);
+        }
+        return block;
     }
 }

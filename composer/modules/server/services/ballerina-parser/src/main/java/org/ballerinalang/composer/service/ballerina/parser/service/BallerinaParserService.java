@@ -22,6 +22,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
@@ -34,10 +35,15 @@ import org.ballerinalang.composer.server.spi.ServiceType;
 import org.ballerinalang.composer.service.ballerina.parser.Constants;
 import org.ballerinalang.composer.service.ballerina.parser.service.model.BFile;
 import org.ballerinalang.composer.service.ballerina.parser.service.model.BLangSourceFragment;
-import org.ballerinalang.composer.service.ballerina.parser.service.model.BallerinaFile;
 import org.ballerinalang.composer.service.ballerina.parser.service.model.lang.ModelPackage;
 import org.ballerinalang.composer.service.ballerina.parser.service.util.BLangFragmentParser;
 import org.ballerinalang.composer.service.ballerina.parser.service.util.ParserUtils;
+import org.ballerinalang.langserver.LSGlobalContext;
+import org.ballerinalang.langserver.LSGlobalContextKeys;
+import org.ballerinalang.langserver.TextDocumentServiceUtil;
+import org.ballerinalang.langserver.common.modal.BallerinaFile;
+import org.ballerinalang.langserver.common.utils.CommonUtil;
+import org.ballerinalang.langserver.common.utils.LSParserUtils;
 import org.ballerinalang.model.Whitespace;
 import org.ballerinalang.model.elements.Flag;
 import org.ballerinalang.model.tree.IdentifierNode;
@@ -48,28 +54,26 @@ import org.ballerinalang.util.diagnostic.Diagnostic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BType;
+import org.wso2.ballerinalang.compiler.tree.BLangAnnotation;
+import org.wso2.ballerinalang.compiler.tree.BLangAnnotationAttachmentPoint;
 import org.wso2.ballerinalang.compiler.tree.BLangCompilationUnit;
 import org.wso2.ballerinalang.compiler.tree.BLangFunction;
 import org.wso2.ballerinalang.compiler.tree.BLangNode;
 import org.wso2.ballerinalang.compiler.tree.BLangPackage;
 import org.wso2.ballerinalang.compiler.tree.BLangStruct;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangInvocation;
+import org.wso2.ballerinalang.compiler.util.CompilerContext;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -79,6 +83,8 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+
+import static org.ballerinalang.langserver.common.utils.LSParserUtils.UNTITLED_BAL;
 
 /**
  * Micro service for ballerina parser.
@@ -288,6 +294,19 @@ public class BallerinaParserService implements ComposerService {
                 continue;
             }
 
+            if (node.getKind() == NodeKind.ANNOTATION
+                    && node instanceof BLangAnnotation) {
+                JsonArray attachmentPoints = new JsonArray();
+                ((BLangAnnotation) node)
+                        .getAttachmentPoints()
+                        .stream()
+                        .map(BLangAnnotationAttachmentPoint::getAttachmentPoint)
+                        .map(BLangAnnotationAttachmentPoint.AttachmentPoint::getValue)
+                        .map(JsonPrimitive::new)
+                        .forEach(attachmentPoints::add);
+                nodeJson.add("attachmentPoints", attachmentPoints);
+            }
+
             if (node.getKind() == NodeKind.USER_DEFINED_TYPE && jsonName.equals("typeName")) {
                 IdentifierNode typeNode = (IdentifierNode) prop;
                 Node structNode;
@@ -378,9 +397,9 @@ public class BallerinaParserService implements ComposerService {
         BType type = ((BLangNode) node).type;
         if (node instanceof BLangInvocation) {
             JsonArray jsonElements = new JsonArray();
-            for (BType returnType : ((BLangInvocation) node).types) {
+            /*for (BType returnType : ((BLangInvocation) node).types) {
                 jsonElements.add(returnType.getKind().typeName());
-            }
+            }*/
             return jsonElements;
         } else if (type != null) {
             JsonArray jsonElements = new JsonArray();
@@ -401,46 +420,24 @@ public class BallerinaParserService implements ComposerService {
      * @return List of errors if any
      */
     private JsonObject validateAndParse(BFile bFileRequest) throws InvocationTargetException, IllegalAccessException {
-        final String filePath = bFileRequest.getFilePath();
         final String fileName = bFileRequest.getFileName();
         final String content = bFileRequest.getContent();
 
-        Pattern pkgPattern = Pattern.compile(PACKAGE_REGEX);
-        Matcher pkgMatcher = pkgPattern.matcher(content);
-        String programDir = null;
-        String unitToCompile = fileName;
-        if (pkgMatcher.find()) {
-            final String packageName = pkgMatcher.group(1);
-            if (bFileRequest.needProgramDir() && packageName != null) {
-                List<String> pathParts = Arrays.asList(filePath.split(Pattern.quote(File.separator)));
-                List<String> pkgParts = Arrays.asList(packageName.split(Pattern.quote(".")));
-                Collections.reverse(pkgParts);
-                boolean foundProgramDir = true;
-                for (int i = 1; i <= pkgParts.size(); i++) {
-                    if (!pathParts.get(pathParts.size() - i).equals(pkgParts.get(i - 1))) {
-                        foundProgramDir = false;
-                        break;
-                    }
-                }
-                if (foundProgramDir) {
-                    List<String> programDirParts = pathParts.subList(0, pathParts.size() - pkgParts.size());
-                    programDir = String.join(File.separator, programDirParts);
-                    unitToCompile = packageName;
-                }
-            }
+        BallerinaFile bFile;
+        String programDir = "";
+        LSGlobalContext lsGlobalContext = new LSGlobalContext();
+        CompilerContext globalCompilationContext = CommonUtil.prepareTempCompilerContext();
+        lsGlobalContext.put(LSGlobalContextKeys.GLOBAL_COMPILATION_CONTEXT, globalCompilationContext);
+        if (UNTITLED_BAL.equals(fileName)) {
+            bFile = LSParserUtils.compile(content, CompilerPhase.CODE_ANALYZE, lsGlobalContext);
+        } else {
+            java.nio.file.Path filePath = Paths.get(bFileRequest.getFilePath(), bFileRequest.getFileName());
+            bFile = LSParserUtils.compile(content, filePath, CompilerPhase.CODE_ANALYZE, lsGlobalContext);
+            programDir = TextDocumentServiceUtil.getSourceRoot(filePath);
         }
-        // compile package in disk to resolve constructs in complete package (including constructs from other files)
-        final BLangPackage packageFromDisk = Files.exists(Paths.get(filePath, fileName))
-                ? ParserUtils.getBallerinaFile(programDir != null ? programDir : filePath, unitToCompile)
-                .getBLangPackage()
-                : null;
-        // always use dirty content from editor to generate model
-        // TODO: Remove this once in-memory file resolver with dirty content for compiler is implemented
-        final BallerinaFile balFileFromDirtyContent = ParserUtils.getBallerinaFileForContent(fileName, content,
-                CompilerPhase.CODE_ANALYZE);
-        // always get compilation unit and diagnostics from dirty content
-        final BLangPackage model = balFileFromDirtyContent.getBLangPackage();
-        final List<Diagnostic> diagnostics = balFileFromDirtyContent.getDiagnostics();
+
+        final BLangPackage model = bFile.getBLangPackage();
+        final List<Diagnostic> diagnostics = bFile.getDiagnostics();
 
         ErrorCategory errorCategory = ErrorCategory.NONE;
         if (!diagnostics.isEmpty()) {
@@ -487,26 +484,14 @@ public class BallerinaParserService implements ComposerService {
             result.add("model", modelElement);
         }
 
-        // adding current package info whenever we have a parsed model
         final Map<String, ModelPackage> modelPackage = new HashMap<>();
-        // file is in a package, load constructs from package in disk
-        if (packageFromDisk != null) {
-            ParserUtils.loadPackageMap("Current Package", packageFromDisk, modelPackage);
-            // remove constructs from current file and later add them from dirty content
-            ParserUtils.removeConstructsOfFile("Current Package", fileName, modelPackage);
-        }
-        // add constructs in current file's dirty content to package map
-        ParserUtils.loadPackageMap("Current Package", balFileFromDirtyContent.getBLangPackage(),
-                modelPackage);
-        // Add 'packageInfo' only if there are any packages.
+        ParserUtils.loadPackageMap("Current Package", bFile.getBLangPackage(), modelPackage);
         Optional<ModelPackage> packageInfoJson = modelPackage.values().stream().findFirst();
         if (packageInfoJson.isPresent() && bFileRequest.needPackageInfo()) {
             JsonElement packageInfo = gson.toJsonTree(packageInfoJson.get());
             result.add("packageInfo", packageInfo);
         }
-        if (programDir != null) {
-            result.addProperty("programDirPath", programDir);
-        }
+        result.addProperty("programDirPath", programDir);
         return result;
     }
 

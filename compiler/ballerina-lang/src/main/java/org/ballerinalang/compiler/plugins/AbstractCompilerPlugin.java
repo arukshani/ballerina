@@ -21,9 +21,12 @@ import org.ballerinalang.model.tree.ActionNode;
 import org.ballerinalang.model.tree.AnnotationAttachmentNode;
 import org.ballerinalang.model.tree.AnnotationNode;
 import org.ballerinalang.model.tree.ConnectorNode;
+import org.ballerinalang.model.tree.EndpointNode;
 import org.ballerinalang.model.tree.EnumNode;
 import org.ballerinalang.model.tree.FunctionNode;
+import org.ballerinalang.model.tree.ObjectNode;
 import org.ballerinalang.model.tree.PackageNode;
+import org.ballerinalang.model.tree.RecordNode;
 import org.ballerinalang.model.tree.ResourceNode;
 import org.ballerinalang.model.tree.ServiceNode;
 import org.ballerinalang.model.tree.StructNode;
@@ -69,6 +72,14 @@ public abstract class AbstractCompilerPlugin implements CompilerPlugin {
     }
 
     @Override
+    public void process(ObjectNode objectNode, List<AnnotationAttachmentNode> annotations) {
+    }
+
+    @Override
+    public void process(RecordNode recordNode, List<AnnotationAttachmentNode> annotations) {
+    }
+
+    @Override
     public void process(EnumNode enumNode, List<AnnotationAttachmentNode> annotations) {
     }
 
@@ -86,6 +97,10 @@ public abstract class AbstractCompilerPlugin implements CompilerPlugin {
 
     @Override
     public void process(TransformerNode transformerNode, List<AnnotationAttachmentNode> annotations) {
+    }
+
+    @Override
+    public void process(EndpointNode endpointNode, List<AnnotationAttachmentNode> annotations) {
     }
 
     @Override

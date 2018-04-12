@@ -19,36 +19,40 @@
 package org.ballerinalang.nativeimpl.file;
 
 import org.ballerinalang.bre.Context;
+import org.ballerinalang.bre.bvm.BlockingNativeCallableUnit;
 import org.ballerinalang.model.types.TypeKind;
 import org.ballerinalang.model.values.BString;
 import org.ballerinalang.model.values.BStruct;
-import org.ballerinalang.model.values.BValue;
-import org.ballerinalang.natives.AbstractNativeFunction;
+import org.ballerinalang.nativeimpl.file.utils.Constants;
+import org.ballerinalang.natives.annotations.Argument;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
-import org.ballerinalang.natives.annotations.Receiver;
 import org.ballerinalang.natives.annotations.ReturnType;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
- * Retrieves the name of the file given by the struct.
+ * Creates the file at the path specified in the File struct.
  *
- * @since 0.94.1
+ * @since 0.970.0-alpha3
  */
 @BallerinaFunction(
-        packageName = "ballerina.file",
-        functionName = "getName",
-        receiver = @Receiver(type = TypeKind.STRUCT, structType = "File", structPackage = "ballerina.file"),
+        orgName = "ballerina", packageName = "file",
+        functionName = "Path.getName",
+        args = {
+                @Argument(name = "path", type = TypeKind.STRUCT, structType = "Path", structPackage = "ballerina.file")
+        },
         returnType = {@ReturnType(type = TypeKind.STRING)},
         isPublic = true
 )
-public class GetName extends AbstractNativeFunction {
-
+public class GetName extends BlockingNativeCallableUnit {
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public BValue[] execute(Context context) {
-        BStruct fileStruct = (BStruct) getRefArgument(context, 0);
-        Path fileName = Paths.get(fileStruct.getStringField(0)).getFileName();
-        return getBValues(new BString(fileName == null ? "" : fileName.toString()));
+    public void execute(Context context) {
+        BStruct pathStruct = (BStruct) context.getRefArgument(0);
+        Path path = (Path) pathStruct.getNativeData(Constants.PATH_DEFINITION_NAME);
+        Path fileName = path.getFileName();
+        context.setReturnValues(new BString(fileName == null ? "" : fileName.toString()));
     }
 }

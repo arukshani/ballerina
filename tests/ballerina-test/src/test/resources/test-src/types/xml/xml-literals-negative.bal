@@ -1,18 +1,18 @@
 
-import ballerina.math as x;
+import ballerina/math as x;
 
-function testRestrictedElementPrefix() (xml) {
+function testRestrictedElementPrefix() returns (xml) {
     xml x = xml `<xmlns:foo>hello</xmlns:foo>`;
     return x;
 }
 
-function xmlUndeclaredElementPrefix() (xml) {
+function xmlUndeclaredElementPrefix() returns (xml) {
     xml x = xml `<ns1:foo>hello</ns1:foo>`;
     return x;
 }
 
 function xmlTemplateWithNonXML() {
-    map m = {};
+    map m ;
     xml x = xml `<root xmlns="http://default/namespace">{{m}}</root>`;
 }
 
@@ -44,7 +44,7 @@ function testRedeclareNamespaces() {
 }
 
 function testXMlAttributesMapInvalidUsage() {
-    var x1, _ = <xml> "<root foo1=\"bar1\" foo2=\"bar2\"/>";
+    var x1 = xml `<root foo1="bar1" foo2="bar2"/>`;
     map m1 = x1@;
 }
 
@@ -53,7 +53,7 @@ function foo() {
 }
 
 function getAttributesFromNonXml() {
-    map m = {};
+    map m ;
     string s = m@["foo"];
 }
 

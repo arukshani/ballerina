@@ -17,23 +17,29 @@
  */
 package org.ballerinalang.util.codegen;
 
-import org.ballerinalang.connector.api.AbstractNativeAction;
+import org.ballerinalang.model.NativeCallableUnit;
 import org.ballerinalang.model.types.BArrayType;
-import org.ballerinalang.model.types.BConnectorType;
-import org.ballerinalang.model.types.BEnumType;
+import org.ballerinalang.model.types.BFiniteType;
 import org.ballerinalang.model.types.BFunctionType;
 import org.ballerinalang.model.types.BJSONType;
+import org.ballerinalang.model.types.BMapType;
+import org.ballerinalang.model.types.BServiceType;
+import org.ballerinalang.model.types.BStreamType;
 import org.ballerinalang.model.types.BStructType;
 import org.ballerinalang.model.types.BTableType;
+import org.ballerinalang.model.types.BTupleType;
 import org.ballerinalang.model.types.BType;
 import org.ballerinalang.model.types.BTypes;
+import org.ballerinalang.model.types.BUnionType;
 import org.ballerinalang.model.types.TypeSignature;
 import org.ballerinalang.model.types.TypeTags;
 import org.ballerinalang.model.util.Flags;
-import org.ballerinalang.model.values.BEnumerator;
-import org.ballerinalang.natives.AbstractNativeFunction;
+import org.ballerinalang.model.values.BBoolean;
+import org.ballerinalang.model.values.BFloat;
+import org.ballerinalang.model.values.BInteger;
+import org.ballerinalang.model.values.BString;
+import org.ballerinalang.model.values.BValue;
 import org.ballerinalang.natives.NativeUnitLoader;
-import org.ballerinalang.util.codegen.Instruction.InstructionACALL;
 import org.ballerinalang.util.codegen.Instruction.InstructionCALL;
 import org.ballerinalang.util.codegen.Instruction.InstructionFORKJOIN;
 import org.ballerinalang.util.codegen.Instruction.InstructionIteratorNext;
@@ -41,7 +47,6 @@ import org.ballerinalang.util.codegen.Instruction.InstructionLock;
 import org.ballerinalang.util.codegen.Instruction.InstructionTCALL;
 import org.ballerinalang.util.codegen.Instruction.InstructionVCALL;
 import org.ballerinalang.util.codegen.Instruction.InstructionWRKSendReceive;
-import org.ballerinalang.util.codegen.attributes.AnnotationAttributeInfo;
 import org.ballerinalang.util.codegen.attributes.AttributeInfo;
 import org.ballerinalang.util.codegen.attributes.AttributeInfoPool;
 import org.ballerinalang.util.codegen.attributes.CodeAttributeInfo;
@@ -49,7 +54,7 @@ import org.ballerinalang.util.codegen.attributes.DefaultValueAttributeInfo;
 import org.ballerinalang.util.codegen.attributes.ErrorTableAttributeInfo;
 import org.ballerinalang.util.codegen.attributes.LineNumberTableAttributeInfo;
 import org.ballerinalang.util.codegen.attributes.LocalVariableAttributeInfo;
-import org.ballerinalang.util.codegen.attributes.ParamAnnotationAttributeInfo;
+import org.ballerinalang.util.codegen.attributes.ParamDefaultValueAttributeInfo;
 import org.ballerinalang.util.codegen.attributes.VarTypeCountAttributeInfo;
 import org.ballerinalang.util.codegen.cpentries.ActionRefCPEntry;
 import org.ballerinalang.util.codegen.cpentries.ConstantPool;
@@ -80,13 +85,15 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.Stack;
 
+import static org.ballerinalang.util.BLangConstants.CONSTRUCTOR_FUNCTION_SUFFIX;
 import static org.ballerinalang.util.BLangConstants.INIT_FUNCTION_SUFFIX;
 import static org.ballerinalang.util.BLangConstants.MAGIC_NUMBER;
+import static org.ballerinalang.util.BLangConstants.START_FUNCTION_SUFFIX;
+import static org.ballerinalang.util.BLangConstants.STOP_FUNCTION_SUFFIX;
 import static org.ballerinalang.util.BLangConstants.VERSION_NUMBER;
 
 /**
@@ -170,7 +177,7 @@ public class ProgramFileReader {
         int pkgCPIndex;
         UTF8CPEntry utf8CPEntry;
         PackageRefCPEntry packageRefCPEntry;
-        PackageInfo packageInfo;
+        Optional<PackageInfo> packageInfoOptional;
         switch (cpEntryType) {
             case CP_ENTRY_UTF8:
                 short length = dataInStream.readShort();
@@ -200,7 +207,10 @@ public class ProgramFileReader {
             case CP_ENTRY_PACKAGE:
                 cpIndex = dataInStream.readInt();
                 utf8CPEntry = (UTF8CPEntry) constantPool.getCPEntry(cpIndex);
-                return new PackageRefCPEntry(cpIndex, utf8CPEntry.getValue());
+                int versionCPIndex = dataInStream.readInt();
+                UTF8CPEntry utf8VersionCPEntry = (UTF8CPEntry) constantPool.getCPEntry(versionCPIndex);
+                return new PackageRefCPEntry(cpIndex, utf8CPEntry.getValue(), versionCPIndex,
+                        utf8VersionCPEntry.getValue());
 
             case CP_ENTRY_FUNCTION_REF:
                 pkgCPIndex = dataInStream.readInt();
@@ -213,16 +223,18 @@ public class ProgramFileReader {
                         packageRefCPEntry.getPackageName(), cpIndex, funcName);
 
                 // Find the functionInfo
-                packageInfo = programFile.getPackageInfo(packageRefCPEntry.getPackageName());
-                FunctionInfo functionInfo = packageInfo.getFunctionInfo(funcName);
-                if (functionInfo == null) {
+                packageInfoOptional = Optional.ofNullable(
+                        programFile.getPackageInfo(packageRefCPEntry.getPackageName()));
+                Optional<FunctionInfo> funcInfoOptional = packageInfoOptional.map(
+                        packageInfo -> packageInfo.getFunctionInfo(funcName));
+                if (!funcInfoOptional.isPresent()) {
                     // This must reference to the current package and the current package is not been read yet.
                     // Therefore we add this to the unresolved CP Entry list.
                     unresolvedCPEntries.add(functionRefCPEntry);
                     return functionRefCPEntry;
                 }
 
-                functionRefCPEntry.setFunctionInfo(packageInfo.getFunctionInfo(funcName));
+                functionRefCPEntry.setFunctionInfo(funcInfoOptional.get());
                 return functionRefCPEntry;
 
             case CP_ENTRY_TRANSFORMER_REF:
@@ -236,16 +248,18 @@ public class ProgramFileReader {
                         packageRefCPEntry.getPackageName(), cpIndex, transformerName);
 
                 // Find the transformerInfo
-                packageInfo = programFile.getPackageInfo(packageRefCPEntry.getPackageName());
-                TransformerInfo transformerInfo = packageInfo.getTransformerInfo(transformerName);
-                if (transformerInfo == null) {
+                packageInfoOptional = Optional.ofNullable(
+                        programFile.getPackageInfo(packageRefCPEntry.getPackageName()));
+                Optional<TransformerInfo> transInfoOptional = packageInfoOptional.map(
+                        packageInfo -> packageInfo.getTransformerInfo(transformerName));
+                if (!transInfoOptional.isPresent()) {
                     // This must reference to the current package and the current package is not been read yet.
                     // Therefore we add this to the unresolved CP Entry list.
                     unresolvedCPEntries.add(transformerRefCPEntry);
                     return transformerRefCPEntry;
                 }
 
-                transformerRefCPEntry.setTransformerInfo(transformerInfo);
+                transformerRefCPEntry.setTransformerInfo(transInfoOptional.get());
                 return transformerRefCPEntry;
 
             case CP_ENTRY_ACTION_REF:
@@ -255,10 +269,9 @@ public class ProgramFileReader {
                 cpIndex = dataInStream.readInt();
                 UTF8CPEntry nameCPEntry = (UTF8CPEntry) constantPool.getCPEntry(cpIndex);
                 String actionName = nameCPEntry.getValue();
-                ActionRefCPEntry actionRefCPEntry = new ActionRefCPEntry(pkgCPIndex, packageRefCPEntry.getPackageName(),
+                return new ActionRefCPEntry(pkgCPIndex, packageRefCPEntry.getPackageName(),
                         cpIndex, actionName);
 
-                return actionRefCPEntry;
             case CP_ENTRY_STRUCTURE_REF:
                 pkgCPIndex = dataInStream.readInt();
                 packageRefCPEntry = (PackageRefCPEntry) constantPool.getCPEntry(pkgCPIndex);
@@ -268,16 +281,18 @@ public class ProgramFileReader {
                         packageRefCPEntry.getPackageName(),
                         cpIndex, utf8CPEntry.getValue());
 
-                packageInfo = programFile.getPackageInfo(packageRefCPEntry.getPackageName());
-                StructureTypeInfo structureTypeInfo = packageInfo.getStructureTypeInfo(utf8CPEntry.getValue());
-                if (structureTypeInfo == null) {
+                packageInfoOptional = Optional.ofNullable(
+                        programFile.getPackageInfo(packageRefCPEntry.getPackageName()));
+                Optional<StructureTypeInfo> structInfoOptional = packageInfoOptional.map(
+                        packageInfo -> packageInfo.getStructureTypeInfo(utf8CPEntry.getValue()));
+                if (!structInfoOptional.isPresent()) {
                     // This must reference to the current package and the current package is not been read yet.
                     // Therefore we add this to the unresolved CP Entry list.
                     unresolvedCPEntries.add(structureRefCPEntry);
                     return structureRefCPEntry;
                 }
 
-                structureRefCPEntry.setStructureTypeInfo(structureTypeInfo);
+                structureRefCPEntry.setStructureTypeInfo(structInfoOptional.get());
                 return structureRefCPEntry;
             case CP_ENTRY_TYPE_REF:
                 int typeSigCPIndex = dataInStream.readInt();
@@ -287,16 +302,13 @@ public class ProgramFileReader {
                 return typeRefCPEntry;
             case CP_ENTRY_FORK_JOIN:
                 int forkJoinCPIndex = dataInStream.readInt();
-                ForkJoinCPEntry forkJoinCPEntry = new ForkJoinCPEntry(forkJoinCPIndex);
-                return forkJoinCPEntry;
+                return new ForkJoinCPEntry(forkJoinCPIndex);
             case CP_ENTRY_WRKR_DATA_CHNL_REF:
                 int uniqueNameCPIndex = dataInStream.readInt();
                 UTF8CPEntry wrkrDtChnlTypesSigCPEntry = (UTF8CPEntry) constantPool
                         .getCPEntry(uniqueNameCPIndex);
 
-                WorkerDataChannelRefCPEntry wrkrDtChnlRefCPEntry
-                        = new WorkerDataChannelRefCPEntry(uniqueNameCPIndex, wrkrDtChnlTypesSigCPEntry.getValue());
-                return wrkrDtChnlRefCPEntry;
+                return new WorkerDataChannelRefCPEntry(uniqueNameCPIndex, wrkrDtChnlTypesSigCPEntry.getValue());
             default:
                 throw new ProgramFileFormatException("invalid constant pool entry " + cpEntryType.getValue());
         }
@@ -319,31 +331,38 @@ public class ProgramFileReader {
     }
 
     private void readPackageInfo(DataInputStream dataInStream) throws IOException {
-        int pkgNameCPIndex = dataInStream.readInt();
-        UTF8CPEntry pkgNameCPEntry = (UTF8CPEntry) programFile.getCPEntry(pkgNameCPIndex);
-        PackageInfo packageInfo = new PackageInfo(pkgNameCPIndex, pkgNameCPEntry.getValue());
-        programFile.addPackageInfo(packageInfo.getPkgPath(), packageInfo);
+        PackageInfo packageInfo = new PackageInfo();
 
         // Read constant pool in the package.
         readConstantPool(dataInStream, packageInfo);
 
+        int pkgNameCPIndex = dataInStream.readInt();
+        UTF8CPEntry pkgNameCPEntry = (UTF8CPEntry) packageInfo.getCPEntry(pkgNameCPIndex);
+        packageInfo.nameCPIndex = pkgNameCPIndex;
+        packageInfo.pkgPath = pkgNameCPEntry.getValue();
+
+        int pkgVersionCPIndex = dataInStream.readInt();
+        UTF8CPEntry pkgVersionCPEntry = (UTF8CPEntry) programFile.getCPEntry(pkgVersionCPIndex);
+        packageInfo.versionCPIndex = pkgVersionCPIndex;
+        packageInfo.pkgVersion = pkgVersionCPEntry.getValue();
+
+        packageInfo.setProgramFile(programFile);
+        programFile.addPackageInfo(packageInfo.pkgPath, packageInfo);
+
         // Read struct info entries
         readStructInfoEntries(dataInStream, packageInfo);
 
-        // Read enum info entries
-        readEnumInfoEntries(dataInStream, packageInfo);
-
-        // Read connector info entries
-        readConnectorInfoEntries(dataInStream, packageInfo);
-
-        // Read connector info entries
-        readConnectorActionInfoEntries(dataInStream, packageInfo);
+        // Read type definition info entries
+        readTypeDefinitionInfoEntries(dataInStream, packageInfo);
 
         // Read service info entries
         readServiceInfoEntries(dataInStream, packageInfo);
 
         // Resolve user-defined type i.e. structs and connectors
         resolveUserDefinedTypes(packageInfo);
+
+        // Read resource info entries.
+        readResourceInfoEntries(dataInStream, packageInfo);
 
         // Read constant info entries
         readConstantInfoEntries(dataInStream, packageInfo);
@@ -362,7 +381,7 @@ public class ProgramFileReader {
         // Resolve unresolved CP entries.
         resolveCPEntries();
 
-        resolveConnectorMethodTables(packageInfo);
+        resolveTypeDefinitionEntries(packageInfo);
 
         // Read attribute info entries
         readAttributeInfoEntries(dataInStream, packageInfo, packageInfo);
@@ -410,6 +429,9 @@ public class ProgramFileReader {
                 readAttributeInfoEntries(dataInStream, packageInfo, fieldInfo);
             }
 
+            String defaultInit = structName + INIT_FUNCTION_SUFFIX;
+            String objectInit = CONSTRUCTOR_FUNCTION_SUFFIX;
+
             // Read attached function info entries
             int attachedFuncCount = dataInStream.readShort();
             for (int j = 0; j < attachedFuncCount; j++) {
@@ -427,9 +449,20 @@ public class ProgramFileReader {
                         typeSigCPIndex, typeSigUTF8Entry.getValue(), funcFlags);
                 structInfo.funcInfoEntries.put(functionInfo.name, functionInfo);
 
+                // TODO remove when removing struct
                 // Setting the initializer function info, if any.
                 if (structName.equals(attachedFuncName)) {
                     structInfo.initializer = functionInfo;
+                }
+                // Setting the object initializer
+                if (objectInit.equals(attachedFuncName)) {
+                    structInfo.initializer = functionInfo;
+                }
+
+                // TODO remove when removing struct
+                // Setting the default initializer function info
+                if (defaultInit.equals(attachedFuncName)) {
+                    structInfo.defaultsValuesInitFunc = functionInfo;
                 }
             }
 
@@ -438,128 +471,48 @@ public class ProgramFileReader {
         }
     }
 
-    private void readEnumInfoEntries(DataInputStream dataInStream,
-                                     PackageInfo packageInfo) throws IOException {
-        int enumCount = dataInStream.readShort();
-        for (int i = 0; i < enumCount; i++) {
+    private void readTypeDefinitionInfoEntries(DataInputStream dataInStream,
+                                               PackageInfo packageInfo) throws IOException {
+        int typeDefCount = dataInStream.readShort();
+        for (int i = 0; i < typeDefCount; i++) {
 
-            // Create enum info entry
-            int enumNameCPIndex = dataInStream.readInt();
+            int typeDefNameCPIndex = dataInStream.readInt();
             int flags = dataInStream.readInt();
-            UTF8CPEntry enumNameUTF8Entry = (UTF8CPEntry) packageInfo.getCPEntry(enumNameCPIndex);
-            String enumName = enumNameUTF8Entry.getValue();
-            EnumInfo enumInfo = new EnumInfo(packageInfo.getPkgNameCPIndex(), packageInfo.getPkgPath(),
-                    enumNameCPIndex, enumName, flags);
-            packageInfo.addEnumInfo(enumName, enumInfo);
+            UTF8CPEntry typeDefNameUTF8Entry = (UTF8CPEntry) packageInfo.getCPEntry(typeDefNameCPIndex);
+            String typeDefName = typeDefNameUTF8Entry.getValue();
+            TypeDefinitionInfo typeDefinitionInfo = new TypeDefinitionInfo(packageInfo.getPkgNameCPIndex(),
+                    packageInfo.getPkgPath(),
+                    typeDefNameCPIndex, typeDefName, flags);
+            packageInfo.addTypeDefinitionInfo(typeDefName, typeDefinitionInfo);
 
-            // Set enum type
-            BEnumType enumType = new BEnumType(enumName, packageInfo.getPkgPath());
-            enumInfo.setType(enumType);
+            BFiniteType finiteType = new BFiniteType(typeDefName, packageInfo.getPkgPath());
+            typeDefinitionInfo.setType(finiteType);
 
-            int enumeratorCount = dataInStream.readShort();
-            BEnumerator[] enumerators = new BEnumerator[enumeratorCount];
-            for (int j = 0; j < enumeratorCount; j++) {
-                int enumeratorNameCPIndex = dataInStream.readInt();
-                UTF8CPEntry enumeratorNameUTF8Entry = (UTF8CPEntry) packageInfo.getCPEntry(enumeratorNameCPIndex);
-                String enumeratorName = enumeratorNameUTF8Entry.getValue();
-                BEnumerator enumerator = new BEnumerator(enumeratorName, enumType);
-                enumerators[j] = enumerator;
+            int memberTypeCount = dataInStream.readShort();
+            for (int j = 0; j < memberTypeCount; j++) {
+                int memberTypeCPIndex = dataInStream.readInt();
+                TypeRefCPEntry typeRefCPEntry = (TypeRefCPEntry) packageInfo.getCPEntry(memberTypeCPIndex);
+                finiteType.memberCPEntries.add(typeRefCPEntry);
             }
-            enumType.setEnumerators(enumerators);
 
-            // Read attributes of the struct info
-            readAttributeInfoEntries(dataInStream, packageInfo, enumInfo);
+            int valueSpaceCount = dataInStream.readShort();
+            for (int k = 0; k < valueSpaceCount; k++) {
+                finiteType.valueSpace.add(getDefaultValueToBValue(getDefaultValue(dataInStream, packageInfo)));
+            }
+
+            readAttributeInfoEntries(dataInStream, packageInfo, typeDefinitionInfo);
         }
+
     }
 
-    private void readConnectorInfoEntries(DataInputStream dataInStream,
-                                          PackageInfo packageInfo) throws IOException {
-        int connectorCount = dataInStream.readShort();
-        for (int i = 0; i < connectorCount; i++) {
-            // Read connector name cp index
-            int connectorNameCPIndex = dataInStream.readInt();
-            UTF8CPEntry connectorNameUTF8Entry = (UTF8CPEntry) packageInfo.getCPEntry(connectorNameCPIndex);
-
-            int flags = dataInStream.readInt();
-
-            // Create connector info
-            String connectorName = connectorNameUTF8Entry.getValue();
-            ConnectorInfo connectorInfo = new ConnectorInfo(packageInfo.getPkgNameCPIndex(),
-                    packageInfo.getPkgPath(), connectorNameCPIndex, connectorName, flags);
-            packageInfo.addConnectorInfo(connectorName, connectorInfo);
-
-            // Set connector type
-            BConnectorType bConnectorType = new BConnectorType(connectorName, packageInfo.getPkgPath());
-            connectorInfo.setType(bConnectorType);
-        }
-
-        for (ConstantPoolEntry cpEntry : unresolvedCPEntries) {
-            switch (cpEntry.getEntryType()) {
-                case CP_ENTRY_TYPE_REF:
-                    TypeRefCPEntry typeRefCPEntry = (TypeRefCPEntry) cpEntry;
-                    String typeSig = typeRefCPEntry.getTypeSig();
-                    BType bType = getBTypeFromDescriptor(typeSig);
-                    typeRefCPEntry.setType(bType);
-                    break;
-                default:
-                    break;
-            }
-        }
-    }
-
-    private void readConnectorActionInfoEntries(DataInputStream dataInStream,
-                                                PackageInfo packageInfo) throws IOException {
-        for (ConnectorInfo connectorInfo : packageInfo.getConnectorInfoEntries()) {
-            // Read action info entries
-            int actionCount = dataInStream.readShort();
-            for (int j = 0; j < actionCount; j++) {
-                // Read action name;
-                int actionNameCPIndex = dataInStream.readInt();
-                UTF8CPEntry actionNameUTF8Entry = (UTF8CPEntry) packageInfo.getCPEntry(actionNameCPIndex);
-                String actionName = actionNameUTF8Entry.getValue();
-                ActionInfo actionInfo = new ActionInfo(packageInfo.getPkgNameCPIndex(), packageInfo.getPkgPath(),
-                        actionNameCPIndex, actionName, connectorInfo);
-                actionInfo.setPackageInfo(packageInfo);
-                connectorInfo.addActionInfo(actionName, actionInfo);
-
-                // Read action signature
-                int actionSigCPIndex = dataInStream.readInt();
-                UTF8CPEntry actionSigUTF8Entry = (UTF8CPEntry) packageInfo.getCPEntry(actionSigCPIndex);
-                actionInfo.setSignatureCPIndex(actionSigCPIndex);
-                actionInfo.setSignature(actionSigUTF8Entry.getValue());
-                int flags = dataInStream.readInt();
-//                actionInfo.setflags(flags);
-                setCallableUnitSignature(actionInfo, actionSigUTF8Entry.getValue(), packageInfo);
-
-                // TODO Temp solution.
-                boolean nativeAction = dataInStream.readByte() == 1;
-                actionInfo.setNative(nativeAction);
-
-                int workerDataChannelsLength = dataInStream.readShort();
-                for (int k = 0; k < workerDataChannelsLength; k++) {
-                    readWorkerDataChannelEntries(dataInStream, packageInfo, actionInfo);
-                }
-
-                // Read worker info entries
-                readWorkerInfoEntries(dataInStream, packageInfo, actionInfo);
-
-                if (nativeAction) {
-                    AbstractNativeAction nativeActionObj = NativeUnitLoader.getInstance().loadNativeAction(
-                            actionInfo.getPkgPath(), actionInfo.getConnectorInfo().getName(), actionInfo.getName());
-                    if (nativeActionObj == null && !actionInfo.name.equals("<init>")) {
-                        throw new BLangRuntimeException("native action not available " +
-                                actionInfo.getPkgPath() + ":" + actionInfo
-                                .getConnectorInfo().getName() + "." + actionName);
-                    }
-                    actionInfo.setNativeAction(nativeActionObj);
-                }
-
-                // Read attributes of the struct info
-                readAttributeInfoEntries(dataInStream, packageInfo, actionInfo);
-            }
-
-            // Read attributes of the struct info
-            readAttributeInfoEntries(dataInStream, packageInfo, connectorInfo);
+    private void resolveTypeDefinitionEntries(PackageInfo packageInfo) {
+        TypeDefinitionInfo[] typeDefinitionInfos = packageInfo.getTypeDefinitionInfoEntries();
+        for (TypeDefinitionInfo typeDefInfo : typeDefinitionInfos) {
+            BFiniteType finiteType = typeDefInfo.getType();
+            finiteType.memberCPEntries.forEach(typeRefCPEntry -> {
+                finiteType.memberTypes.add(typeRefCPEntry.getType());
+            });
+            finiteType.memberCPEntries.clear();
         }
     }
 
@@ -573,15 +526,21 @@ public class ProgramFileReader {
             int flags = dataInStream.readInt();
 
             // Read connector signature cp index;
-            int serviceProtocolCPIndex = dataInStream.readInt();
-            UTF8CPEntry serviceProtocolUTF8Entry = (UTF8CPEntry) packageInfo.getCPEntry(serviceProtocolCPIndex);
+            int endpointNameCPIndex = dataInStream.readInt();
+            UTF8CPEntry endpointNameUTF8Entry = (UTF8CPEntry) packageInfo.getCPEntry(endpointNameCPIndex);
 
             ServiceInfo serviceInfo = new ServiceInfo(packageInfo.getPkgNameCPIndex(), packageInfo.getPkgPath(),
                     serviceNameCPIndex, serviceNameUTF8Entry.getValue(), flags,
-                    serviceProtocolCPIndex, serviceProtocolUTF8Entry.getValue());
+                    endpointNameCPIndex, endpointNameUTF8Entry.getValue());
             serviceInfo.setPackageInfo(packageInfo);
             packageInfo.addServiceInfo(serviceInfo.getName(), serviceInfo);
+            serviceInfo.setType(new BServiceType(serviceInfo.getName(), packageInfo.getPkgPath()));
+        }
+    }
 
+    private void readResourceInfoEntries(DataInputStream dataInStream,
+                                         PackageInfo packageInfo) throws IOException {
+        for (ServiceInfo serviceInfo : packageInfo.getServiceInfoEntries()) {
             int actionCount = dataInStream.readShort();
             for (int j = 0; j < actionCount; j++) {
                 // Read action name;
@@ -662,8 +621,10 @@ public class ProgramFileReader {
         int sigCPIndex = dataInStream.readInt();
         UTF8CPEntry sigUTF8CPEntry = (UTF8CPEntry) constantPool.getCPEntry(sigCPIndex);
 
+        int globalMemIndex = dataInStream.readInt();
+
         PackageVarInfo packageVarInfo = new PackageVarInfo(nameCPIndex, nameUTF8CPEntry.getValue(),
-                sigCPIndex, sigUTF8CPEntry.getValue());
+                sigCPIndex, sigUTF8CPEntry.getValue(), globalMemIndex);
 
         // Read attributes
         readAttributeInfoEntries(dataInStream, constantPool, packageVarInfo);
@@ -677,9 +638,9 @@ public class ProgramFileReader {
             readFunctionInfo(dataInStream, packageInfo);
         }
 
-        FunctionInfo pkgIniFunInfo = packageInfo.getFunctionInfo(
-                packageInfo.getPkgPath() + INIT_FUNCTION_SUFFIX);
-        packageInfo.setInitFunctionInfo(pkgIniFunInfo);
+        packageInfo.setInitFunctionInfo(packageInfo.getFunctionInfo(packageInfo.getPkgPath() + INIT_FUNCTION_SUFFIX));
+        packageInfo.setStartFunctionInfo(packageInfo.getFunctionInfo(packageInfo.getPkgPath() + START_FUNCTION_SUFFIX));
+        packageInfo.setStopFunctionInfo(packageInfo.getFunctionInfo(packageInfo.getPkgPath() + STOP_FUNCTION_SUFFIX));
 
         // TODO Improve this. We should be able to this in a single pass.
         ServiceInfo[] serviceInfoEntries = packageInfo.getServiceInfoEntries();
@@ -737,13 +698,13 @@ public class ProgramFileReader {
         readWorkerInfoEntries(dataInStream, packageInfo, functionInfo);
 
         if (nativeFunc) {
-            AbstractNativeFunction nativeFunction = NativeUnitLoader.getInstance().loadNativeFunction(
+            NativeCallableUnit nativeFunction = NativeUnitLoader.getInstance().loadNativeFunction(
                     functionInfo.getPkgPath(), uniqueFuncName);
             if (nativeFunction == null) {
                 throw new BLangRuntimeException("native function not available " +
                         functionInfo.getPkgPath() + ":" + uniqueFuncName);
             }
-            functionInfo.setNativeFunction(nativeFunction);
+            functionInfo.setNativeCallableUnit(nativeFunction);
         }
 
         // Read attributes
@@ -849,7 +810,7 @@ public class ProgramFileReader {
                 typeStack.push(BTypes.typeBlob);
                 return index + 1;
             case 'Y':
-                typeStack.push(BTypes.typeType);
+                typeStack.push(BTypes.typeDesc);
                 return index + 1;
             case 'A':
                 typeStack.push(BTypes.typeAny);
@@ -869,6 +830,9 @@ public class ProgramFileReader {
             case 'T':
             case 'E':
             case 'D':
+            case 'G':
+            case 'H':
+            case 'Z':
                 char typeChar = chars[index];
                 // TODO Improve this logic
                 index++;
@@ -894,9 +858,7 @@ public class ProgramFileReader {
                     packageInfoOfType = packageInfo;
                 }
 
-                if (typeChar == 'C') {
-                    typeStack.push(packageInfoOfType.getConnectorInfo(name).getType());
-                } else if (typeChar == 'J') {
+                if (typeChar == 'J') {
                     if (name.isEmpty()) {
                         typeStack.push(BTypes.typeJSON);
                     } else {
@@ -908,8 +870,14 @@ public class ProgramFileReader {
                     } else {
                         typeStack.push(new BTableType(packageInfoOfType.getStructInfo(name).getType()));
                     }
-                } else if (typeChar == 'E') {
-                    typeStack.push(packageInfoOfType.getEnumInfo(name).getType());
+                } else if (typeChar == 'H') {
+                    if (name.isEmpty()) {
+                        typeStack.push(BTypes.typeStream);
+                    } else {
+                        typeStack.push(new BStreamType(packageInfoOfType.getStructInfo(name).getType()));
+                    }
+                } else if (typeChar == 'G') {
+                    typeStack.push(packageInfoOfType.getTypeDefinitionInfo(name).getType());
                 } else {
                     // This is a struct type
                     typeStack.push(packageInfoOfType.getStructInfo(name).getType());
@@ -922,9 +890,44 @@ public class ProgramFileReader {
                 BArrayType arrayType = new BArrayType(elemType);
                 typeStack.push(arrayType);
                 return index;
+            case 'M':
+                index = createBTypeFromSig(chars, index + 1, typeStack, packageInfo);
+                BType constrainedType = typeStack.pop();
+                BType mapType;
+                if (constrainedType == BTypes.typeAny) {
+                    mapType = BTypes.typeMap;
+                } else {
+                    mapType = new BMapType(constrainedType);
+                }
+                typeStack.push(mapType);
+                return index;
             case 'U':
                 // TODO : Fix this for type casting.
                 typeStack.push(new BFunctionType());
+                return index + 1;
+            case 'O':
+            case 'P':
+                typeChar = chars[index];
+                index++;
+                nameIndex = index;
+                while (chars[nameIndex] != ';') {
+                    nameIndex++;
+                }
+                List<BType> memberTypes = new ArrayList<>();
+                int memberCount = Integer.parseInt(new String(Arrays.copyOfRange(chars, index, nameIndex)));
+                index = nameIndex;
+                for (int i = 0; i < memberCount; i++) {
+                    index = createBTypeFromSig(chars, index + 1, typeStack, packageInfo) - 1;
+                    memberTypes.add(typeStack.pop());
+                }
+                if (typeChar == 'O') {
+                    typeStack.push(new BUnionType(memberTypes));
+                } else if (typeChar == 'P') {
+                    typeStack.push(new BTupleType(memberTypes));
+                }
+                return index + 1;
+            case 'N':
+                typeStack.push(BTypes.typeNull);
                 return index + 1;
             default:
                 throw new ProgramFileFormatException("unsupported base type char: " + ch);
@@ -943,17 +946,28 @@ public class ProgramFileReader {
             case 'B':
                 return BTypes.typeBoolean;
             case 'Y':
-                return BTypes.typeType;
+                return BTypes.typeDesc;
             case 'L':
                 return BTypes.typeBlob;
             case 'A':
                 return BTypes.typeAny;
             case 'R':
                 return BTypes.getTypeFromName(desc.substring(1, desc.length() - 1));
+            case 'M':
+                BType constrainedType = getBTypeFromDescriptor(desc.substring(1));
+                if (constrainedType == BTypes.typeAny) {
+                    return BTypes.typeMap;
+                } else {
+                    return new BMapType(constrainedType);
+                }
             case 'C':
+            case 'X':
             case 'J':
             case 'T':
             case 'E':
+            case 'H':
+            case 'Z':
+            case 'G':
             case 'D':
                 String typeName = desc.substring(1, desc.length() - 1);
                 String[] parts = typeName.split(":");
@@ -963,6 +977,8 @@ public class ProgramFileReader {
                         return BTypes.typeJSON;
                     } else if (ch == 'D') {
                         return BTypes.typeTable;
+                    } else if (ch == 'H') { //TODO:CHECK
+                        return BTypes.typeStream;
                     }
                 }
 
@@ -971,12 +987,14 @@ public class ProgramFileReader {
                 PackageInfo packageInfoOfType = programFile.getPackageInfo(pkgPath);
                 if (ch == 'J') {
                     return new BJSONType(packageInfoOfType.getStructInfo(name).getType());
-                } else if (ch == 'C') {
-                    return packageInfoOfType.getConnectorInfo(name).getType();
+                } else if (ch == 'X') {
+                    return packageInfoOfType.getServiceInfo(name).getType();
                 } else if (ch == 'D') {
                     return new BTableType(packageInfoOfType.getStructInfo(name).getType());
-                } else if (ch == 'E') {
-                    return packageInfoOfType.getEnumInfo(name).getType();
+                } else if (ch == 'H') {
+                    return new BStreamType(packageInfoOfType.getStructInfo(name).getType());
+                } else if (ch == 'G') {
+                    return packageInfoOfType.getTypeDefinitionInfo(name).getType();
                 } else {
                     return packageInfoOfType.getStructInfo(name).getType();
                 }
@@ -986,6 +1004,13 @@ public class ProgramFileReader {
             case 'U':
                 // TODO : Fix this for type casting.
                 return new BFunctionType();
+            case 'O':
+            case 'P':
+                Stack<BType> typeStack = new Stack<BType>();
+                createBTypeFromSig(desc.toCharArray(), 0, typeStack, null);
+                return typeStack.pop();
+            case 'N':
+                return BTypes.typeNull;
             default:
                 throw new ProgramFileFormatException("unsupported base type char: " + ch);
         }
@@ -1163,23 +1188,6 @@ public class ProgramFileReader {
                 }
                 return tableAttributeInfo;
 
-            case ANNOTATIONS_ATTRIBUTE:
-                AnnotationAttributeInfo annAttributeInfo = new AnnotationAttributeInfo(attribNameCPIndex);
-                int entryCount = dataInStream.readShort();
-                for (int i = 0; i < entryCount; i++) {
-                    AnnAttachmentInfo attachmentInfo = getAttachmentInfo(dataInStream, constantPool);
-                    annAttributeInfo.addAttachmentInfo(attachmentInfo);
-                }
-                return annAttributeInfo;
-
-            case PARAMETER_ANNOTATIONS_ATTRIBUTE:
-                int prmAttchmentCnt = dataInStream.readShort();
-                ParamAnnotationAttributeInfo attributeInfo = new ParamAnnotationAttributeInfo(attribNameCPIndex);
-                for (int i = 0; i < prmAttchmentCnt; i++) {
-                    ParamAnnAttachmentInfo prmAnnAtchmentInfo = getParamAttachmentInfo(dataInStream, constantPool);
-                    attributeInfo.addParamAttachmentInfo(prmAnnAtchmentInfo);
-                }
-                return attributeInfo;
             case LOCAL_VARIABLES_ATTRIBUTE:
                 LocalVariableAttributeInfo localVarAttrInfo = new LocalVariableAttributeInfo(attribNameCPIndex);
                 int localVarInfoCount = dataInStream.readShort();
@@ -1197,49 +1205,22 @@ public class ProgramFileReader {
                 }
                 return lnNoTblAttrInfo;
             case DEFAULT_VALUE_ATTRIBUTE:
-                StructFieldDefaultValue defaultValue = getDefaultValue(dataInStream, constantPool);
+                DefaultValue defaultValue = getDefaultValue(dataInStream, constantPool);
                 DefaultValueAttributeInfo defaultValAttrInfo =
                         new DefaultValueAttributeInfo(attribNameCPIndex, defaultValue);
                 return defaultValAttrInfo;
+            case PARAMETER_DEFAULTS_ATTRIBUTE:
+                ParamDefaultValueAttributeInfo paramDefaultValAttrInfo =
+                        new ParamDefaultValueAttributeInfo(attribNameCPIndex);
+                int paramDefaultsInfoCount = dataInStream.readShort();
+                for (int i = 0; i < paramDefaultsInfoCount; i++) {
+                    DefaultValue paramDefaultValue = getDefaultValue(dataInStream, constantPool);
+                    paramDefaultValAttrInfo.addParamDefaultValueInfo(paramDefaultValue);
+                }
+                return paramDefaultValAttrInfo;
             default:
                 throw new ProgramFileFormatException("unsupported attribute kind " + attribNameCPEntry.getValue());
         }
-    }
-
-    private AnnAttachmentInfo getAttachmentInfo(DataInputStream dataInStream,
-                                                ConstantPool constantPool) throws IOException {
-        int pkgCPIndex = dataInStream.readInt();
-        PackageRefCPEntry pkgCPEntry = (PackageRefCPEntry) constantPool.getCPEntry(pkgCPIndex);
-        int nameCPIndex = dataInStream.readInt();
-        UTF8CPEntry nameCPEntry = (UTF8CPEntry) constantPool.getCPEntry(nameCPIndex);
-
-        AnnAttachmentInfo attachmentInfo = new AnnAttachmentInfo(pkgCPIndex, pkgCPEntry.getPackageName(),
-                nameCPIndex, nameCPEntry.getValue());
-
-        int attribKeyValuePairsCount = dataInStream.readShort();
-        for (int i = 0; i < attribKeyValuePairsCount; i++) {
-            int attribNameCPIndex = dataInStream.readInt();
-            UTF8CPEntry attribNameCPEntry = (UTF8CPEntry) constantPool.getCPEntry(attribNameCPIndex);
-            String attribName = attribNameCPEntry.getValue();
-            AnnAttributeValue attributeValue = getAnnAttributeValue(dataInStream, constantPool);
-            attachmentInfo.addAttributeValue(attribNameCPIndex, attribName, attributeValue);
-        }
-
-        return attachmentInfo;
-    }
-
-    private ParamAnnAttachmentInfo getParamAttachmentInfo(DataInputStream dataInStream,
-                                                          ConstantPool constantPool) throws IOException {
-        int paramIndex = dataInStream.readInt();
-        ParamAnnAttachmentInfo prmAnnAttchmntInfo = new ParamAnnAttachmentInfo(paramIndex);
-
-        int annAttchmntCount = dataInStream.readShort();
-        for (int i = 0; i < annAttchmntCount; i++) {
-            AnnAttachmentInfo annAttachmentInfo = getAttachmentInfo(dataInStream, constantPool);
-            prmAnnAttchmntInfo.addAnnotationAttachmentInfo(annAttachmentInfo);
-        }
-
-        return prmAnnAttchmntInfo;
     }
 
     private LocalVariableInfo getLocalVariableInfo(DataInputStream dataInStream,
@@ -1282,70 +1263,8 @@ public class ProgramFileReader {
         return lineNumberInfo;
     }
 
-
-    private AnnAttributeValue getAnnAttributeValue(DataInputStream dataInStream,
-                                                   ConstantPool constantPool) throws IOException {
-        AnnAttributeValue attributeValue;
-        int typeDescCPIndex = dataInStream.readInt();
-        UTF8CPEntry typeDescCPEntry = (UTF8CPEntry) constantPool.getCPEntry(typeDescCPIndex);
-        String typeDesc = typeDescCPEntry.getValue();
-
-        boolean isConstVarExpr = dataInStream.readBoolean();
-        if (isConstVarExpr) {
-            int constPkgCPIndex = dataInStream.readInt();
-            int constNameCPIndex = dataInStream.readInt();
-
-            UTF8CPEntry constPkgCPEntry = (UTF8CPEntry) constantPool.getCPEntry(constPkgCPIndex);
-            UTF8CPEntry constNameCPEntry = (UTF8CPEntry) constantPool.getCPEntry(constNameCPIndex);
-            attributeValue = new AnnAttributeValue(typeDescCPIndex, typeDesc, constPkgCPIndex,
-                    constPkgCPEntry.getValue(), constNameCPIndex, constNameCPEntry.getValue());
-            attributeValue.setConstVarExpr(isConstVarExpr);
-            programFile.addUnresolvedAnnAttrValue(attributeValue);
-            return attributeValue;
-        }
-
-        int valueCPIndex;
-        switch (typeDesc) {
-            case TypeSignature.SIG_ANNOTATION:
-                AnnAttachmentInfo attachmentInfo = getAttachmentInfo(dataInStream, constantPool);
-                attributeValue = new AnnAttributeValue(typeDescCPIndex, typeDesc, attachmentInfo);
-                break;
-            case TypeSignature.SIG_ARRAY:
-                int attributeValueCount = dataInStream.readShort();
-                AnnAttributeValue[] annAttributeValues = new AnnAttributeValue[attributeValueCount];
-                for (int i = 0; i < attributeValueCount; i++) {
-                    annAttributeValues[i] = getAnnAttributeValue(dataInStream, constantPool);
-                }
-                attributeValue = new AnnAttributeValue(typeDescCPIndex, typeDesc, annAttributeValues);
-                break;
-            case TypeSignature.SIG_BOOLEAN:
-                boolean boolValue = dataInStream.readBoolean();
-                attributeValue = new AnnAttributeValue(typeDescCPIndex, typeDesc);
-                attributeValue.setBooleanValue(boolValue);
-                break;
-            case TypeSignature.SIG_INT:
-                valueCPIndex = dataInStream.readInt();
-                IntegerCPEntry integerCPEntry = (IntegerCPEntry) constantPool.getCPEntry(valueCPIndex);
-                attributeValue = new AnnAttributeValue(typeDescCPIndex, typeDesc);
-                attributeValue.setIntValue(integerCPEntry.getValue());
-                break;
-            case TypeSignature.SIG_FLOAT:
-                valueCPIndex = dataInStream.readInt();
-                FloatCPEntry floatCPEntry = (FloatCPEntry) constantPool.getCPEntry(valueCPIndex);
-                attributeValue = new AnnAttributeValue(typeDescCPIndex, typeDesc);
-                attributeValue.setFloatValue(floatCPEntry.getValue());
-                break;
-            case TypeSignature.SIG_STRING:
-                valueCPIndex = dataInStream.readInt();
-                UTF8CPEntry stringCPEntry = (UTF8CPEntry) constantPool.getCPEntry(valueCPIndex);
-                attributeValue = new AnnAttributeValue(typeDescCPIndex, typeDesc);
-                attributeValue.setStringValue(stringCPEntry.getValue());
-                break;
-            default:
-                throw new ProgramFileFormatException("unknown annotation attribute value type " + typeDesc);
-        }
-
-        return attributeValue;
+    private boolean readBoolean(DataInputStream codeStream) throws IOException {
+        return codeStream.readInt() == 1;
     }
 
     private void readInstructions(DataInputStream dataInStream,
@@ -1359,6 +1278,7 @@ public class ProgramFileReader {
             int i, j, k, h;
             int funcRefCPIndex;
             FunctionRefCPEntry funcRefCPEntry;
+            int flags;
             int[] argRegs;
             int[] retRegs;
 
@@ -1366,8 +1286,6 @@ public class ProgramFileReader {
             switch (opcode) {
                 case InstructionCodes.HALT:
                 case InstructionCodes.RET:
-                case InstructionCodes.WRKSTART:
-                case InstructionCodes.WRKRETURN:
                     packageInfo.addInstruction(InstructionFactory.get(opcode));
                     break;
 
@@ -1389,11 +1307,25 @@ public class ProgramFileReader {
                 case InstructionCodes.GOTO:
                 case InstructionCodes.THROW:
                 case InstructionCodes.ERRSTORE:
-                case InstructionCodes.NEWMAP:
+                case InstructionCodes.NEWXMLSEQ:
                     i = codeStream.readInt();
                     packageInfo.addInstruction(InstructionFactory.get(opcode, i));
                     break;
 
+                case InstructionCodes.FPLOAD: {
+                    i = codeStream.readInt();
+                    j = codeStream.readInt();
+                    k = codeStream.readInt();
+                    int[] operands = new int[3 + (k * 2)];
+                    operands[0] = i;
+                    operands[1] = j;
+                    operands[2] = k;
+                    for (int x = 0; x < (k * 2); x++) {
+                        operands[x + 3] = codeStream.readInt();
+                    }
+                    packageInfo.addInstruction(InstructionFactory.get(opcode, operands));
+                    break;
+                }
                 case InstructionCodes.ICONST:
                 case InstructionCodes.FCONST:
                 case InstructionCodes.SCONST:
@@ -1409,12 +1341,6 @@ public class ProgramFileReader {
                 case InstructionCodes.BGLOAD:
                 case InstructionCodes.LGLOAD:
                 case InstructionCodes.RGLOAD:
-                case InstructionCodes.ISTORE:
-                case InstructionCodes.FSTORE:
-                case InstructionCodes.SSTORE:
-                case InstructionCodes.BSTORE:
-                case InstructionCodes.LSTORE:
-                case InstructionCodes.RSTORE:
                 case InstructionCodes.IGSTORE:
                 case InstructionCodes.FGSTORE:
                 case InstructionCodes.SGSTORE:
@@ -1428,10 +1354,7 @@ public class ProgramFileReader {
                 case InstructionCodes.RNE_NULL:
                 case InstructionCodes.BR_TRUE:
                 case InstructionCodes.BR_FALSE:
-                case InstructionCodes.TR_RETRY:
-                case InstructionCodes.TR_BEGIN:
                 case InstructionCodes.TR_END:
-                case InstructionCodes.FPLOAD:
                 case InstructionCodes.ARRAYLEN:
                 case InstructionCodes.INEWARRAY:
                 case InstructionCodes.FNEWARRAY:
@@ -1441,7 +1364,6 @@ public class ProgramFileReader {
                 case InstructionCodes.RNEWARRAY:
                 case InstructionCodes.JSONNEWARRAY:
                 case InstructionCodes.NEWSTRUCT:
-                case InstructionCodes.NEWCONNECTOR:
                 case InstructionCodes.ITR_NEW:
                 case InstructionCodes.ITR_HAS_NEXT:
                 case InstructionCodes.IRET:
@@ -1453,79 +1375,13 @@ public class ProgramFileReader {
                 case InstructionCodes.XML2XMLATTRS:
                 case InstructionCodes.NEWXMLCOMMENT:
                 case InstructionCodes.NEWXMLTEXT:
-                case InstructionCodes.XMLSTORE:
+                case InstructionCodes.XMLSEQSTORE:
                 case InstructionCodes.TYPEOF:
                 case InstructionCodes.TYPELOAD:
                 case InstructionCodes.SEQ_NULL:
                 case InstructionCodes.SNE_NULL:
                 case InstructionCodes.NEWJSON:
-                case InstructionCodes.NEWTABLE:
-                    i = codeStream.readInt();
-                    j = codeStream.readInt();
-                    packageInfo.addInstruction(InstructionFactory.get(opcode, i, j));
-                    break;
-
-                case InstructionCodes.IALOAD:
-                case InstructionCodes.FALOAD:
-                case InstructionCodes.SALOAD:
-                case InstructionCodes.BALOAD:
-                case InstructionCodes.LALOAD:
-                case InstructionCodes.RALOAD:
-                case InstructionCodes.JSONALOAD:
-                case InstructionCodes.IASTORE:
-                case InstructionCodes.FASTORE:
-                case InstructionCodes.SASTORE:
-                case InstructionCodes.BASTORE:
-                case InstructionCodes.LASTORE:
-                case InstructionCodes.RASTORE:
-                case InstructionCodes.JSONASTORE:
-                case InstructionCodes.IFIELDLOAD:
-                case InstructionCodes.FFIELDLOAD:
-                case InstructionCodes.SFIELDLOAD:
-                case InstructionCodes.BFIELDLOAD:
-                case InstructionCodes.LFIELDLOAD:
-                case InstructionCodes.RFIELDLOAD:
-                case InstructionCodes.IFIELDSTORE:
-                case InstructionCodes.FFIELDSTORE:
-                case InstructionCodes.SFIELDSTORE:
-                case InstructionCodes.BFIELDSTORE:
-                case InstructionCodes.LFIELDSTORE:
-                case InstructionCodes.RFIELDSTORE:
-                case InstructionCodes.MAPLOAD:
-                case InstructionCodes.MAPSTORE:
-                case InstructionCodes.JSONLOAD:
-                case InstructionCodes.JSONSTORE:
-                case InstructionCodes.ENUMERATORLOAD:
-                case InstructionCodes.IADD:
-                case InstructionCodes.FADD:
-                case InstructionCodes.SADD:
-                case InstructionCodes.XMLADD:
-                case InstructionCodes.ISUB:
-                case InstructionCodes.FSUB:
-                case InstructionCodes.IMUL:
-                case InstructionCodes.FMUL:
-                case InstructionCodes.IDIV:
-                case InstructionCodes.FDIV:
-                case InstructionCodes.IMOD:
-                case InstructionCodes.FMOD:
-                case InstructionCodes.IEQ:
-                case InstructionCodes.FEQ:
-                case InstructionCodes.SEQ:
-                case InstructionCodes.BEQ:
-                case InstructionCodes.REQ:
-                case InstructionCodes.INE:
-                case InstructionCodes.FNE:
-                case InstructionCodes.SNE:
-                case InstructionCodes.BNE:
-                case InstructionCodes.RNE:
-                case InstructionCodes.IGT:
-                case InstructionCodes.FGT:
-                case InstructionCodes.IGE:
-                case InstructionCodes.FGE:
-                case InstructionCodes.ILT:
-                case InstructionCodes.FLT:
-                case InstructionCodes.ILE:
-                case InstructionCodes.FLE:
+                case InstructionCodes.NEWMAP:
                 case InstructionCodes.I2ANY:
                 case InstructionCodes.F2ANY:
                 case InstructionCodes.S2ANY:
@@ -1565,10 +1421,83 @@ public class ProgramFileReader {
                 case InstructionCodes.DT2XML:
                 case InstructionCodes.DT2JSON:
                 case InstructionCodes.T2MAP:
-                case InstructionCodes.T2JSON:
                 case InstructionCodes.XML2JSON:
                 case InstructionCodes.JSON2XML:
                 case InstructionCodes.XMLATTRS2MAP:
+                case InstructionCodes.ANY2SCONV:
+                case InstructionCodes.S2XML:
+                case InstructionCodes.XML2S:
+                case InstructionCodes.S2JSONX:
+                case InstructionCodes.NULL2S:
+                case InstructionCodes.AWAIT:
+                case InstructionCodes.CHECK_CONVERSION:
+                case InstructionCodes.XMLLOADALL:
+                case InstructionCodes.ARRAY2JSON:
+                    i = codeStream.readInt();
+                    j = codeStream.readInt();
+                    packageInfo.addInstruction(InstructionFactory.get(opcode, i, j));
+                    break;
+
+                case InstructionCodes.IALOAD:
+                case InstructionCodes.FALOAD:
+                case InstructionCodes.SALOAD:
+                case InstructionCodes.BALOAD:
+                case InstructionCodes.LALOAD:
+                case InstructionCodes.RALOAD:
+                case InstructionCodes.JSONALOAD:
+                case InstructionCodes.IASTORE:
+                case InstructionCodes.FASTORE:
+                case InstructionCodes.SASTORE:
+                case InstructionCodes.BASTORE:
+                case InstructionCodes.LASTORE:
+                case InstructionCodes.RASTORE:
+                case InstructionCodes.JSONASTORE:
+                case InstructionCodes.IFIELDLOAD:
+                case InstructionCodes.FFIELDLOAD:
+                case InstructionCodes.SFIELDLOAD:
+                case InstructionCodes.BFIELDLOAD:
+                case InstructionCodes.LFIELDLOAD:
+                case InstructionCodes.RFIELDLOAD:
+                case InstructionCodes.IFIELDSTORE:
+                case InstructionCodes.FFIELDSTORE:
+                case InstructionCodes.SFIELDSTORE:
+                case InstructionCodes.BFIELDSTORE:
+                case InstructionCodes.LFIELDSTORE:
+                case InstructionCodes.RFIELDSTORE:
+                case InstructionCodes.MAPLOAD:
+                case InstructionCodes.MAPSTORE:
+                case InstructionCodes.JSONLOAD:
+                case InstructionCodes.JSONSTORE:
+                case InstructionCodes.IADD:
+                case InstructionCodes.FADD:
+                case InstructionCodes.SADD:
+                case InstructionCodes.XMLADD:
+                case InstructionCodes.ISUB:
+                case InstructionCodes.FSUB:
+                case InstructionCodes.IMUL:
+                case InstructionCodes.FMUL:
+                case InstructionCodes.IDIV:
+                case InstructionCodes.FDIV:
+                case InstructionCodes.IMOD:
+                case InstructionCodes.FMOD:
+                case InstructionCodes.IEQ:
+                case InstructionCodes.FEQ:
+                case InstructionCodes.SEQ:
+                case InstructionCodes.BEQ:
+                case InstructionCodes.REQ:
+                case InstructionCodes.INE:
+                case InstructionCodes.FNE:
+                case InstructionCodes.SNE:
+                case InstructionCodes.BNE:
+                case InstructionCodes.RNE:
+                case InstructionCodes.IGT:
+                case InstructionCodes.FGT:
+                case InstructionCodes.IGE:
+                case InstructionCodes.FGE:
+                case InstructionCodes.ILT:
+                case InstructionCodes.FLT:
+                case InstructionCodes.ILE:
+                case InstructionCodes.FLE:
                 case InstructionCodes.XMLATTRLOAD:
                 case InstructionCodes.XMLATTRSTORE:
                 case InstructionCodes.S2QNAME:
@@ -1576,26 +1505,31 @@ public class ProgramFileReader {
                 case InstructionCodes.TEQ:
                 case InstructionCodes.TNE:
                 case InstructionCodes.XMLLOAD:
-                case InstructionCodes.S2XML:
-                case InstructionCodes.XML2S:
-                case InstructionCodes.S2JSONX:
-                case InstructionCodes.NULL2S:
                 case InstructionCodes.NEW_INT_RANGE:
                 case InstructionCodes.LENGTHOF:
-                case InstructionCodes.ANY2SCONV:
+                case InstructionCodes.NEWSTREAM:
+                case InstructionCodes.CHECKCAST:
+                case InstructionCodes.MAP2T:
+                case InstructionCodes.JSON2T:
+                case InstructionCodes.ANY2T:
+                case InstructionCodes.ANY2C:
+                case InstructionCodes.ANY2E:
+                case InstructionCodes.IS_ASSIGNABLE:
+                case InstructionCodes.TR_RETRY:
+                case InstructionCodes.XMLSEQLOAD:
+                case InstructionCodes.NEWTABLE:
+                case InstructionCodes.T2JSON:
+                case InstructionCodes.MAP2JSON:
+                case InstructionCodes.JSON2MAP:
+                case InstructionCodes.JSON2ARRAY:
                     i = codeStream.readInt();
                     j = codeStream.readInt();
                     k = codeStream.readInt();
                     packageInfo.addInstruction(InstructionFactory.get(opcode, i, j, k));
                     break;
-                case InstructionCodes.ANY2E:
-                case InstructionCodes.ANY2T:
-                case InstructionCodes.ANY2C:
-                case InstructionCodes.CHECKCAST:
-                case InstructionCodes.MAP2T:
-                case InstructionCodes.JSON2T:
                 case InstructionCodes.NEWQNAME:
                 case InstructionCodes.NEWXMLELEMENT:
+                case InstructionCodes.TR_BEGIN:
                     i = codeStream.readInt();
                     j = codeStream.readInt();
                     k = codeStream.readInt();
@@ -1605,39 +1539,37 @@ public class ProgramFileReader {
 
                 case InstructionCodes.CALL:
                     funcRefCPIndex = codeStream.readInt();
+                    flags = codeStream.readInt();
                     funcRefCPEntry = (FunctionRefCPEntry) packageInfo.getCPEntry(funcRefCPIndex);
                     packageInfo.addInstruction(new InstructionCALL(opcode, funcRefCPIndex,
-                            funcRefCPEntry.getFunctionInfo(), getArgRegs(codeStream), getArgRegs(codeStream)));
+                            funcRefCPEntry.getFunctionInfo(), flags, getArgRegs(codeStream), getArgRegs(codeStream)));
                     break;
                 case InstructionCodes.VCALL:
                     int receiverRegIndex = codeStream.readInt();
                     funcRefCPIndex = codeStream.readInt();
+                    flags = codeStream.readInt();
                     funcRefCPEntry = (FunctionRefCPEntry) packageInfo.getCPEntry(funcRefCPIndex);
                     packageInfo.addInstruction(new InstructionVCALL(opcode, receiverRegIndex, funcRefCPIndex,
-                            funcRefCPEntry.getFunctionInfo(), getArgRegs(codeStream), getArgRegs(codeStream)));
-                    break;
-                case InstructionCodes.ACALL:
-                    int actionRefCPIndex = codeStream.readInt();
-                    ActionRefCPEntry actionRefCPEntry = (ActionRefCPEntry) packageInfo.getCPEntry(actionRefCPIndex);
-                    packageInfo.addInstruction(new InstructionACALL(opcode, actionRefCPIndex,
-                            actionRefCPEntry.getActionName(), getArgRegs(codeStream), getArgRegs(codeStream)));
+                            funcRefCPEntry.getFunctionInfo(), flags, getArgRegs(codeStream), getArgRegs(codeStream)));
                     break;
                 case InstructionCodes.FPCALL:
                     funcRefCPIndex = codeStream.readInt();
+                    flags = codeStream.readInt();
                     argRegs = getArgRegs(codeStream);
                     retRegs = getArgRegs(codeStream);
 
-                    FunctionCallCPEntry funcCallCPEntry = new FunctionCallCPEntry(argRegs, retRegs);
+                    FunctionCallCPEntry funcCallCPEntry = new FunctionCallCPEntry(flags, argRegs, retRegs);
                     int funcCallCPIndex = packageInfo.addCPEntry(funcCallCPEntry);
 
                     packageInfo.addInstruction(InstructionFactory.get(opcode, funcRefCPIndex, funcCallCPIndex));
                     break;
                 case InstructionCodes.TCALL:
                     int transformCPIndex = codeStream.readInt();
+                    flags = codeStream.readInt();
                     TransformerRefCPEntry transformerRefCPEntry =
                             (TransformerRefCPEntry) packageInfo.getCPEntry(transformCPIndex);
                     packageInfo.addInstruction(new InstructionTCALL(opcode, transformCPIndex,
-                            transformerRefCPEntry.getTransformerInfo(),
+                            transformerRefCPEntry.getTransformerInfo(), flags,
                             getArgRegs(codeStream), getArgRegs(codeStream)));
                     break;
                 case InstructionCodes.WRKSEND:
@@ -1647,9 +1579,9 @@ public class ProgramFileReader {
                             packageInfo.getCPEntry(channelRefCPIndex);
                     int sigCPIndex = codeStream.readInt();
                     UTF8CPEntry sigCPEntry = (UTF8CPEntry) packageInfo.getCPEntry(sigCPIndex);
-                    BType[] bTypes = getParamTypes(sigCPEntry.getValue(), packageInfo);
+                    BType bType = getParamTypes(sigCPEntry.getValue(), packageInfo)[0];
                     packageInfo.addInstruction(new InstructionWRKSendReceive(opcode, channelRefCPIndex,
-                            channelRefCPEntry.getWorkerDataChannelInfo(), sigCPIndex, bTypes, getArgRegs(codeStream)));
+                            channelRefCPEntry.getWorkerDataChannelInfo(), sigCPIndex, bType, codeStream.readInt()));
                     break;
                 case InstructionCodes.FORKJOIN:
                     int forkJoinIndexCPIndex = codeStream.readInt();
@@ -1766,42 +1698,30 @@ public class ProgramFileReader {
                 attachedFunctions[count++] = attachedFunction;
                 if (structInfo.initializer == attachedFuncInfo) {
                     structType.initializer = attachedFunction;
+                } else if (structInfo.defaultsValuesInitFunc == attachedFuncInfo) {
+                    structType.defaultsValuesInitFunc = attachedFunction;
                 }
             }
             structType.setAttachedFunctions(attachedFunctions);
         }
-    }
 
-    private void resolveConnectorMethodTables(PackageInfo packageInfo) {
-        ConnectorInfo[] connectorInfoEntries = packageInfo.getConnectorInfoEntries();
-        for (ConnectorInfo connectorInfo : connectorInfoEntries) {
-            BConnectorType connectorType = connectorInfo.getType();
-
-            VarTypeCountAttributeInfo attributeInfo = (VarTypeCountAttributeInfo)
-                    connectorInfo.getAttributeInfo(AttributeInfo.Kind.VARIABLE_TYPE_COUNT_ATTRIBUTE);
-            connectorType.setFieldTypeCount(attributeInfo.getVarTypeCount());
-
-            Map<Integer, Integer> methodTableInteger = connectorInfo.getMethodTableIndex();
-            Map<BConnectorType, ConnectorInfo> methodTableType = new HashMap<>();
-            for (Integer key : methodTableInteger.keySet()) {
-                int keyType = methodTableInteger.get(key);
-                TypeRefCPEntry typeRefCPEntry = (TypeRefCPEntry) packageInfo.getCPEntry(key);
-                StructureRefCPEntry structureRefCPEntry = (StructureRefCPEntry) packageInfo.getCPEntry(keyType);
-                ConnectorInfo connectorInfoType = (ConnectorInfo) structureRefCPEntry.getStructureTypeInfo();
-                methodTableType.put((BConnectorType) typeRefCPEntry.getType(), connectorInfoType);
-            }
-
-            connectorInfo.setMethodTableType(methodTableType);
-
-            for (ActionInfo actionInfo : connectorInfo.getActionInfoEntries()) {
-                setCallableUnitSignature(actionInfo, actionInfo.getSignature(), packageInfo);
+        for (ConstantPoolEntry cpEntry : unresolvedCPEntries) {
+            switch (cpEntry.getEntryType()) {
+                case CP_ENTRY_TYPE_REF:
+                    TypeRefCPEntry typeRefCPEntry = (TypeRefCPEntry) cpEntry;
+                    String typeSig = typeRefCPEntry.getTypeSig();
+                    BType bType = getBTypeFromDescriptor(typeSig);
+                    typeRefCPEntry.setType(bType);
+                    break;
+                default:
+                    break;
             }
         }
     }
 
-    private StructFieldDefaultValue getDefaultValue(DataInputStream dataInStream, ConstantPool constantPool)
+    private DefaultValue getDefaultValue(DataInputStream dataInStream, ConstantPool constantPool)
             throws IOException {
-        StructFieldDefaultValue defaultValue;
+        DefaultValue defaultValue;
         int typeDescCPIndex = dataInStream.readInt();
         UTF8CPEntry typeDescCPEntry = (UTF8CPEntry) constantPool.getCPEntry(typeDescCPIndex);
         String typeDesc = typeDescCPEntry.getValue();
@@ -1810,31 +1730,61 @@ public class ProgramFileReader {
         switch (typeDesc) {
             case TypeSignature.SIG_BOOLEAN:
                 boolean boolValue = dataInStream.readBoolean();
-                defaultValue = new StructFieldDefaultValue(typeDescCPIndex, typeDesc);
+                defaultValue = new DefaultValue(typeDescCPIndex, typeDesc);
                 defaultValue.setBooleanValue(boolValue);
                 break;
             case TypeSignature.SIG_INT:
                 valueCPIndex = dataInStream.readInt();
                 IntegerCPEntry integerCPEntry = (IntegerCPEntry) constantPool.getCPEntry(valueCPIndex);
-                defaultValue = new StructFieldDefaultValue(typeDescCPIndex, typeDesc);
+                defaultValue = new DefaultValue(typeDescCPIndex, typeDesc);
                 defaultValue.setIntValue(integerCPEntry.getValue());
                 break;
             case TypeSignature.SIG_FLOAT:
                 valueCPIndex = dataInStream.readInt();
                 FloatCPEntry floatCPEntry = (FloatCPEntry) constantPool.getCPEntry(valueCPIndex);
-                defaultValue = new StructFieldDefaultValue(typeDescCPIndex, typeDesc);
+                defaultValue = new DefaultValue(typeDescCPIndex, typeDesc);
                 defaultValue.setFloatValue(floatCPEntry.getValue());
                 break;
             case TypeSignature.SIG_STRING:
                 valueCPIndex = dataInStream.readInt();
                 UTF8CPEntry stringCPEntry = (UTF8CPEntry) constantPool.getCPEntry(valueCPIndex);
-                defaultValue = new StructFieldDefaultValue(typeDescCPIndex, typeDesc);
+                defaultValue = new DefaultValue(typeDescCPIndex, typeDesc);
                 defaultValue.setStringValue(stringCPEntry.getValue());
                 break;
             default:
                 throw new ProgramFileFormatException("unknown default value type " + typeDesc);
         }
         return defaultValue;
+    }
+
+    private BValue getDefaultValueToBValue(DefaultValue defaultValue)
+            throws IOException {
+        String typeDesc = defaultValue.getTypeDesc();
+        BValue value;
+
+        switch (typeDesc) {
+            case TypeSignature.SIG_BOOLEAN:
+                boolean boolValue = defaultValue.getBooleanValue();
+                value = new BBoolean(boolValue);
+                break;
+            case TypeSignature.SIG_INT:
+                long intValue = defaultValue.getIntValue();
+                value = new BInteger(intValue);
+                break;
+            case TypeSignature.SIG_FLOAT:
+                double floatValue = defaultValue.getFloatValue();
+                value = new BFloat(floatValue);
+                break;
+            case TypeSignature.SIG_STRING:
+                String stringValue = defaultValue.getStringValue();
+                value = new BString(stringValue);
+                break;
+            default:
+                throw new ProgramFileFormatException("unknown default value type " + typeDesc);
+
+        }
+
+        return value;
     }
 
     private int[] getArgRegs(DataInputStream codeStream) throws IOException {

@@ -17,9 +17,36 @@
  */
 
 import _ from 'lodash';
-import ExpressionNode from '../expression-node';
+import Node from '../node';
 
-class AbstractInvocationNode extends ExpressionNode {
+class AbstractInvocationNode extends Node {
+
+
+    setExpression(newValue, silent, title) {
+        const oldValue = this.expression;
+        title = (_.isNil(title)) ? `Modify ${this.kind}` : title;
+        this.expression = newValue;
+
+        this.expression.parent = this;
+
+        if (!silent) {
+            this.trigger('tree-modified', {
+                origin: this,
+                type: 'modify-node',
+                title,
+                data: {
+                    attributeName: 'expression',
+                    newValue,
+                    oldValue,
+                },
+            });
+        }
+    }
+
+    getExpression() {
+        return this.expression;
+    }
+
 
 
     setPackageAlias(newValue, silent, title) {
@@ -47,31 +74,6 @@ class AbstractInvocationNode extends ExpressionNode {
         return this.packageAlias;
     }
 
-
-    setExpression(newValue, silent, title) {
-        const oldValue = this.expression;
-        title = (_.isNil(title)) ? `Modify ${this.kind}` : title;
-        this.expression = newValue;
-
-        this.expression.parent = this;
-
-        if (!silent) {
-            this.trigger('tree-modified', {
-                origin: this,
-                type: 'modify-node',
-                title,
-                data: {
-                    attributeName: 'expression',
-                    newValue,
-                    oldValue,
-                },
-            });
-        }
-    }
-
-    getExpression() {
-        return this.expression;
-    }
 
 
     setArgumentExpressions(newValue, silent, title) {
@@ -218,6 +220,76 @@ class AbstractInvocationNode extends ExpressionNode {
         return this.name;
     }
 
+
+
+
+    isAsync() {
+        return this.async;
+    }
+
+    setAsync(newValue, silent, title) {
+        const oldValue = this.async;
+        title = (_.isNil(title)) ? `Modify ${this.kind}` : title;
+        this.async = newValue;
+        if (!silent) {
+            this.trigger('tree-modified', {
+                origin: this,
+                type: 'modify-node',
+                title,
+                data: {
+                    attributeName: 'async',
+                    newValue,
+                    oldValue,
+                },
+            });
+        }
+    }
+
+
+    isIterableOperation() {
+        return this.iterableOperation;
+    }
+
+    setIterableOperation(newValue, silent, title) {
+        const oldValue = this.iterableOperation;
+        title = (_.isNil(title)) ? `Modify ${this.kind}` : title;
+        this.iterableOperation = newValue;
+        if (!silent) {
+            this.trigger('tree-modified', {
+                origin: this,
+                type: 'modify-node',
+                title,
+                data: {
+                    attributeName: 'iterableOperation',
+                    newValue,
+                    oldValue,
+                },
+            });
+        }
+    }
+
+
+    isActionInvocation() {
+        return this.actionInvocation;
+    }
+
+    setActionInvocation(newValue, silent, title) {
+        const oldValue = this.actionInvocation;
+        title = (_.isNil(title)) ? `Modify ${this.kind}` : title;
+        this.actionInvocation = newValue;
+        if (!silent) {
+            this.trigger('tree-modified', {
+                origin: this,
+                type: 'modify-node',
+                title,
+                data: {
+                    attributeName: 'actionInvocation',
+                    newValue,
+                    oldValue,
+                },
+            });
+        }
+    }
 
 }
 

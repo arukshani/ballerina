@@ -19,7 +19,6 @@ package org.ballerinalang.test.connectors.sql;
 import org.ballerinalang.launcher.util.BCompileUtil;
 import org.ballerinalang.launcher.util.BRunUtil;
 import org.ballerinalang.launcher.util.CompileResult;
-import org.ballerinalang.model.values.BString;
 import org.ballerinalang.model.values.BValue;
 import org.ballerinalang.test.utils.SQLDBUtils;
 import org.testng.Assert;
@@ -47,57 +46,64 @@ public class SQLConnectorInitTest {
     @Test
     public void testConnectorWithDefaultPropertiesForListedDB() {
          BValue[] returns = BRunUtil.invoke(result, "testConnectorWithDefaultPropertiesForListedDB");
-         BString retValue = (BString) returns[0];
          final String expected = "[{\"FIRSTNAME\":\"Peter\"}]";
-         Assert.assertEquals(retValue.stringValue(), expected);
-     }
+         Assert.assertEquals(returns[0].stringValue(), expected);
+    }
 
     @Test
-    public void testConnectorWithDirectUrl() {
-        BValue[] returns = BRunUtil.invoke(result, "testConnectorWithDirectUrl");
-        BString retValue = (BString) returns[0];
-        final String expected = "[{\"FIRSTNAME\":\"Peter\"}]";
-        Assert.assertEquals(retValue.stringValue(), expected);
+    public void testConnectorWithWorkers() {
+         BValue[] returns = BRunUtil.invoke(result, "testConnectorWithWorkers");
+         final String expected = "[{\"FIRSTNAME\":\"Peter\"}]";
+         Assert.assertEquals(returns[0].stringValue(), expected);
     }
 
     @Test
     public void testConnectorWithDataSourceClass() {
         BValue[] returns = BRunUtil.invoke(result, "testConnectorWithDataSourceClass");
-        BString retValue = (BString) returns[0];
         final String expected = "[{\"FIRSTNAME\":\"Peter\"}]";
-        Assert.assertEquals(retValue.stringValue(), expected);
+        Assert.assertEquals(returns[0].stringValue(), expected);
     }
 
     @Test
     public void testConnectorWithDataSourceClassAndProps() {
         BValue[] returns = BRunUtil.invoke(result, "testConnectorWithDataSourceClassAndProps");
-        BString retValue = (BString) returns[0];
         final String expected = "[{\"FIRSTNAME\":\"Peter\"}]";
-        Assert.assertEquals(retValue.stringValue(), expected);
+        Assert.assertEquals(returns[0].stringValue(), expected);
     }
 
     @Test
     public void testConnectorWithDataSourceClassWithoutURL() {
         BValue[] returns = BRunUtil.invoke(result, "testConnectorWithDataSourceClassWithoutURL");
-        BString retValue = (BString) returns[0];
         final String expected = "[{\"FIRSTNAME\":\"Peter\"}]";
-        Assert.assertEquals(retValue.stringValue(), expected);
+        Assert.assertEquals(returns[0].stringValue(), expected);
     }
 
     @Test
     public void testConnectorWithDataSourceClassURLPriority() {
         BValue[] returns = BRunUtil.invoke(result, "testConnectorWithDataSourceClassURLPriority");
-        BString retValue = (BString) returns[0];
         final String expected = "[{\"FIRSTNAME\":\"Peter\"}]";
-        Assert.assertEquals(retValue.stringValue(), expected);
+        Assert.assertEquals(returns[0].stringValue(), expected);
     }
 
     @Test
-    public void testConnectionPoolProperties() {
-        BValue[] returns = BRunUtil.invoke(result, "testConnectionPoolProperties");
-        BString retValue = (BString) returns[0];
+    public void testConnectionPoolProperties1() {
+        BValue[] returns = BRunUtil.invoke(result, "testConnectionPoolProperties1");
         final String expected = "[{\"FIRSTNAME\":\"Peter\"}]";
-        Assert.assertEquals(retValue.stringValue(), expected);
+        Assert.assertEquals(returns[0].stringValue(), expected);
+    }
+
+    @Test
+    public void testConnectionPoolProperties2() {
+        BValue[] returns = BRunUtil.invoke(result, "testConnectionPoolProperties2");
+        final String expected = "[{\"FIRSTNAME\":\"Peter\"}]";
+        Assert.assertEquals(returns[0].stringValue(), expected);
+    }
+
+    @Test
+    public void testConnectionPoolProperties3() {
+        BValue[] returns = BRunUtil.invoke(result, "testConnectionPoolProperties3");
+        final String expected = "[{\"FIRSTNAME\":\"Peter\"}]";
+        Assert.assertEquals(returns[0].stringValue(), expected);
     }
 
 

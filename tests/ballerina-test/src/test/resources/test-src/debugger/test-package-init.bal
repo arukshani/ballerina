@@ -1,6 +1,6 @@
-import ballerina.io;
+import ballerina/io;
 
-const int val1 = calculateExp5(15, 10);
+@final int val1 = calculateExp5(15, 10);
 
 int val2 = calculateExp5(20, 19);
 
@@ -9,7 +9,7 @@ function main(string[] args) {
     io:println("package init - " + cal);
 }
 
-function calculateExp5(int x, int y) (int) {
+function calculateExp5(int x, int y) returns (int) {
     int z;
     while(x >= y) {
         y = y + 1;

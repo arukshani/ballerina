@@ -1,9 +1,21 @@
-import ballerina.net.http;
-
-service<http> helloWorld {
-
-    resource sayHello(http:InRequest req, http:InResponse res) {
-        http:OutResponse resp = {};
-        return resp;
+service<DummyService> helloWorld {
+    sayHello(string x) {
+        return x;
     }
 }
+
+type Config {
+};
+
+type DummyEndpoint object {
+
+    function init (Config conf)  {
+    }
+};
+type DummyService object{
+
+    function getEndpoint() returns (DummyEndpoint) {
+        DummyEndpoint ep = new;
+        return ep;
+    }
+};

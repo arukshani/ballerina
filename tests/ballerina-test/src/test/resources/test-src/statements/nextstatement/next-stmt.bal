@@ -1,8 +1,9 @@
-function calculateExp1 (int x, int y) (int) {
+function calculateExp1 (int x, int y) returns (int) {
     int z = 0;
-    while (x > y) {
-        y = y + 1;
-        if (y == 10) {
+    int yCopy = y;
+    while (x > yCopy) {
+        yCopy = yCopy + 1;
+        if (yCopy == 10) {
             next;
         }
         z = z + 1;
@@ -10,15 +11,16 @@ function calculateExp1 (int x, int y) (int) {
     return z;
 }
 
-function nestedNextStmt (int x, int y) (int) {
+function nestedNextStmt (int x, int y) returns (int) {
     int z = 0;
-    while (x >= y) {
-        y = y + 1;
+    int yCopy = y;
+    while (x >= yCopy) {
+        yCopy = yCopy + 1;
         int i = 0;
-        if (y == 10) {
+        if (yCopy == 10) {
             next;
         }
-        while (i < y) {
+        while (i < yCopy) {
             i = i + 1;
             if (i == 10) {
                 next;
@@ -35,7 +37,7 @@ function tracePath (string path) {
     output = output + "->" + path;
 }
 
-function testFinallyWithWhile (string command) (string) {
+function testFinallyWithWhile (string command) returns (string) {
     output = "start";
     int i = 0;
     while (i < 5) {
@@ -56,9 +58,9 @@ function testFinallyWithWhile (string command) (string) {
     return output;
 }
 
-function testFinallyWithForeach (string command) (string) {
+function testFinallyWithForeach (string command) returns (string) {
     output = "start";
-    foreach i in 0..5 {
+    foreach i in [ 0..5 ] {
         tracePath("foreach" + i);
         try {
             tracePath("try" + i);

@@ -2,8 +2,8 @@
     "name": "ballerina",
     "displayName": "Ballerina",
     "description": " Ballerina is a flexible, powerful, beautiful programming language designed for integration",
-    "version": "0.963.1-SNAPSHOT",
-    "publisher": "WSO2",
+    "version": "0.970.0-alpha4-SNAPSHOT",
+    "publisher": "ballerina",
     "repository": {
         "type": "git",
         "url": "https://github.com/ballerina-lang/ballerina"
@@ -36,7 +36,7 @@
             {
                 "language": "ballerina",
                 "scopeName": "source.ballerina",
-                "path": "./syntaxes/ballerina.tmLanguage"
+                "path": "./ballerina-grammar/syntaxes/ballerina.tmLanguage"
             }
         ],
         "configuration": {
@@ -50,6 +50,13 @@
                     ],
                     "default": null,
                     "description": "Specifies the path to the ballerina sdk"
+                },
+                "ballerina.showLSErrors": {
+                    "type": [
+                        "boolean"
+                    ],
+                    "default": false,
+                    "description": "If set to true the language server's error log will be printed in the plugins console"
                 }
             }
         },
@@ -99,6 +106,11 @@
                             "script": {
                                 "type": "string",
                                 "default": "${file}"
+                            },
+                            "debugServerTimeout": {
+                                "type": "integer",
+                                "default": 5000,
+                                "description": "How long to wait for the debug server to start up in miliseconds"
                             }
                         }
                     }
@@ -124,6 +136,7 @@
     "main": "./extension.js",
     "scripts": {
         "postinstall": "node ./node_modules/vscode/bin/install",
+        "build:grammar": "tsc -p syntaxes/build && node syntaxes/build/build.js",
         "test": "node ./node_modules/vscode/bin/test",
         "clean": "rimraf server-build target",
         "package": "vsce package"

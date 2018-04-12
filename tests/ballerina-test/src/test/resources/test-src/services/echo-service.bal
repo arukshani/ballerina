@@ -1,36 +1,42 @@
-import ballerina.net.http;
+import ballerina/mime;
+import ballerina/http;
+import ballerina/io;
 
-const string constPath = getConstPath();
+@final string constPath = getConstPath();
 
-struct Person {
-    string name;
-    int age;
-}
+type Person {
+    string name,
+    int age,
+};
 
-@http:configuration {basePath:"/echo"}
-service<http> echo {
+endpoint http:NonListener echoEP {
+    port:9090
+};
+
+@http:ServiceConfig {basePath:"/echo"}
+service<http:Service> echo bind echoEP {
 
     string serviceLevelStr;
 
     string serviceLevelStringVar = "sample value";
 
-    @http:resourceConfig {
+    @http:ResourceConfig {
         methods:["GET"],
         path:"/message"
     }
-    resource echo (http:Connection conn, http:InRequest req) {
-        http:OutResponse res = {};
-        _ = conn.respond(res);
+    echo (endpoint conn, http:Request req) {
+        http:Response res = new;
+        _ = conn -> respond(res);
     }
-    
-    @http:resourceConfig {
+
+    @http:ResourceConfig {
         methods:["GET"],
         path:"/message_worker"
     }
-    resource echo_worker (http:Connection conn, http:InRequest req) {
+    echo_worker (endpoint conn, http:Request req) {
         worker w1 {
-            http:OutResponse res = {};
-            _ = conn.respond(res);
+            http:Response res = new;
+            _ = conn -> respond(res);
         }
         worker w2 {
             int x = 0;
@@ -38,95 +44,110 @@ service<http> echo {
         }
     }
 
-    @http:resourceConfig {
+    @http:ResourceConfig {
         methods:["POST"],
         path:"/setString"
     }
-    resource setString (http:Connection conn, http:InRequest req) {
-        http:OutResponse res = {};
+    setString (endpoint conn, http:Request req) {
+        http:Response res = new;
         string payloadData;
-        payloadData, _ = req.getStringPayload();
+        var payload = req.getStringPayload();
+        match payload {
+            http:PayloadError err => {
+                done;
+            }
+            string s => {
+                payloadData = s;
+            }
+        }
         serviceLevelStr = untaint payloadData;
         //res.setStringPayload(res, serviceLevelStr);
-        _ = conn.respond(res);
+        _ = conn -> respond(res);
     }
 
-    @http:resourceConfig {
+    @http:ResourceConfig {
         methods:["GET"],
         path:"/getString"
     }
-    resource getString (http:Connection conn, http:InRequest req) {
-        http:OutResponse res = {};
+    getString (endpoint conn, http:Request req) {
+        http:Response res = new;
         res.setStringPayload(serviceLevelStr);
-        _ = conn.respond(res);
+        _ = conn -> respond(res);
     }
 
-    @http:resourceConfig {
+    @http:ResourceConfig {
         methods:["GET"]
     }
-    resource removeHeaders (http:Connection conn, http:InRequest req) {
-        http:OutResponse res = {};
+    removeHeaders (endpoint conn, http:Request req) {
+        http:Response res = new;
         res.setHeader("header1", "wso2");
         res.setHeader("header2", "ballerina");
         res.setHeader("header3", "hello");
         res.removeAllHeaders();
-        _ = conn.respond(res);
+        _ = conn -> respond(res);
     }
 
-    @http:resourceConfig {
+    @http:ResourceConfig {
         methods:["GET"],
         path:"/getServiceLevelString"
     }
-    resource getServiceLevelString (http:Connection conn, http:InRequest req) {
-        http:OutResponse res = {};
+    getServiceLevelString (endpoint conn, http:Request req) {
+        http:Response res = new;
         res.setStringPayload(serviceLevelStringVar);
-        _ = conn.respond(res);
+        _ = conn -> respond(res);
     }
 
-    @http:resourceConfig {
+    @http:ResourceConfig {
         methods:["GET"],
         path:constPath
     }
-    resource connstValueAsAttributeValue (http:Connection conn, http:InRequest req) {
-        http:OutResponse res = {};
+    connstValueAsAttributeValue (endpoint conn, http:Request req) {
+        http:Response res = new;
         res.setStringPayload("constant path test");
-        _ = conn.respond(res);
+        _ = conn -> respond(res);
     }
 
-    @http:resourceConfig {
+    @http:ResourceConfig {
         methods:["GET"],
         path:"/testEmptyResourceBody"
     }
-    resource testEmptyResourceBody (http:Connection conn, http:InRequest req) {
+    testEmptyResourceBody (endpoint conn, http:Request req) {
     }
 
-    @http:resourceConfig {
-        methods:["POST"]
+    @http:ResourceConfig {
+        methods:["POST"],
+        path:"/getFormParams"
     }
-    resource getFormParams (http:Connection conn, http:InRequest req) {
-        var params, _ = req.getFormParams();
+    getFormParams (endpoint conn, http:Request req) {
+        var params = req.getFormParams();
         string name;
-        name,_ = (string)params.firstName;
         string team;
-        team,_ = (string)params.team;
+        match params {
+            map p => {
+                name = <string>p.firstName;
+                team = <string>p.team;
+            }
+            http:PayloadError err => {
+                io:print(err);
+            }
+        }
         json responseJson = {"Name":name , "Team":team};
-
-        http:OutResponse res = {};
+        http:Response res = new;
         res.setJsonPayload(responseJson);
-        _ = conn.respond(res);
+        _ = conn -> respond(res);
     }
 
-    @http:resourceConfig {
+    @http:ResourceConfig {
         methods:["PATCH"],
         path:"/modify"
     }
-    resource modify11 (http:Connection conn, http:InRequest req) {
-        http:OutResponse res = {};
+    modify11 (endpoint conn, http:Request req) {
+        http:Response res = new;
         res.statusCode = 204;
-        _ = conn.respond(res);
+        _ = conn -> respond(res);
     }
 }
 
-function getConstPath() (string) {
+function getConstPath() returns (string) {
     return "/constantPath";
 }

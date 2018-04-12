@@ -15,22 +15,19 @@
  */
 package org.ballerinalang.composer.service.ballerina.parser.service.util;
 
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import org.ballerinalang.compiler.CompilerPhase;
 import org.ballerinalang.composer.service.ballerina.parser.service.BLangFragmentParserConstants;
 import org.ballerinalang.composer.service.ballerina.parser.service.BLangJSONModelConstants;
-import org.ballerinalang.composer.service.ballerina.parser.service.BallerinaParserService;
 import org.ballerinalang.composer.service.ballerina.parser.service.model.BLangSourceFragment;
+import org.ballerinalang.langserver.common.utils.CommonUtil;
+import org.ballerinalang.langserver.common.utils.LSParserUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.ballerinalang.compiler.tree.BLangCompilationUnit;
-import org.wso2.ballerinalang.compiler.tree.BLangPackage;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 
 /**
@@ -94,12 +91,15 @@ public class BLangFragmentParser {
             case BLangFragmentParserConstants.TRANSACTION_FAILED:
             case BLangFragmentParserConstants.EXPRESSION:
             case BLangFragmentParserConstants.STATEMENT:
-            case BLangFragmentParserConstants.ENDPOINT_VAR_DEF:
                 // For Expression - 0th child is the var ref expression of var def stmt
                 // For Statement - 0 & 1 are function args and return types, 2 is the statement came from source
                 // fragment
                 fragmentNode = rootConstruct.getAsJsonObject(BLangJSONModelConstants.BODY)
                         .getAsJsonArray(BLangJSONModelConstants.STATEMENTS).get(0).getAsJsonObject();
+                break;
+            case BLangFragmentParserConstants.ENDPOINT_VAR_DEF:
+                fragmentNode = rootConstruct.getAsJsonArray(BLangJSONModelConstants.ENDPOINT_NODES)
+                        .get(0).getAsJsonObject();
                 break;
             case BLangFragmentParserConstants.JOIN_CONDITION:
                 JsonObject bodyJsonObj = rootConstruct.getAsJsonObject(BLangJSONModelConstants.BODY);
@@ -123,21 +123,8 @@ public class BLangFragmentParser {
     }
 
     protected static JsonElement getJsonModel(String source) throws IOException {
-        String fileName = "untitled";
-        BLangCompilationUnit compilationUnit = null;
-        BLangPackage model = ParserUtils.getBallerinaFileForContent(fileName, source, CompilerPhase.DEFINE)
-                .getBLangPackage();
-        if (model != null) {
-            compilationUnit = model.getCompilationUnits().stream().
-                    filter(compUnit -> fileName.equals(compUnit.getName())).findFirst().get();
-        }
-
-        try {
-            return BallerinaParserService.generateJSON(compilationUnit, new HashMap<>());
-        } catch (InvocationTargetException | IllegalAccessException e) {
-            // This should never occur.
-            throw new AssertionError("Error while serializing source to JSON.");
-        }
+        BLangCompilationUnit compilationUnit = LSParserUtils.compileFragment(source);
+        return CommonUtil.generateJSON(compilationUnit, new HashMap<>());
     }
 
     protected static String getParsableString(BLangSourceFragment sourceFragment) {

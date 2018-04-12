@@ -32,7 +32,7 @@ function testTransactionAbort5 () {
     }
 }
 
-function testBreakWithinTransaction () (string) {
+function testBreakWithinTransaction () returns (string) {
     int i = 0;
     while (i < 5) {
         i = i + 1;
@@ -45,7 +45,7 @@ function testBreakWithinTransaction () (string) {
     return "done";
 }
 
-function testNextWithinTransaction () (string) {
+function testNextWithinTransaction () returns (string) {
     int i = 0;
     while (i < 5) {
         i = i + 1;
@@ -56,4 +56,32 @@ function testNextWithinTransaction () (string) {
         }
     }
     return "done";
+}
+
+function testReturnWithinTransaction () returns (string) {
+    int i = 0;
+    while (i < 5) {
+        i = i + 1;
+        transaction {
+            if (i == 2) {
+                return "ff";
+            }
+        }
+    }
+    return "done";
+}
+
+function testInvalidDoneWithinTransaction () {
+    string workerTest = "";
+
+    int i = 0;
+    transaction {
+        workerTest = workerTest + " withinTx";
+        if (i == 0) {
+            workerTest = workerTest + " beforeDone";
+            done;
+        }
+    }
+    workerTest = workerTest + " beforeReturn";
+    return;
 }

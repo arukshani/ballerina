@@ -1,4 +1,4 @@
-import ballerina.runtime;
+import ballerina/runtime;
 
 int[] data = [1, -3, 5, -30, 4, 11, 25, 10];
 int sum = 0;
@@ -30,19 +30,20 @@ function concatBoolean(int index, boolean value){
 }
 
 function concatJSON(int index, json value){
-    output = output + index + ":" + value.toString() + " ";
+    var stringValue = value.toString() but { error => ""};
+    output = output + index + ":" + stringValue + " ";
 }
 
-struct person {
+type person {
     string name;
     int age;
-}
+};
 
 function concatPerson(int index, person value){
     output = output + index + ":" + "name=" +  value.name + ",age=" + value.age + " ";
 }
 
-function testIntArrayWithArityOne ()(int) {
+function testIntArrayWithArityOne () returns (int) {
     sum = 0;
     foreach i in data {
         add(i);
@@ -50,7 +51,7 @@ function testIntArrayWithArityOne ()(int) {
     return sum;
 }
 
-function testIntArrayWithArityTwo ()(string) {
+function testIntArrayWithArityTwo () returns (string) {
     int[] ldata = [1, -3, 5, -30, 4, 11, 25, 10];
     output = "";
     foreach i, v in ldata {
@@ -59,7 +60,7 @@ function testIntArrayWithArityTwo ()(string) {
     return output;
 }
 
-function testIntArrayComplex ()(int, int, string) {
+function testIntArrayComplex () returns (int, int, string) {
     int[] ldata = [1, -3, 5, -30, 4, 11, 25, 10];
     output = "";
     sum = 0;
@@ -76,10 +77,10 @@ function testIntArrayComplex ()(int, int, string) {
             x = x + 1;
         }
     }
-    return sum, negSum, output;
+    return (sum, negSum, output);
 }
 
-function testFloatArrayWithArityOne()(string){
+function testFloatArrayWithArityOne() returns (string){
     float[] fdata = [1.123, -3.35244, 5.23, -30.45, 4.32, 11.56, 25.967, 10.345];
     output = "";
     foreach v in fdata {
@@ -88,7 +89,7 @@ function testFloatArrayWithArityOne()(string){
     return output;
 }
 
-function testFloatArrayWithArityTwo()(string){
+function testFloatArrayWithArityTwo() returns (string){
     float[] fdata = [1.123, -3.35244, 5.23, -30.45, 4.32, 11.56, 25.967, 10.345];
     output = "";
     foreach i, v in fdata {
@@ -97,7 +98,7 @@ function testFloatArrayWithArityTwo()(string){
     return output;
 }
 
-function testStringArrayWithArityOne()(string){
+function testStringArrayWithArityOne() returns (string){
     string[] sdata = ["foo", "bar", "bax" , "baz"];
     output = "";
     foreach v in sdata {
@@ -106,7 +107,7 @@ function testStringArrayWithArityOne()(string){
     return output;
 }
 
-function testStringArrayWithArityTwo()(string){
+function testStringArrayWithArityTwo() returns (string){
     string[] sdata = ["foo", "bar", "bax" , "baz"];
     output = "";
     foreach i, v in sdata {
@@ -115,7 +116,7 @@ function testStringArrayWithArityTwo()(string){
     return output;
 }
 
-function testBooleanArrayWithArityOne()(string){
+function testBooleanArrayWithArityOne() returns (string){
     boolean[] bdata = [true, false, false, false, true, false];
     output = "";
     foreach v in bdata {
@@ -124,7 +125,7 @@ function testBooleanArrayWithArityOne()(string){
     return output;
 }
 
-function testBooleanArrayWithArityTwo()(string){
+function testBooleanArrayWithArityTwo() returns (string){
     boolean[] bdata = [true, false, false, false, true, false];
     output = "";
     foreach i, v in bdata {
@@ -133,7 +134,7 @@ function testBooleanArrayWithArityTwo()(string){
     return output;
 }
 
-function testJSONArrayWithArityOne()(string){
+function testJSONArrayWithArityOne() returns (string){
     json[] jdata = [{ name : "bob", age : 10}, { name : "tom", age : 16}];
     output = "";
     foreach v in jdata {
@@ -142,7 +143,7 @@ function testJSONArrayWithArityOne()(string){
     return output;
 }
 
-function testJSONArrayWithArityTwo()(string){
+function testJSONArrayWithArityTwo() returns (string){
     json[] jdata = [{ name : "bob", age : 10}, { name : "tom", age : 16}];
     output = "";
     foreach i, v in jdata {
@@ -151,7 +152,7 @@ function testJSONArrayWithArityTwo()(string){
     return output;
 }
 
-function testStructArrayWithArityOne()(string){
+function testStructArrayWithArityOne() returns (string){
     person bob = { name : "bob", age : 10};
     person tom = { name : "tom", age : 16};
     person[] tdata = [bob, tom];
@@ -162,7 +163,7 @@ function testStructArrayWithArityOne()(string){
     return output;
 }
 
-function testStructArrayWithArityTwo()(string){
+function testStructArrayWithArityTwo() returns (string){
     person bob = { name : "bob", age : 10};
     person tom = { name : "tom", age : 16};
     person[] tdata = [bob, tom];
@@ -173,7 +174,7 @@ function testStructArrayWithArityTwo()(string){
     return output;
 }
 
-function testArrayInsertInt () (string) {
+function testArrayInsertInt () returns (string) {
     int[] iArray = [0];
     iArray[3] = 3;
     iArray[6] = 6;
@@ -184,7 +185,7 @@ function testArrayInsertInt () (string) {
     return output;
 }
 
-function testArrayInsertString () (string) {
+function testArrayInsertString () returns (string) {
     string[] sArray = ["d0"];
     sArray[3] = "d3";
     sArray[6] = "d6";
@@ -195,7 +196,7 @@ function testArrayInsertString () (string) {
     return output;
 }
 
-function testArrayInsertInForeach () (string) {
+function testArrayInsertInForeach () returns (string) {
     string[] sArray = ["d0", "d1", "d2"];
     output = "";
     foreach i, v in sArray {
@@ -206,7 +207,7 @@ function testArrayInsertInForeach () (string) {
     return output;
 }
 
-function testBreak () (string) {
+function testBreak () returns (string) {
     string[] sArray = ["d0", "d1", "d2"];
     output = "";
     foreach i, v in sArray {
@@ -219,7 +220,7 @@ function testBreak () (string) {
     return output;
 }
 
-function testNext () (string) {
+function testNext () returns (string) {
     string[] sArray = ["d0", "d1", "d2"];
     output = "";
     foreach i, v in sArray {
@@ -232,7 +233,7 @@ function testNext () (string) {
     return output;
 }
 
-function testReturn () (string) {
+function testReturn () returns (string) {
     string[] sArray = ["d0", "d1", "d2"];
     output = "";
     foreach i, v in sArray {
@@ -244,12 +245,13 @@ function testReturn () (string) {
     return output;
 }
 
-function testThrow1 () (string) {
+function testThrow1 () returns (string) {
     output = "";
     try {
         testThrow1Callee();
     } catch (error e) {
-        output = output + e.message;
+        error c = e.cause but { error s => s };
+        output = output + c.message;
     }
     return output;
 }
@@ -267,19 +269,17 @@ function testThrow1Callee () {
     }
 }
 
-function testThrow2 () (string) {
+function testEmptyString () returns (string) {
     output = "";
     try {
-        testThrow2Callee();
+        testEmptyStringCallee();
     } catch (error e) {
         output = output + e.message;
-    } catch (runtime:NullReferenceException e){
-        output = output + "found null";
     }
     return output;
 }
 
-function testThrow2Callee () {
+function testEmptyStringCallee () {
     string[] sArray = ["d0"];
     sArray[1] = "d1";
     sArray[3] = "d3";
@@ -288,12 +288,12 @@ function testThrow2Callee () {
     }
 }
 
-function testNestedWithBreakNext () (string){
+function testNestedWithBreakNext () returns (string){
     output = "";
     string[] sArray = ["d0", "d1", "d2", "d3"];
     foreach i, v in sArray {
         concatString(i, v);
-        foreach j in 1..5 {
+        foreach j in [ 1..5 ] {
             if (j == 4) {
                 break;
             } else if (j == 2) {

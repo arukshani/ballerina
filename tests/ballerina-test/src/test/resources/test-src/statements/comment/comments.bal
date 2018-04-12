@@ -1,6 +1,6 @@
 // Year 2017
-import ballerina.io;
-import ballerina.net.http; // importing http package
+import ballerina/io;
+
 
 function testComments () {
     // defining start name
@@ -16,8 +16,8 @@ function testComments () {
     io:println(x);
     fooFunc("hello","world");
     
-    Day day = Day.MONDAY;
-    if (day == Day.TUESDAY) {
+    Day day = MONDAY;
+    if (day == TUESDAY) {
         io:println("day is wrong!");
     }
 }
@@ -32,39 +32,53 @@ function fooFunc(string a, // foo function
     return;
 }
 
-struct Person { // Person type
+type Person { // Person type
     // name field
-    string name;
+    string name,
 
     // only one field
-}
+};
 
-enum Day { // enum Day
-    // enumerator Monday
-    MONDAY,
-    TUESDAY
-    // only two enumerators
-} // end of enum
+type Day "MONDAY" | "TUESDAY"; // enum Day
+
+@final Day MONDAY = "MONDAY"; // enumerator Monday
+@final Day TUESDAY = "TUESDAY"; // enumerator Tuesday
 
 
-@http:configuration {basePath:"/FooService"} // http config annotation
-service<http> FooService {
+@Description {value:"/FooService"} // http config annotation
+service<DummyService> FooService {
 
-    @http:resourceConfig{ methods:["POST"], // http method post
+    @Description{ value:"POST" // http method post
                           // http resource path 
-                          path:"/fooResource/" 
+
                         }
-        resource fooResource (http:Connection conn, http:InRequest req) {
-            http:OutResponse res = {};
-            var xmlpayload, _ = req.getXmlPayload();
-            res.setXmlPayload(xmlpayload);
-            _ = conn.respond(res);
-    }
+        fooResource (string s) {
+            io:println(s);
+        }
 }
 
-transformer <Person p,string s> {
+//transformer <Person p,string s> {
   // send the name of the person
-  s = p.name;
-}
+//  s = p.name;
+//}
 
 // end of file
+
+type Config {
+    string name,
+};
+
+type DummyEndpoint object {
+
+    function init (Config conf)  {
+    }
+};
+
+
+type DummyService object {
+
+    function getEndpoint() returns (DummyEndpoint) {
+        DummyEndpoint myDummyEndpoint = new;
+        return myDummyEndpoint ;
+    }
+};

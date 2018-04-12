@@ -10,107 +10,116 @@ function concatIntString (int i, string v) {
 
 json j1 = {name:"bob", age:10, pass:true, subjects:[{subject:"maths", marks:75}, {subject:"English", marks:85}]};
 
-function testJSONObject () (string) {
+function testJSONObject () returns (string) {
     output = "";
     foreach j in j1 {
-        concatString(j.toString());
+        concatString(j.toString() but {error => ""});
     }
     return output;
 }
 
-function testJSONArray () (string) {
+function testJSONArray () returns (string) {
     output = "";
     foreach j in j1.subjects {
-        concatString(j.toString());
+        concatString(j.toString() but {error => ""});
     }
     return output;
 }
 
-function testArrayOfJSON () (string) {
+function testArrayOfJSON () returns string | error {
     output = "";
-    var array, _ = (json[]) j1.subjects;
+    json[] array;
+    match <json[]> j1.subjects {
+        json[] arr1 => array = arr1;
+        error err1 => return err1;
+    }
     foreach i, j in array {
-        concatIntString(i, j.toString());
+        concatIntString(i, j.toString() but {error => ""});
     }
     return output;
 }
 
-function testJSONString () (string) {
+function testJSONString () returns (string) {
     output = "";
     foreach j in j1.name {
-        concatString(j.toString());
+        concatString(j.toString() but {error => ""});
     }
     return output;
 }
 
-function testJSONNumber () (string) {
+function testJSONNumber () returns (string) {
     output = "";
     foreach j in j1.age {
-        concatString(j.toString());
+        concatString(j.toString() but {error => ""});
     }
     return output;
 }
 
-function testJSONBoolean () (string) {
+function testJSONBoolean () returns (string) {
     output = "";
     foreach j in j1.pass {
-        concatString(j.toString());
+        concatString(j.toString() but {error => ""});
     }
     return output;
 }
 
-function testJSONNull () (string) {
+function testJSONNull () returns (string) {
     output = "";
     foreach j in j1.city {
-        concatString(j.toString());
+        concatString(j.toString() but {error => ""});
     }
     return output;
 }
 
-struct Protocols {
+type Protocols {
     string data;
     Protocol[] plist;
-}
+};
 
-struct Protocol {
+type Protocol {
     string name;
     string url;
-}
+};
 
-function testJSONToStructCast () (string) {
+function testJSONToStructCast () returns string | error {
     json j = {data:"data", plist:[{name:"a", url:"h1"}, {name:"b", url:"h2"}]};
-    var protocolsData, _ = <Protocols>j;
-    output = "";
-    foreach protocol in protocolsData.plist {
-        concatString(protocol.name + "-" + protocol.url);
+    match <Protocols> j {
+        Protocols p => {
+                output = "";
+                foreach protocol in p.plist {
+                    concatString(protocol.name + "-" + protocol.url);
+                }
+                return output;
+        }
+        error err => return err;
     }
-    return output;
 }
 
-function testAddWhileIteration () (string) {
+function testAddWhileIteration () returns (string) {
     output = "";
     foreach j in j1 {
-        if (j.toString() == "bob") {
+        if (j.toString() but {() => ""} == "bob") {
             j1["lastname"] = "smith";
         }
-        concatString(j.toString());
     }
     foreach j in j1 {
-        concatString(j.toString());
+        concatString(j.toString() but {error => ""});
     }
     return output;
 }
 
-function testDeleteWhileIteration () (string) {
+function testDeleteWhileIteration () returns (string) {
     output = "";
     foreach j in j1 {
-        if (j.toString() == "bob") {
-            j1.remove("subjects");
+        string str = j.toString() but {() => ""};
+        if (str == "bob") {
+           any x = j1.remove("subjects");
         }
-        concatString(j.toString());
+        concatString(str);
     }
+
     foreach j in j1 {
-        concatString(j.toString());
+        concatString(j.toString() but {error => ""});
     }
     return output;
 }

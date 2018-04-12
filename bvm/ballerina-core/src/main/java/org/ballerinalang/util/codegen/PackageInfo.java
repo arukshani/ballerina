@@ -24,6 +24,7 @@ import org.ballerinalang.util.codegen.cpentries.ConstantPool;
 import org.ballerinalang.util.codegen.cpentries.ConstantPoolEntry;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,9 +37,11 @@ import java.util.Map;
  */
 public class PackageInfo implements ConstantPool, AttributeInfoPool {
 
-    private int pkgNameCPIndex;
-    private String pkgPath;
-    private FunctionInfo initFunctionInfo;
+    public int nameCPIndex;
+    public String pkgPath;
+    public int versionCPIndex;
+    public String pkgVersion;
+    private FunctionInfo initFunctionInfo, startFunctionInfo, stopFunctionInfo;
 
     private ConstantPoolEntry[] constPool;
     private List<ConstantPoolEntry> constantPoolEntries = new ArrayList<>();
@@ -52,37 +55,36 @@ public class PackageInfo implements ConstantPool, AttributeInfoPool {
 
     private Map<String, FunctionInfo> functionInfoMap = new LinkedHashMap<>();
 
-    private Map<String, ConnectorInfo> connectorInfoMap = new LinkedHashMap<>();
-
     private Map<String, StructInfo> structInfoMap = new HashMap<>();
-
-    private Map<String, EnumInfo> enumInfoMap = new HashMap<>();
 
     private Map<String, ServiceInfo> serviceInfoMap = new HashMap<>();
 
     private Map<String, StructureTypeInfo> structureTypeInfoMap = new HashMap<>();
 
     private Map<AttributeInfo.Kind, AttributeInfo> attributeInfoMap = new HashMap<>();
-    
+
     private Map<String, TransformerInfo> transformerInfoMap = new LinkedHashMap<>();
+
+    public Map<String, TypeDefinitionInfo> typeDefInfoMap = new HashMap<>();
 
     // cache values.
     ProgramFile programFile;
 
-    public PackageInfo(int packageNameCPIndex, String packageName) {
-        this.pkgNameCPIndex = packageNameCPIndex;
-        this.pkgPath = packageName;
-    }
-
     public int getPkgNameCPIndex() {
-        return pkgNameCPIndex;
+        return nameCPIndex;
     }
 
     public String getPkgPath() {
         return pkgPath;
     }
 
-    // CP
+    public int getPackageVersionCPIndex() {
+        return versionCPIndex;
+    }
+
+    public String getPackageVersion() {
+        return pkgVersion;
+    }
 
     public int addCPEntry(ConstantPoolEntry cpEntry) {
         if (constantPoolEntries.contains(cpEntry)) {
@@ -154,31 +156,17 @@ public class PackageInfo implements ConstantPool, AttributeInfoPool {
         return structInfoMap.values().toArray(new StructInfo[0]);
     }
 
-    public EnumInfo getEnumInfo(String enumName) {
-        return enumInfoMap.get(enumName);
+    public void addTypeDefinitionInfo(String typeDefinitionName, TypeDefinitionInfo typeDefinitionInfo) {
+        typeDefInfoMap.put(typeDefinitionName, typeDefinitionInfo);
+        structureTypeInfoMap.put(typeDefinitionName, typeDefinitionInfo);
     }
 
-    public void addEnumInfo(String enumName, EnumInfo enumInfo) {
-        enumInfoMap.put(enumName, enumInfo);
-        structureTypeInfoMap.put(enumName, enumInfo);
+    public TypeDefinitionInfo[] getTypeDefinitionInfoEntries() {
+        return typeDefInfoMap.values().toArray(new TypeDefinitionInfo[0]);
     }
 
-    public EnumInfo[] getEnumInfoEntries() {
-        return enumInfoMap.values().toArray(new EnumInfo[0]);
-    }
-
-    public ConnectorInfo getConnectorInfo(String connectorName) {
-        return connectorInfoMap.get(connectorName);
-    }
-
-    public void addConnectorInfo(String connectorName, ConnectorInfo connectorInfo) {
-        connectorInfo.setPackageInfo(this);
-        connectorInfoMap.put(connectorName, connectorInfo);
-        structureTypeInfoMap.put(connectorName, connectorInfo);
-    }
-
-    public ConnectorInfo[] getConnectorInfoEntries() {
-        return connectorInfoMap.values().toArray(new ConnectorInfo[0]);
+    public TypeDefinitionInfo getTypeDefinitionInfo(String typeDefName) {
+        return typeDefInfoMap.get(typeDefName);
     }
 
     public ServiceInfo[] getServiceInfoEntries() {
@@ -235,23 +223,33 @@ public class PackageInfo implements ConstantPool, AttributeInfoPool {
         return null;
     }
 
+    /**
+     * This gets the line number info given the IP. The following example can be taken as a reference
+     * to explain the below algorithm.
+     *
+     *     Code Line                           IP
+     *     =======================================
+     *     int a = 1 + 1;                      136
+     *     runtime:CallStackElement trace1;    138
+     *     runtime:CallStackElement trace2;    138
+     *     myFunc(a + 1);                      138
+     *     int x = 1 + 2;                      140
+     *     int g = 1 + 3;                      142
+     *
+     * @param currentIP the current IP
+     * @return the resolved line number information
+     */
     public LineNumberInfo getLineNumberInfo(int currentIP) {
-        LineNumberInfo old = null;
         LineNumberTableAttributeInfo lineNumberTableAttributeInfo = (LineNumberTableAttributeInfo) attributeInfoMap
                 .get(AttributeInfo.Kind.LINE_NUMBER_TABLE_ATTRIBUTE);
-        List<LineNumberInfo> lineNumberInfos = lineNumberTableAttributeInfo.getLineNumberInfoList();
+        List<LineNumberInfo> lineNumberInfos = new ArrayList<>(lineNumberTableAttributeInfo.getLineNumberInfoList());
+        Collections.reverse(lineNumberInfos);
         for (LineNumberInfo lineNumberInfo : lineNumberInfos) {
-            if (currentIP == lineNumberInfo.getIp()) {
-                // best case.
+            if (currentIP >= lineNumberInfo.getIp()) {
                 return lineNumberInfo;
             }
-            if (old != null && currentIP > old.getIp() && currentIP < lineNumberInfo.getIp()) {
-                // TODO : Check condition currentIP > lineNumberInfo.getIP() in different scopes.
-                return old;
-            }
-            old = lineNumberInfo;
         }
-        return old;
+        return null;
     }
 
     public ProgramFile getProgramFile() {
@@ -268,6 +266,22 @@ public class PackageInfo implements ConstantPool, AttributeInfoPool {
 
     public void setInitFunctionInfo(FunctionInfo initFunctionInfo) {
         this.initFunctionInfo = initFunctionInfo;
+    }
+
+    public FunctionInfo getStartFunctionInfo() {
+        return startFunctionInfo;
+    }
+
+    public void setStartFunctionInfo(FunctionInfo startFunctionInfo) {
+        this.startFunctionInfo = startFunctionInfo;
+    }
+
+    public FunctionInfo getStopFunctionInfo() {
+        return stopFunctionInfo;
+    }
+
+    public void setStopFunctionInfo(FunctionInfo stopFunctionInfo) {
+        this.stopFunctionInfo = stopFunctionInfo;
     }
 
     public void complete() {

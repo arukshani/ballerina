@@ -16,7 +16,7 @@
 package org.ballerinalang.langserver.completions.util.positioning.resolvers;
 
 import org.ballerinalang.langserver.DocumentServiceKeys;
-import org.ballerinalang.langserver.TextDocumentServiceContext;
+import org.ballerinalang.langserver.LSServiceOperationContext;
 import org.ballerinalang.langserver.common.utils.CommonUtil;
 import org.ballerinalang.langserver.completions.TreeVisitor;
 import org.ballerinalang.model.tree.Node;
@@ -48,8 +48,8 @@ public class BlockStatementScopeResolver extends CursorPositionResolver {
      * @return true|false
      */
     @Override
-    public boolean isCursorBeforeNode(DiagnosticPos nodePosition, Node node, TreeVisitor treeVisitor,
-                                      TextDocumentServiceContext completionContext) {
+    public boolean isCursorBeforeNode(DiagnosticPos nodePosition, BLangNode node, TreeVisitor treeVisitor,
+                                      LSServiceOperationContext completionContext) {
         int line = completionContext.get(DocumentServiceKeys.POSITION_KEY).getPosition().getLine();
         int col = completionContext.get(DocumentServiceKeys.POSITION_KEY).getPosition().getCharacter();
         DiagnosticPos zeroBasedPos = CommonUtil.toZeroBasedPosition(nodePosition);
@@ -72,6 +72,7 @@ public class BlockStatementScopeResolver extends CursorPositionResolver {
                     treeVisitor.resolveAllVisibleSymbols(treeVisitor.getSymbolEnv());
             treeVisitor.populateSymbols(visibleSymbolEntries, null);
             treeVisitor.setTerminateVisitor(true);
+            treeVisitor.setNextNode(node);
             return true;
         }
 
@@ -171,7 +172,7 @@ public class BlockStatementScopeResolver extends CursorPositionResolver {
 
     private int getTransactionBlockComponentEndLine(BLangTransaction bLangTransaction, BLangBlockStmt bLangBlockStmt) {
         BLangBlockStmt transactionBody = bLangTransaction.transactionBody;
-        BLangBlockStmt failedBody = bLangTransaction.failedBody;
+        BLangBlockStmt failedBody = bLangTransaction.onRetryBody;
 
         List<BLangBlockStmt> components = new ArrayList<>();
         components.add(transactionBody);

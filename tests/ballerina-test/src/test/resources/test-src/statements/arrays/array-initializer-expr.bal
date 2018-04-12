@@ -1,4 +1,4 @@
-function arrayInitTest() (int) {
+function arrayInitTest() returns (int) {
     int[] arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
     int size;
     int index;
@@ -17,7 +17,7 @@ function arrayInitTest() (int) {
     return sum;
 }
 
-function arrayReturnTest() (string[]) {
+function arrayReturnTest() returns (string[]) {
     string[] animals;
 
     animals = ["Lion", "Cat", "Leopard", "Dog", "Tiger", "Croc"];
@@ -25,28 +25,25 @@ function arrayReturnTest() (string[]) {
     return animals;
 }
 
-function testNestedArrayInit() (int[][]) {
+function testNestedArrayInit() returns (int[][]) {
     int[][] array = [[1,2,3], [6,7,8,9]];
             
     return array;
 }
 
-function testArrayOfMapsInit() (map[]) {
+function testArrayOfMapsInit() returns (map[]) {
+    map addressOne = {city:"Colombo", "country":"SriLanka"};
+    map addressTwo = {city:"Kandy", "country":"SriLanka"};
+    map addressThree = {city:"Galle", "country":"SriLanka"};
     map[] array = [
-                     {address:{city:"Colombo", "country":"SriLanka"}},
-                     {address:{city:"Kandy", "country":"SriLanka"}},
-                     {address:{city:"Galle", "country":"SriLanka"}}
+                     {address: addressOne},
+                     {address: addressTwo},
+                     {address: addressThree}
                   ];
-
     return array;
 }
 
-function testAnyAsArray() (any) {
-    any array = [1,2,3];
-    return array;
-}
-
-function floatArrayInitWithInt() (float[]) {
+function floatArrayInitWithInt() returns (float[]) {
     float[] abc = [2,4,5];
     return abc;
 }

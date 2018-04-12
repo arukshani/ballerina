@@ -23,17 +23,10 @@ package org.wso2.ballerinalang.compiler.tree;
  */
 public class BLangAnnotationAttachmentPoint {
 
-    public String pkgPath;
-    public BLangIdentifier pkgAlias;
     public AttachmentPoint attachmentPoint;
 
-    public BLangAnnotationAttachmentPoint(AttachmentPoint attachmentPoint, String pkgPath) {
+    public BLangAnnotationAttachmentPoint(AttachmentPoint attachmentPoint) {
         this.attachmentPoint = attachmentPoint;
-        this.pkgPath = pkgPath;
-    }
-
-    public String getPkgPath() {
-        return pkgPath;
     }
 
     public AttachmentPoint getAttachmentPoint() {
@@ -47,14 +40,7 @@ public class BLangAnnotationAttachmentPoint {
         }
 
         BLangAnnotationAttachmentPoint other = (BLangAnnotationAttachmentPoint) obj;
-        if (!attachmentPoint.equals(other.getAttachmentPoint())) {
-            return false;
-        }
-
-        if (pkgPath != null && !pkgPath.equals(other.getPkgPath())) {
-            return false;
-        }
-        return true;
+        return attachmentPoint.equals(other.getAttachmentPoint());
     }
 
     /**
@@ -63,15 +49,12 @@ public class BLangAnnotationAttachmentPoint {
     public enum AttachmentPoint {
         SERVICE("service"),
         RESOURCE("resource"),
-        CONNECTOR("connector"),
-        ACTION("action"),
         FUNCTION("function"),
-        STRUCT("struct"),
-        ENUM("enum"),
-        CONST("const"),
+        OBJECT("object"),
+        TYPE("type"),
+        ENDPOINT("endpoint"),
         PARAMETER("parameter"),
-        ANNOTATION("annotation"),
-        TRANSFORMER("transformer");
+        ANNOTATION("annotation");
 
         private String value;
 
@@ -88,5 +71,14 @@ public class BLangAnnotationAttachmentPoint {
             return value;
         }
 
-    };
+        public static AttachmentPoint getAttachmentPoint(String value) {
+            for (AttachmentPoint attachmentPoint : AttachmentPoint.values()) {
+                if (attachmentPoint.value.equals(value)) {
+                    return attachmentPoint;
+                }
+            }
+            return null;
+        }
+
+    }
 }

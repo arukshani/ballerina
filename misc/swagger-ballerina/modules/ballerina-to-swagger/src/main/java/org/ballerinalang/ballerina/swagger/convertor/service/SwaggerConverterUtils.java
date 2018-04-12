@@ -24,22 +24,22 @@ import org.apache.commons.lang3.StringUtils;
 import org.ballerinalang.ballerina.swagger.convertor.Constants;
 import org.ballerinalang.compiler.CompilerPhase;
 import org.ballerinalang.composer.service.ballerina.parser.service.model.BFile;
-import org.ballerinalang.composer.service.ballerina.parser.service.model.BallerinaFile;
-import org.ballerinalang.composer.service.ballerina.parser.service.model.lang.ModelPackage;
-import org.ballerinalang.composer.service.ballerina.parser.service.util.ParserUtils;
+import org.ballerinalang.langserver.LSGlobalContext;
+import org.ballerinalang.langserver.LSGlobalContextKeys;
+import org.ballerinalang.langserver.LSPackageCache;
+import org.ballerinalang.langserver.common.modal.BallerinaFile;
+import org.ballerinalang.langserver.common.utils.CommonUtil;
+import org.ballerinalang.langserver.common.utils.LSParserUtils;
 import org.ballerinalang.model.tree.ServiceNode;
 import org.ballerinalang.model.tree.TopLevelNode;
 import org.wso2.ballerinalang.compiler.tree.BLangCompilationUnit;
 import org.wso2.ballerinalang.compiler.tree.BLangIdentifier;
 import org.wso2.ballerinalang.compiler.tree.BLangImportPackage;
 import org.wso2.ballerinalang.compiler.tree.BLangService;
+import org.wso2.ballerinalang.compiler.util.CompilerContext;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+
 import java.util.stream.Collectors;
 
 /**
@@ -47,42 +47,6 @@ import java.util.stream.Collectors;
  */
 
 public class SwaggerConverterUtils {
-    
-    /**
-     * Generate ballerina fine from the String definition.
-     *
-     * @param bFile ballerina string definition
-     * @return ballerina file created from ballerina string definition
-     * @throws IOException IO exception
-     */
-    public static BLangCompilationUnit getTopLevelNodeFromBallerinaFile(BFile bFile) throws IOException {
-    
-        String filePath = bFile.getFilePath();
-        String fileName = bFile.getFileName();
-        String content = bFile.getContent();
-    
-        org.wso2.ballerinalang.compiler.tree.BLangPackage model;
-    
-        // Sometimes we are getting Ballerina content without a file in the file-system.
-        if (!Files.exists(Paths.get(filePath, fileName))) {
-            BallerinaFile ballerinaFile = ParserUtils.getBallerinaFileForContent(fileName, content,
-                    CompilerPhase.CODE_ANALYZE);
-            model = ballerinaFile.getBLangPackage();
-        
-        } else {
-            BallerinaFile ballerinaFile = ParserUtils.getBallerinaFile(filePath, fileName);
-            model = ballerinaFile.getBLangPackage();
-        }
-    
-        final Map<String, ModelPackage> modelPackage = new HashMap<>();
-        ParserUtils.loadPackageMap(Constants.CURRENT_PACKAGE_NAME, model, modelPackage);
-    
-        Optional<BLangCompilationUnit> compilationUnit = model.getCompilationUnits().stream()
-                .filter(compUnit -> fileName.equals(compUnit.getName()))
-                .findFirst();
-        return compilationUnit.orElse(null);
-    }
-    
     /**
      * This method will generate ballerina string from swagger definition. Since ballerina service definition is super
      * set of swagger definition we will take both swagger and ballerina definition and merge swagger changes to
@@ -97,7 +61,15 @@ public class SwaggerConverterUtils {
         // Get the ballerina model using the ballerina source code.
         BFile balFile = new BFile();
         balFile.setContent(ballerinaSource);
-        BLangCompilationUnit topCompilationUnit = SwaggerConverterUtils.getTopLevelNodeFromBallerinaFile(balFile);
+
+        LSGlobalContext lsGlobalContext = new LSGlobalContext();
+        CompilerContext compilerContext = CommonUtil.prepareTempCompilerContext();
+        lsGlobalContext.put(LSGlobalContextKeys.GLOBAL_COMPILATION_CONTEXT, compilerContext);
+        LSPackageCache.initiate(lsGlobalContext);
+        BallerinaFile ballerinaFile = LSParserUtils.compile(balFile.getContent(),
+                CompilerPhase.DEFINE, lsGlobalContext);
+        BLangCompilationUnit topCompilationUnit  = ballerinaFile.getBLangPackage().getCompilationUnits().get(0);
+        //BLangCompilationUnit topCompilationUnit = LSParserUtils.compile(balFile.getContent(),);
         String httpAlias = getAlias(topCompilationUnit, Constants.BALLERINA_HTTP_PACKAGE_NAME);
         String swaggerAlias = getAlias(topCompilationUnit, Constants.SWAGGER_PACKAGE_NAME);
         SwaggerServiceMapper swaggerServiceMapper = new SwaggerServiceMapper(httpAlias, swaggerAlias);
@@ -141,7 +113,13 @@ public class SwaggerConverterUtils {
         balFile.setContent(ballerinaSource);
         //Create empty swagger object.
         Swagger swaggerDefinition = new Swagger();
-        BLangCompilationUnit topCompilationUnit = SwaggerConverterUtils.getTopLevelNodeFromBallerinaFile(balFile);
+        LSGlobalContext lsGlobalContext = new LSGlobalContext();
+        CompilerContext compilerContext = CommonUtil.prepareTempCompilerContext();
+        lsGlobalContext.put(LSGlobalContextKeys.GLOBAL_COMPILATION_CONTEXT, compilerContext);
+        LSPackageCache.initiate(lsGlobalContext);
+        BallerinaFile ballerinaFile = LSParserUtils.compile(balFile.getContent(),
+                CompilerPhase.DEFINE, lsGlobalContext);
+        BLangCompilationUnit topCompilationUnit  = ballerinaFile.getBLangPackage().getCompilationUnits().get(0);
         String httpAlias = getAlias(topCompilationUnit, Constants.BALLERINA_HTTP_PACKAGE_NAME);
         String swaggerAlias = getAlias(topCompilationUnit, Constants.SWAGGER_PACKAGE_NAME);
         SwaggerServiceMapper swaggerServiceMapper = new SwaggerServiceMapper(httpAlias, swaggerAlias);

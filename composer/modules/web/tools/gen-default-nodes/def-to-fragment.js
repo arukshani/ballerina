@@ -19,36 +19,65 @@
 import FragmentUtils from '../../src/plugins/ballerina/utils/fragment-utils';
 
 export default {
+    createImportWithOrg: () => {
+        return FragmentUtils.createTopLevelNodeFragment(
+`import ballerina/http;
+`);
+    },
     createHTTPServiceDef: () => {
         return FragmentUtils.createTopLevelNodeFragment(
             `
-                service<http> service1 {
-                    resource echo1 (http:Connection conn, http:InRequest req) {
+                service serviceName bind serviceEp {
+                    resourceName (endpoint conn, http:Request req) {
 
                     }
                 }
             `);
     },
+    createHTTPEndpointDef: () => {
+        return FragmentUtils.createTopLevelNodeFragment(
+            `
+                endpoint http:Listener serviceEp {
+                    port:9090
+                };
+            `);
+    },
     createWSServiceDef: () => {
         return FragmentUtils.createTopLevelNodeFragment(
             `
-                service<ws> service1 {
-                    resource onOpen(ws:Connection conn) {
+            @http:WebSocketServiceConfig {
+                basePath:"/basic/ws",
+                subProtocols:["xml", "json"],
+                idleTimeoutInSeconds:120
+            }
+            service<http:WebSocketService> WSServer bind serviceEp {
             
-                    }
-                    resource onTextMessage(ws:Connection conn, ws:TextFrame frame) {
-            
-                    }
-                    resource onClose(ws:Connection conn, ws:CloseFrame frame) {
-            
-                    }
+                onOpen (endpoint conn) {
+
                 }
+            
+
+                onText (endpoint conn, string text, boolean more) {
+
+                }
+            
+                onClose (endpoint conn, int statusCode, string reason) {
+                }
+            }
+            `);
+    },
+    createWSEndpointDef: () => {
+        return FragmentUtils.createTopLevelNodeFragment(
+            `
+endpoint http:Listener serviceEp {
+    port:9090
+};
             `);
     },
     createJMSServiceDef: () => {
         return FragmentUtils.createTopLevelNodeFragment(
             `
-                service<jms> service1 {
+                service service1 {
                     resource echo1 (jms:JMSMessage request) {
 
                     }
@@ -59,7 +88,7 @@ export default {
         return FragmentUtils.createTopLevelNodeFragment(
             `
             service<fs> service1 {
-                resource echo1 (fs:FileSystemEvent m) {
+                echo1 (fs:FileSystemEvent m) {
 
                 }
             }
@@ -69,7 +98,7 @@ export default {
         return FragmentUtils.createTopLevelNodeFragment(
             `
             service<ftp> service1 {
-                resource echo1 (ftp:FTPServerEvent m) {
+                echo1 (ftp:FTPServerEvent m) {
 
                 }
             }
@@ -84,51 +113,35 @@ export default {
     },
     createFunction: () => {
         return FragmentUtils.createTopLevelNodeFragment(`
-                    function function1() {
-
-                    }
-                `);
-    },
-    createConnector: () => {
-        return FragmentUtils.createTopLevelNodeFragment(`
-            connector ClientConnector(string url) {
-                action action1(){
-
-                }
-            }
-        `);
-    },
-    createConnectorAction: () => {
-        return FragmentUtils.createConnectorActionFragment(`
-            action action1(){
+            function function1() {
 
             }
         `);
     },
     createHTTPResource: () => {
         return FragmentUtils.createServiceResourceFragment(`
-            resource echo1 (http:Connection conn, http:InRequest req) {
+            echo1 (http:Connection conn, http:Request req) {
 
             }
         `);
     },
     createFSResource: () => {
         return FragmentUtils.createServiceResourceFragment(`
-            resource echo1 (fs:FileSystemEvent m) {
+            echo1 (fs:FileSystemEvent m) {
 
             }
         `);
     },
     createFTPResource: () => {
         return FragmentUtils.createServiceResourceFragment(`
-            resource echo1 (ftp:FTPServerEvent m) {
+            echo1 (ftp:FTPServerEvent m) {
 
             }
         `);
     },
     createJMSResource: () => {
         return FragmentUtils.createServiceResourceFragment(`
-            resource echo1 (jms:JMSMessage request) {
+            echo1 (jms:JMSMessage request) {
 
             }
         `);
@@ -140,13 +153,13 @@ export default {
             }
         `);
     },
-    createTransformer: () => {
+    /*createTransformer: () => {
         return FragmentUtils.createTopLevelNodeFragment(`
             transformer <Source a, Target b> newTransformer (){
 
             }
         `);
-    },
+    },*/
     createWorkerFragment: () => {
         return FragmentUtils.createWorkerFragment(`
             worker worker1 {
@@ -159,12 +172,7 @@ export default {
             }
         `);
     },
-    createAnnotation: () => {
-        return FragmentUtils.createTopLevelNodeFragment(`
-            annotation annotation1 {
-            }
-        `);
-    },
+
     createAssignmentStmt: () => {
         return FragmentUtils.createStatementFragment('var a = 1;');
     },
@@ -206,16 +214,6 @@ export default {
             }
         `);
     },
-    createBreak: () => {
-        return FragmentUtils.createStatementFragment(`
-            break;
-        `);
-    },
-    createNext: () => {
-        return FragmentUtils.createStatementFragment(`
-            next;
-        `);
-    },
     createTry: () => {
         return FragmentUtils.createStatementFragment(`
             try {
@@ -251,8 +249,8 @@ export default {
         return FragmentUtils.createStatementFragment(`
             transaction {
 
-            } failed {
-
+            } onretry {
+        
             }
         `);
     },
@@ -272,18 +270,6 @@ export default {
             
             } timeout(100)(map results1) {
             
-            }
-        `);
-    },
-    createXmlns: () => {
-        return FragmentUtils.createStatementFragment(`
-            xmlns "namespace.uri" as xn;
-        `);
-    },
-    createEnum: () => {
-        return FragmentUtils.createTopLevelNodeFragment(`
-            enum name {
-                ENUMERATOR
             }
         `);
     },

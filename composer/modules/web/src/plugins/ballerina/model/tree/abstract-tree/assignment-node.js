@@ -22,125 +22,6 @@ import StatementNode from '../statement-node';
 class AbstractAssignmentNode extends StatementNode {
 
 
-    setVariables(newValue, silent, title) {
-        const oldValue = this.variables;
-        title = (_.isNil(title)) ? `Modify ${this.kind}` : title;
-        this.variables = newValue;
-
-        if (!silent) {
-            this.trigger('tree-modified', {
-                origin: this,
-                type: 'modify-node',
-                title,
-                data: {
-                    attributeName: 'variables',
-                    newValue,
-                    oldValue,
-                },
-            });
-        }
-    }
-
-    getVariables() {
-        return this.variables;
-    }
-
-
-    addVariables(node, i = -1, silent) {
-        node.parent = this;
-        let index = i;
-        if (i === -1) {
-            this.variables.push(node);
-            index = this.variables.length;
-        } else {
-            this.variables.splice(i, 0, node);
-        }
-        if (!silent) {
-            this.trigger('tree-modified', {
-                origin: this,
-                type: 'child-added',
-                title: `Add ${node.kind}`,
-                data: {
-                    node,
-                    index,
-                },
-            });
-        }
-    }
-
-    removeVariables(node, silent) {
-        const index = this.getIndexOfVariables(node);
-        this.removeVariablesByIndex(index, silent);
-        if (!silent) {
-            this.trigger('tree-modified', {
-                origin: this,
-                type: 'child-removed',
-                title: `Removed ${node.kind}`,
-                data: {
-                    node,
-                    index,
-                },
-            });
-        }
-    }
-
-    removeVariablesByIndex(index, silent) {
-        this.variables.splice(index, 1);
-        if (!silent) {
-            this.trigger('tree-modified', {
-                origin: this,
-                type: 'child-removed',
-                title: `Removed ${this.kind}`,
-                data: {
-                    node: this,
-                    index,
-                },
-            });
-        }
-    }
-
-    replaceVariables(oldChild, newChild, silent) {
-        const index = this.getIndexOfVariables(oldChild);
-        this.variables[index] = newChild;
-        newChild.parent = this;
-        if (!silent) {
-            this.trigger('tree-modified', {
-                origin: this,
-                type: 'child-added',
-                title: `Change ${this.kind}`,
-                data: {
-                    node: this,
-                    index,
-                },
-            });
-        }
-    }
-
-    replaceVariablesByIndex(index, newChild, silent) {
-        this.variables[index] = newChild;
-        newChild.parent = this;
-        if (!silent) {
-            this.trigger('tree-modified', {
-                origin: this,
-                type: 'child-added',
-                title: `Change ${this.kind}`,
-                data: {
-                    node: this,
-                    index,
-                },
-            });
-        }
-    }
-
-    getIndexOfVariables(child) {
-        return _.findIndex(this.variables, ['id', child.id]);
-    }
-
-    filterVariables(predicateFunction) {
-        return _.filter(this.variables, predicateFunction);
-    }
-
-
     setExpression(newValue, silent, title) {
         const oldValue = this.expression;
         title = (_.isNil(title)) ? `Modify ${this.kind}` : title;
@@ -168,6 +49,33 @@ class AbstractAssignmentNode extends StatementNode {
 
 
 
+    setVariable(newValue, silent, title) {
+        const oldValue = this.variable;
+        title = (_.isNil(title)) ? `Modify ${this.kind}` : title;
+        this.variable = newValue;
+
+        this.variable.parent = this;
+
+        if (!silent) {
+            this.trigger('tree-modified', {
+                origin: this,
+                type: 'modify-node',
+                title,
+                data: {
+                    attributeName: 'variable',
+                    newValue,
+                    oldValue,
+                },
+            });
+        }
+    }
+
+    getVariable() {
+        return this.variable;
+    }
+
+
+
 
     isDeclaredWithVar() {
         return this.declaredWithVar;
@@ -177,7 +85,6 @@ class AbstractAssignmentNode extends StatementNode {
         const oldValue = this.declaredWithVar;
         title = (_.isNil(title)) ? `Modify ${this.kind}` : title;
         this.declaredWithVar = newValue;
-        this.clearWS();
         if (!silent) {
             this.trigger('tree-modified', {
                 origin: this,
