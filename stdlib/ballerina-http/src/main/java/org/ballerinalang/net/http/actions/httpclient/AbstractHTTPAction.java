@@ -27,7 +27,6 @@ import org.ballerinalang.connector.api.BallerinaConnectorException;
 import org.ballerinalang.connector.api.Struct;
 import org.ballerinalang.mime.util.EntityBodyHandler;
 import org.ballerinalang.mime.util.HeaderUtil;
-import org.ballerinalang.mime.util.MimeUtil;
 import org.ballerinalang.mime.util.MultipartDataSource;
 import org.ballerinalang.model.NativeCallableUnit;
 import org.ballerinalang.model.types.BStructType;
@@ -65,8 +64,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 
 import static org.ballerinalang.mime.util.Constants.MEDIA_TYPE;
-import static org.ballerinalang.mime.util.Constants.MESSAGE_ENTITY;
 import static org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_MIME;
+import static org.ballerinalang.mime.util.Constants.REQUEST_ENTITY_INDEX;
 import static org.ballerinalang.net.http.HttpConstants.HTTP_PACKAGE_PATH;
 import static org.ballerinalang.net.http.HttpConstants.HTTP_STATUS_CODE;
 import static org.ballerinalang.net.http.HttpConstants.PROTOCOL_PACKAGE_HTTP;
@@ -368,8 +367,8 @@ public abstract class AbstractHTTPAction implements NativeCallableUnit {
 
     private BStruct getEntityStruct(Context context) {
         BStruct requestStruct = ((BStruct) context.getRefArgument(1));
-        return requestStruct.getNativeData(MESSAGE_ENTITY) != null ?
-                (BStruct) requestStruct.getNativeData(MESSAGE_ENTITY) : null;
+        return requestStruct.getRefField(REQUEST_ENTITY_INDEX) != null ?
+                (BStruct) requestStruct.getRefField(REQUEST_ENTITY_INDEX) : null;
     }
 
     /**
@@ -392,7 +391,7 @@ public abstract class AbstractHTTPAction implements NativeCallableUnit {
             return;
         }
 
-        BStruct entityStruct = MimeUtil.extractEntity(requestStruct);
+        BStruct entityStruct = HttpUtil.extractEntity(requestStruct);
         if (entityStruct != null) {
             MessageDataSource messageDataSource = EntityBodyHandler.getMessageDataSource(entityStruct);
             if (messageDataSource != null) {

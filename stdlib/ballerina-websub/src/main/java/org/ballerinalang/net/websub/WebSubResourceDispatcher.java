@@ -202,7 +202,7 @@ class WebSubResourceDispatcher {
      * @throws BallerinaConnectorException if an error occurs retrieving the payload, or the payload is not JSON
      */
     private static BJSON retrieveJsonBody(BValue httpRequest) {
-        BStruct entityStruct = MimeUtil.extractEntity((BStruct) httpRequest);
+        BStruct entityStruct = HttpUtil.extractEntity((BStruct) httpRequest);
         if (entityStruct != null) {
             if (entityStruct.getNativeData(
                     org.ballerinalang.mime.util.Constants.MESSAGE_DATA_SOURCE) instanceof BJSON) {

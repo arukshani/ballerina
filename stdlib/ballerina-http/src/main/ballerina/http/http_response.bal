@@ -21,7 +21,16 @@ public type Response object {
     private {
         int receivedTime;
         int requestTime;
+        mime:Entity entity;
     }
+
+    public new() {
+        self.entity = createNewEntity();
+    }
+
+    @Description {value:"Create a new entity"}
+    @Return {value:"Entity of the response"}
+    native function createNewEntity ();
 
     @Description {value:"Get the entity from the response with the body"}
     @Param {value:"res: The response message"}

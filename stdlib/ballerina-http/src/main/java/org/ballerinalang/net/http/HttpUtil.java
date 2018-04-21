@@ -83,10 +83,11 @@ import static org.ballerinalang.mime.util.Constants.BOUNDARY;
 import static org.ballerinalang.mime.util.Constants.BYTE_LIMIT;
 import static org.ballerinalang.mime.util.Constants.ENTITY_HEADERS;
 import static org.ballerinalang.mime.util.Constants.IS_BODY_BYTE_CHANNEL_ALREADY_SET;
-import static org.ballerinalang.mime.util.Constants.MESSAGE_ENTITY;
 import static org.ballerinalang.mime.util.Constants.MULTIPART_AS_PRIMARY_TYPE;
 import static org.ballerinalang.mime.util.Constants.NO_CONTENT_LENGTH_FOUND;
 import static org.ballerinalang.mime.util.Constants.OCTET_STREAM;
+import static org.ballerinalang.mime.util.Constants.REQUEST_ENTITY_INDEX;
+import static org.ballerinalang.mime.util.Constants.RESPONSE_ENTITY_INDEX;
 import static org.ballerinalang.net.http.HttpConstants.ALWAYS;
 import static org.ballerinalang.net.http.HttpConstants.ANN_CONFIG_ATTR_CHUNKING;
 import static org.ballerinalang.net.http.HttpConstants.ANN_CONFIG_ATTR_COMPRESSION;
@@ -157,6 +158,22 @@ public class HttpUtil {
     }
 
     /**
+     * Set new entity to in/out request/response struct.
+     *
+     * @param context ballerina context.
+     * @param struct  request/response struct.
+     */
+    public static BStruct createNewEntity(Context context, BStruct struct) {
+        BStruct entity = ConnectorUtils.createAndGetStruct(context
+                , org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_MIME
+                , org.ballerinalang.mime.util.Constants.ENTITY);
+        entity.addNativeData(ENTITY_HEADERS, new DefaultHttpHeaders());
+        struct.setRefField(isRequestStruct(struct) ? REQUEST_ENTITY_INDEX : RESPONSE_ENTITY_INDEX , entity);
+        struct.addNativeData(IS_BODY_BYTE_CHANNEL_ALREADY_SET, false);
+        return entity;
+    }
+
+    /**
      * Set the given entity to request or response message.
      *
      * @param context                Ballerina context
@@ -174,7 +191,7 @@ public class HttpUtil {
             contentType = OCTET_STREAM;
         }
         HeaderUtil.setHeaderToEntity(entity, HttpHeaderNames.CONTENT_TYPE.toString(), contentType);
-        httpMessageStruct.addNativeData(MESSAGE_ENTITY, entity);
+        httpMessageStruct.setRefField(isRequest ? REQUEST_ENTITY_INDEX : RESPONSE_ENTITY_INDEX, entity);
         httpMessageStruct.addNativeData(IS_BODY_BYTE_CHANNEL_ALREADY_SET, EntityBodyHandler
                 .checkEntityBodyAvailability(entity));
     }
@@ -190,7 +207,8 @@ public class HttpUtil {
     public static BValue[] getEntity(Context context, boolean isRequest, boolean isEntityBodyRequired) {
         try {
             BStruct httpMessageStruct = (BStruct) context.getRefArgument(HTTP_MESSAGE_INDEX);
-            BStruct entity = (BStruct) httpMessageStruct.getNativeData(MESSAGE_ENTITY);
+            BStruct entity = (BStruct) httpMessageStruct.getRefField(isRequest ? REQUEST_ENTITY_INDEX :
+                    RESPONSE_ENTITY_INDEX);
             boolean isByteChannelAlreadySet = false;
 
             if (httpMessageStruct.getNativeData(IS_BODY_BYTE_CHANNEL_ALREADY_SET) != null) {
@@ -200,7 +218,7 @@ public class HttpUtil {
                 populateEntityBody(context, httpMessageStruct, entity, isRequest);
             }
             if (entity == null) {
-                entity = EntityBodyHandler.createNewEntity(context, httpMessageStruct);
+                entity = HttpUtil.createNewEntity(context, httpMessageStruct);
             }
             return new BValue[]{entity};
         } catch (Throwable throwable) {
@@ -240,8 +258,17 @@ public class HttpUtil {
             EntityBodyHandler.setDiscreteMediaTypeBodyContent(entity, httpMessageDataStreamer.getInputStream(),
                     contentLength);
         }
-        httpMessageStruct.addNativeData(MESSAGE_ENTITY, entity);
+        httpMessageStruct.setRefField(isRequest ? REQUEST_ENTITY_INDEX : RESPONSE_ENTITY_INDEX, entity);
         httpMessageStruct.addNativeData(IS_BODY_BYTE_CHANNEL_ALREADY_SET, true);
+    }
+
+    public static BStruct extractEntity(BStruct httpMessageStruct) {
+        Object isEntityBodyAvailable = httpMessageStruct.getNativeData(IS_BODY_BYTE_CHANNEL_ALREADY_SET);
+        if (isEntityBodyAvailable == null || !((Boolean) isEntityBodyAvailable)) {
+            return null;
+        }
+        return (BStruct) httpMessageStruct.getRefField(isRequestStruct(httpMessageStruct) ? REQUEST_ENTITY_INDEX :
+                RESPONSE_ENTITY_INDEX);
     }
 
     public static void closeMessageOutputStream(OutputStream messageOutputStream) {
@@ -483,7 +510,7 @@ public class HttpUtil {
         enrichWithInboundRequestHeaders(inboundRequestStruct, inboundRequestMsg);
 
         populateEntity(entity, mediaType, inboundRequestMsg);
-        inboundRequestStruct.addNativeData(MESSAGE_ENTITY, entity);
+        inboundRequestStruct.setRefField(REQUEST_ENTITY_INDEX, entity);
         inboundRequestStruct.addNativeData(IS_BODY_BYTE_CHANNEL_ALREADY_SET, false);
 
         if (inboundRequestMsg.getHeader(CACHE_CONTROL.toString()) != null) {
@@ -596,7 +623,7 @@ public class HttpUtil {
         inboundResponse.setRefField(RESPONSE_CACHE_CONTROL_INDEX, responseCacheControl.getStruct());
 
         populateEntity(entity, mediaType, inboundResponseMsg);
-        inboundResponse.addNativeData(MESSAGE_ENTITY, entity);
+        inboundResponse.setRefField(RESPONSE_ENTITY_INDEX, entity);
         inboundResponse.addNativeData(IS_BODY_BYTE_CHANNEL_ALREADY_SET, false);
     }
 
@@ -634,7 +661,8 @@ public class HttpUtil {
 
     @SuppressWarnings("unchecked")
     private static void setHeadersToTransportMessage(HTTPCarbonMessage outboundMsg, BStruct struct) {
-        BStruct entityStruct = (BStruct) struct.getNativeData(MESSAGE_ENTITY);
+        BStruct entityStruct = (BStruct) struct.getRefField(isRequestStruct(struct) ? REQUEST_ENTITY_INDEX :
+        RESPONSE_ENTITY_INDEX);
         HttpHeaders transportHeaders = outboundMsg.getHeaders();
         if (isRequestStruct(struct) || isResponseStruct(struct)) {
             addRemovedPropertiesBackToHeadersMap(struct, transportHeaders);
@@ -653,7 +681,7 @@ public class HttpUtil {
         }
     }
 
-    private static boolean isRequestStruct(BStruct struct) {
+    public static boolean isRequestStruct(BStruct struct) {
         return struct.getType().getName().equals(REQUEST);
     }
 
@@ -699,9 +727,9 @@ public class HttpUtil {
      * @param struct  request/response struct.
      */
     public static void checkEntityAvailability(Context context, BStruct struct) {
-        BStruct entity = (BStruct) struct.getNativeData(MESSAGE_ENTITY);
+        BStruct entity = (BStruct) struct.getRefField(isRequestStruct(struct) ? REQUEST_ENTITY_INDEX : RESPONSE_ENTITY_INDEX);
         if (entity == null) {
-            EntityBodyHandler.createNewEntity(context, struct);
+            HttpUtil.createNewEntity(context, struct);
         }
     }
 

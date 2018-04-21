@@ -149,7 +149,7 @@ public class BallerinaWebSubConnectionListener extends BallerinaHTTPConnectorLis
             response.addHttpContent(new DefaultLastHttpContent());
             HttpUtil.sendOutboundResponse(httpCarbonMessage, response);
             BStruct notificationRequestStruct = createNotificationRequestStruct(balResource);
-            BStruct entityStruct = MimeUtil.extractEntity((BStruct) httpRequest);
+            BStruct entityStruct = HttpUtil.extractEntity((BStruct) httpRequest);
             if (entityStruct != null) {
                 if (entityStruct.getNativeData(Constants.MESSAGE_DATA_SOURCE) instanceof BJSON) {
                     BJSON jsonBody = (BJSON) (entityStruct.getNativeData(Constants.MESSAGE_DATA_SOURCE));

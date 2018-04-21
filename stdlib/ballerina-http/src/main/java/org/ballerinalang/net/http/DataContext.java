@@ -50,7 +50,7 @@ public class DataContext {
         if (correlatedMessage != null) {
             BStruct requestStruct = ((BStruct) context.getNullableRefArgument(1));
             if (requestStruct != null) {
-                BStruct entityStruct = MimeUtil.extractEntity(requestStruct);
+                BStruct entityStruct = HttpUtil.extractEntity(requestStruct);
                 if (entityStruct != null) {
                     MessageDataSource messageDataSource = EntityBodyHandler.getMessageDataSource(entityStruct);
                     if (messageDataSource == null && EntityBodyHandler.getByteChannel(entityStruct) == null) {

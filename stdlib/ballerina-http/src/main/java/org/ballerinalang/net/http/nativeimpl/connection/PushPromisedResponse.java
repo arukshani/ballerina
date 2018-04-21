@@ -93,7 +93,7 @@ public class PushPromisedResponse extends ConnectionAction {
         outboundRespStatusFuture.setHttpConnectorListener(outboundResStatusConnectorListener);
         OutputStream messageOutputStream = outboundMsgDataStreamer.getOutputStream();
 
-        BStruct entityStruct = MimeUtil.extractEntity(outboundResponseStruct);
+        BStruct entityStruct = HttpUtil.extractEntity(outboundResponseStruct);
         if (entityStruct != null) {
             MessageDataSource outboundMessageSource = EntityBodyHandler.getMessageDataSource(entityStruct);
             serializeMsgDataSource(outboundMessageSource, entityStruct, messageOutputStream);

@@ -19,6 +19,18 @@ public type Request object {
         RequestCacheControl? cacheControl;
     }
 
+    private {
+        mime:Entity entity;
+    }
+
+    public new() {
+        self.entity = createNewEntity();
+    }
+
+    @Description {value:"Create a new entity"}
+    @Return {value:"Entity of the request"}
+    native function createNewEntity ();
+
     @Description {value:"Set the entity to request"}
     @Return {value:"Entity of the request"}
     public native function setEntity (mime:Entity entity);

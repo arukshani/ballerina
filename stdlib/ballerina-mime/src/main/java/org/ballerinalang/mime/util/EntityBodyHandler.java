@@ -60,8 +60,9 @@ import static org.ballerinalang.mime.util.Constants.ENTITY_HEADERS;
 import static org.ballerinalang.mime.util.Constants.FIRST_BODY_PART_INDEX;
 import static org.ballerinalang.mime.util.Constants.IS_BODY_BYTE_CHANNEL_ALREADY_SET;
 import static org.ballerinalang.mime.util.Constants.MESSAGE_DATA_SOURCE;
-import static org.ballerinalang.mime.util.Constants.MESSAGE_ENTITY;
 import static org.ballerinalang.mime.util.Constants.MULTIPART_AS_PRIMARY_TYPE;
+import static org.ballerinalang.mime.util.Constants.REQUEST_ENTITY_INDEX;
+import static org.ballerinalang.mime.util.Constants.RESPONSE_ENTITY_INDEX;
 
 /**
  * Entity body related operations are included here.
@@ -69,22 +70,6 @@ import static org.ballerinalang.mime.util.Constants.MULTIPART_AS_PRIMARY_TYPE;
  * @since 0.963.0
  */
 public class EntityBodyHandler {
-
-    /**
-     * Set new entity to in/out request/response struct.
-     *
-     * @param context ballerina context.
-     * @param struct  request/response struct.
-     */
-    public static BStruct createNewEntity(Context context, BStruct struct) {
-        BStruct entity = ConnectorUtils.createAndGetStruct(context
-                , org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_MIME
-                , org.ballerinalang.mime.util.Constants.ENTITY);
-        entity.addNativeData(ENTITY_HEADERS, new DefaultHttpHeaders());
-        struct.addNativeData(MESSAGE_ENTITY, entity);
-        struct.addNativeData(IS_BODY_BYTE_CHANNEL_ALREADY_SET, false);
-        return entity;
-    }
 
     /**
      * Handle discrete media type content. This method populates ballerina entity with a byte channel from a given

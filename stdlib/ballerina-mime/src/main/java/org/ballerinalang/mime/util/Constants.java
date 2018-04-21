@@ -93,7 +93,10 @@ public class Constants {
     public static final String DEFAULT_SUB_TYPE = "octet-stream";
     public static final String SUFFIX_ATTACHMENT = "+";
 
-    public static final String MESSAGE_ENTITY = "message_entity";
+    //public static final String MESSAGE_ENTITY = "entity";
+    //public static final int MESSAGE_ENTITY_INDEX = 0;
+    public static final int REQUEST_ENTITY_INDEX = 0;
+    public static final int RESPONSE_ENTITY_INDEX = 0;
     public static final String MESSAGE_DATA_SOURCE = "message_datasource";
     public static final String IS_BODY_BYTE_CHANNEL_ALREADY_SET = "is_byte_channel_set";
     public static final String ENTITY_BYTE_CHANNEL = "entity_byte_channel";

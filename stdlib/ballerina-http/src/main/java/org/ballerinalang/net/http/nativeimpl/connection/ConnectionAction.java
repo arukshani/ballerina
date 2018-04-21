@@ -62,7 +62,7 @@ public abstract class ConnectionAction implements NativeCallableUnit {
         outboundRespStatusFuture.setHttpConnectorListener(outboundResStatusConnectorListener);
 
         OutputStream messageOutputStream = outboundMsgDataStreamer.getOutputStream();
-        BStruct entityStruct = MimeUtil.extractEntity(outboundResponseStruct);
+        BStruct entityStruct = HttpUtil.extractEntity(outboundResponseStruct);
         if (entityStruct != null) {
             if (boundaryString != null) {
                 serializeMultiparts(boundaryString, entityStruct, messageOutputStream);
