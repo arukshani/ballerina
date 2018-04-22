@@ -29,7 +29,7 @@ public type Request object {
 
     @Description {value:"Create a new entity"}
     @Return {value:"Entity of the request"}
-    native function createNewEntity ();
+    native function createNewEntity() returns mime:Entity;
 
     @Description {value:"Set the entity to request"}
     @Return {value:"Entity of the request"}

@@ -30,7 +30,7 @@ public type Response object {
 
     @Description {value:"Create a new entity"}
     @Return {value:"Entity of the response"}
-    native function createNewEntity ();
+    native function createNewEntity () returns mime:Entity;
 
     @Description {value:"Get the entity from the response with the body"}
     @Param {value:"res: The response message"}

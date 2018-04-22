@@ -81,6 +81,7 @@ import static org.ballerinalang.bre.bvm.BLangVMErrors.PACKAGE_BUILTIN;
 import static org.ballerinalang.bre.bvm.BLangVMErrors.STRUCT_GENERIC_ERROR;
 import static org.ballerinalang.mime.util.Constants.BOUNDARY;
 import static org.ballerinalang.mime.util.Constants.BYTE_LIMIT;
+import static org.ballerinalang.mime.util.Constants.ENTITY_BYTE_CHANNEL;
 import static org.ballerinalang.mime.util.Constants.ENTITY_HEADERS;
 import static org.ballerinalang.mime.util.Constants.IS_BODY_BYTE_CHANNEL_ALREADY_SET;
 import static org.ballerinalang.mime.util.Constants.MULTIPART_AS_PRIMARY_TYPE;
@@ -169,6 +170,7 @@ public class HttpUtil {
                 , org.ballerinalang.mime.util.Constants.ENTITY);
         entity.addNativeData(ENTITY_HEADERS, new DefaultHttpHeaders());
         struct.setRefField(isRequestStruct(struct) ? REQUEST_ENTITY_INDEX : RESPONSE_ENTITY_INDEX , entity);
+        struct.addNativeData(ENTITY_BYTE_CHANNEL, null);
         struct.addNativeData(IS_BODY_BYTE_CHANNEL_ALREADY_SET, false);
         return entity;
     }

@@ -8,6 +8,7 @@ import org.ballerinalang.model.values.BStruct;
 import org.ballerinalang.natives.annotations.Argument;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 import org.ballerinalang.natives.annotations.Receiver;
+import org.ballerinalang.natives.annotations.ReturnType;
 import org.ballerinalang.net.http.HttpUtil;
 
 import static org.ballerinalang.mime.util.Constants.FIRST_PARAMETER_INDEX;
@@ -18,6 +19,7 @@ import static org.ballerinalang.mime.util.Constants.FIRST_PARAMETER_INDEX;
         receiver = @Receiver(type = TypeKind.STRUCT, structType = "Request",
                 structPackage = "ballerina.http"),
         args = {@Argument(name = "request", type = TypeKind.STRUCT)},
+        returnType = {@ReturnType(type = TypeKind.STRUCT)},
         isPublic = false
 )
 public class CreateNewEntity extends BlockingNativeCallableUnit {
