@@ -136,7 +136,7 @@ public type Failover object {
     @Param { value:"httpFuture: The Future which relates to previous async invocation" }
     @Return { value:"The HTTP response message" }
     @Return { value:"The Error occured during HTTP client invocation" }
-    public function getResponse(HttpFuture httpFuture) returns (error);
+    public function getResponse(HttpFuture httpFuture) returns (Response | error);
 
     @Description { value:"The hasPromise implementation of the Failover Connector."}
     @Param { value:"httpFuture: The Future which relates to previous async invocation" }
@@ -265,7 +265,7 @@ public function Failover::submit(string httpVerb, string path, Request request) 
 @Param { value:"httpFuture: The Future which relates to previous async invocation" }
 @Return { value:"The HTTP response message" }
 @Return { value:"The Error occured during HTTP client invocation" }
-public function Failover::getResponse(HttpFuture httpFuture) returns (error) {
+public function Failover::getResponse(HttpFuture httpFuture) returns (Response | error) {
     error httpConnectorErr = {message:"Unsupported action for Failover client."};
     return httpConnectorErr;
 }
