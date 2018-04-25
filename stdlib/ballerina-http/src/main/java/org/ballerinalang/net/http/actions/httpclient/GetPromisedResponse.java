@@ -94,7 +94,8 @@ public class GetPromisedResponse extends AbstractHTTPAction {
             httpConnectorError.setStringField(0, throwable.getMessage());
             if (throwable instanceof ClientConnectorException) {
                 ClientConnectorException clientConnectorException = (ClientConnectorException) throwable;
-                httpConnectorError.setIntField(0, clientConnectorException.getHttpStatusCode());
+                httpConnectorError.setStringField(0, " Status Code :" + throwable.getMessage() +
+                        clientConnectorException.getHttpStatusCode());
             }
             dataContext.notifyReply(null, httpConnectorError);
         }
