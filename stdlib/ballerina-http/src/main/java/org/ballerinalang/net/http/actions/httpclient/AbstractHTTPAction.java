@@ -22,6 +22,7 @@ import io.netty.handler.codec.EncoderException;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
 import org.ballerinalang.bre.Context;
+import org.ballerinalang.bre.bvm.BLangVMErrors;
 import org.ballerinalang.connector.api.BLangConnectorSPIUtil;
 import org.ballerinalang.connector.api.BallerinaConnectorException;
 import org.ballerinalang.connector.api.Struct;
@@ -449,18 +450,19 @@ public abstract class AbstractHTTPAction implements NativeCallableUnit {
                         HttpConstants.PROTOCOL_PACKAGE_HTTP);
             } else if (throwable instanceof IOException) {
                 this.outboundMsgDataStreamer.setIoException((IOException) throwable);
-                httpConnectorError = createStruct(this.dataContext.context, HttpConstants.HTTP_CONNECTOR_ERROR,
-                        HttpConstants.PROTOCOL_PACKAGE_HTTP);
+                httpConnectorError = createStruct(this.dataContext.context, BLangVMErrors.STRUCT_GENERIC_ERROR,
+                        BLangVMErrors.PACKAGE_BUILTIN);
             } else {
                 this.outboundMsgDataStreamer.setIoException(new IOException(throwable.getMessage()));
-                httpConnectorError = createStruct(this.dataContext.context, HttpConstants.HTTP_CONNECTOR_ERROR,
-                        HttpConstants.PROTOCOL_PACKAGE_HTTP);
+                httpConnectorError = createStruct(this.dataContext.context, BLangVMErrors.STRUCT_GENERIC_ERROR,
+                        BLangVMErrors.PACKAGE_BUILTIN);
             }
 
             httpConnectorError.setStringField(0, throwable.getMessage());
             if (throwable instanceof ClientConnectorException) {
                 ClientConnectorException clientConnectorException = (ClientConnectorException) throwable;
-                httpConnectorError.setIntField(0, clientConnectorException.getHttpStatusCode());
+                httpConnectorError.setStringField(0, " Status Code :" + throwable.getMessage() +
+                        clientConnectorException.getHttpStatusCode());
             }
             this.dataContext.notifyReply(null, httpConnectorError);
         }

@@ -18,6 +18,7 @@
 
 package org.ballerinalang.net.http.nativeimpl.connection;
 
+import org.ballerinalang.bre.bvm.BLangVMErrors;
 import org.ballerinalang.connector.api.BLangConnectorSPIUtil;
 import org.ballerinalang.mime.util.EntityBodyHandler;
 import org.ballerinalang.mime.util.HeaderUtil;
@@ -39,6 +40,9 @@ import org.wso2.transport.http.netty.message.PooledDataStreamerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
+
+import static org.ballerinalang.bre.bvm.BLangVMErrors.PACKAGE_BUILTIN;
+import static org.ballerinalang.bre.bvm.BLangVMErrors.STRUCT_GENERIC_ERROR;
 
 /**
  * {@code {@link ConnectionAction}} represents a Abstract implementation of Native Ballerina Connection Function.
@@ -158,7 +162,7 @@ public abstract class ConnectionAction implements NativeCallableUnit {
         @Override
         public void onError(Throwable throwable) {
             BStruct httpConnectorError = BLangConnectorSPIUtil.createBStruct(this.dataContext.context,
-                                            HttpConstants.PROTOCOL_PACKAGE_HTTP, HttpConstants.HTTP_CONNECTOR_ERROR);
+                    BLangVMErrors.STRUCT_GENERIC_ERROR, BLangVMErrors.PACKAGE_BUILTIN);
             if (outboundMsgDataStreamer != null) {
                 if (throwable instanceof IOException) {
                     this.outboundMsgDataStreamer.setIoException((IOException) throwable);

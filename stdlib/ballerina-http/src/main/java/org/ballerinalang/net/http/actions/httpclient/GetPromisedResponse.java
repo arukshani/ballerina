@@ -17,6 +17,7 @@
 package org.ballerinalang.net.http.actions.httpclient;
 
 import org.ballerinalang.bre.Context;
+import org.ballerinalang.bre.bvm.BLangVMErrors;
 import org.ballerinalang.bre.bvm.CallableUnitCallback;
 import org.ballerinalang.model.types.TypeKind;
 import org.ballerinalang.model.values.BStruct;
@@ -89,7 +90,7 @@ public class GetPromisedResponse extends AbstractHTTPAction {
         @Override
         public void onError(Throwable throwable) {
             BStruct httpConnectorError = createStruct(
-                    dataContext.context, HttpConstants.HTTP_CONNECTOR_ERROR, HttpConstants.PROTOCOL_PACKAGE_HTTP);
+                    dataContext.context, BLangVMErrors.STRUCT_GENERIC_ERROR, BLangVMErrors.PACKAGE_BUILTIN);
             httpConnectorError.setStringField(0, throwable.getMessage());
             if (throwable instanceof ClientConnectorException) {
                 ClientConnectorException clientConnectorException = (ClientConnectorException) throwable;

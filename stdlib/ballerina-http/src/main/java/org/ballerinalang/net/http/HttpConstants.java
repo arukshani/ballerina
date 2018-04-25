@@ -171,7 +171,6 @@ public class HttpConstants {
     public static final String ENTITY = "Entity";
     public static final String RESPONSE_CACHE_CONTROL = "ResponseCacheControl";
     public static final String REQUEST_CACHE_CONTROL = "RequestCacheControl";
-    public static final String HTTP_CONNECTOR_ERROR = "HttpConnectorError";
     public static final String HTTP_TIMEOUT_ERROR = "HttpTimeoutError";
     public static final String TYPE_STRING = "string";
     public static final String TRANSPORT_MESSAGE = "transport_message";
