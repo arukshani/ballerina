@@ -461,8 +461,8 @@ public abstract class AbstractHTTPAction implements NativeCallableUnit {
             httpConnectorError.setStringField(0, throwable.getMessage());
             if (throwable instanceof ClientConnectorException) {
                 ClientConnectorException clientConnectorException = (ClientConnectorException) throwable;
-                httpConnectorError.setStringField(0, " Status Code :" + throwable.getMessage() +
-                        clientConnectorException.getHttpStatusCode());
+                httpConnectorError.setStringField(0, " Status Code :" +
+                        clientConnectorException.getHttpStatusCode() + throwable.getMessage());
             }
             this.dataContext.notifyReply(null, httpConnectorError);
         }
