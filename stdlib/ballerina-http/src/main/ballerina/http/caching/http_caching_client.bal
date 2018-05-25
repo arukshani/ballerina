@@ -114,10 +114,11 @@ public type HttpCachingClient object {
         origin server. Responses received for POST requests invalidate the cached responses for the same resource.
 
         P{{path}} Resource path
-        P{{request}} An optional HTTP request
+        P{{requestOrPayload}} An optional HTTP request or any payload type
         R{{}} The response for the request or an `error` if failed to establish communication with the upstream server
     }
-    public function post(string path, Request? request = ()) returns Response|error;
+    public function post(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
+                                        requestOrPayload = ()) returns Response|error;
 
     documentation {
         Responses for HEAD requests are cacheable and as such, will be routed through the HTTP cache. Only if a
@@ -266,11 +267,23 @@ public function createHttpCachingClient(string url, ClientEndpointConfig config,
     return httpCachingClient;
 }
 
-public function HttpCachingClient::post(string path, Request? request = ()) returns Response|error {
-    Request req = request ?: new;
+public function HttpCachingClient::post(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
+                                                        requestOrPayload = ()) returns Response|error {
+    //Request req = request ?: new;
+    Request req = new;
+    match requestOrPayload {
+        Request request => {req = request;}
+        string textContent => {req.setTextPayload(textContent);}
+        xml xmlContent => {req.setXmlPayload(xmlContent);}
+        json jsonContent => {req.setJsonPayload(jsonContent);}
+        blob blobContent => {req.setBinaryPayload(blobContent);}
+        io:ByteChannel byteChannelContent => {req.setByteChannel(byteChannelContent);}
+        mime:Entity[] bodyParts => {req.setBodyParts(bodyParts);}
+        () => {};
+    }
     setRequestCacheControlHeader(req);
 
-    match self.httpClient.post(path, request = req) {
+    match self.httpClient.post(path, requestOrPayload = req) {
         Response inboundResponse => {
             invalidateResponses(self.cache, inboundResponse, path);
             return inboundResponse;

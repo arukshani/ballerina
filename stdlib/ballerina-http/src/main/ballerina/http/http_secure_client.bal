@@ -58,11 +58,11 @@ public type HttpSecureClient object {
     public function post(string path, Request? request = ()) returns (Response|error) {
         Request req = request ?: new;
         check generateSecureRequest(req, config);
-        Response response = check httpClient.post(path, request = req);
+        Response response = check httpClient.post(path, requestOrPayload = req);
         boolean isRetry = isRetryRequired(response, config);
         if (isRetry) {
             check updateRequestAndConfig(req, config);
-            return httpClient.post(path, request = req);
+            return httpClient.post(path, requestOrPayload = req);
         }
         return response;
     }
@@ -394,7 +394,7 @@ function getAccessTokenFromRefreshToken(ClientEndpointConfig config) returns (st
     refreshTokenRequest.addHeader(AUTH_HEADER, AUTH_SCHEME_BASIC + WHITE_SPACE + base64ClientIdSecret);
     refreshTokenRequest.setTextPayload("grant_type=refresh_token&refresh_token=" + refreshToken,
         contentType = mime:APPLICATION_FORM_URLENCODED);
-    Response refreshTokenResponse = check refreshTokenClient.post(EMPTY_STRING, request = refreshTokenRequest);
+    Response refreshTokenResponse = check refreshTokenClient.post(EMPTY_STRING, requestOrPayload = refreshTokenRequest);
 
     json generatedToken = check refreshTokenResponse.getJsonPayload();
     if (refreshTokenResponse.statusCode == OK_200) {

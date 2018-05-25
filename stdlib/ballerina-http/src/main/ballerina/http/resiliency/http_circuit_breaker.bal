@@ -331,7 +331,7 @@ public function CircuitBreakerClient::post(string path, Request? request = ()) r
        // TODO: Allow the user to handle this scenario. Maybe through a user provided function
        return handleOpenCircuit(self.circuitHealth, self.circuitBreakerInferredConfig);
    } else {
-       match httpClient.post(path, request = request) {
+       match httpClient.post(path, requestOrPayload = request) {
             Response service_response => {
                                     updateCircuitHealthSuccess(self.circuitHealth, service_response, self.circuitBreakerInferredConfig);
                                     return service_response;

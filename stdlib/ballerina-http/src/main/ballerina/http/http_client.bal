@@ -35,10 +35,11 @@ public type CallerActions object {
         The `post()` function can be used to send HTTP POST requests to HTTP endpoints.
 
         P{{path}} Resource path
-        P{{request}} An HTTP outbound request message
+        P{{requestOrPayload}} An HTTP outbound request message
         R{{}} The response for the request or an `error` if failed to establish communication with the upstream server
     }
-    public native function post(@sensitive string path, Request? request = ()) returns Response|error;
+    public native function post(@sensitive string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
+                                                        requestOrPayload = ()) returns Response|error;
 
     documentation {
         The `head()` function can be used to send HTTP HEAD requests to HTTP endpoints.

@@ -51,14 +51,15 @@ public type LoadBalancerActions object {
    }
    public new (serviceUri, config, loadBalanceClientsArray, algorithm, nextIndex, failover) {}
 
-    documentation {
+   documentation {
         The POST action implementation of the LoadBalancer Connector.
 
         P{{path}} Resource path
-        P{{request}} An optional HTTP request
+        P{{requestOrPayload}} An optional HTTP request or any payload type
         R{{}} The response or an `error` if failed to fulfill the request
     }
-    public function post(string path, Request? request = ()) returns Response|error;
+   public function post(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]
+                                        requestOrPayload = ()) returns Response|error;
 
     documentation {
         The HEAD action implementation of the LoadBalancer Connector.
@@ -200,8 +201,20 @@ public type LoadBalanceActionError {
     error[] httpActionErr,
 };
 
-public function LoadBalancerActions::post(string path, Request? request = ()) returns Response|error {
-    Request req = request ?: new;
+public function LoadBalancerActions::post(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
+                                                        requestOrPayload = ()) returns Response|error {
+   // Request req = request ?: new;
+    Request req = new;
+    match requestOrPayload {
+        Request request => {req = request;}
+        string textContent => {req.setTextPayload(textContent);}
+        xml xmlContent => {req.setXmlPayload(xmlContent);}
+        json jsonContent => {req.setJsonPayload(jsonContent);}
+        blob blobContent => {req.setBinaryPayload(blobContent);}
+        io:ByteChannel byteChannelContent => {req.setByteChannel(byteChannelContent);}
+        mime:Entity[] bodyParts => {req.setBodyParts(bodyParts);}
+        () => req = new;
+    }
     return performLoadBalanceAction(self, path, req, HTTP_POST);
 }
 
