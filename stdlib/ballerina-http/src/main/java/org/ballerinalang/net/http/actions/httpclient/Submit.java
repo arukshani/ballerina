@@ -19,12 +19,14 @@ package org.ballerinalang.net.http.actions.httpclient;
 import org.ballerinalang.bre.Context;
 import org.ballerinalang.bre.bvm.CallableUnitCallback;
 import org.ballerinalang.model.types.TypeKind;
+import org.ballerinalang.model.values.BStruct;
 import org.ballerinalang.natives.annotations.Argument;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 import org.ballerinalang.natives.annotations.Receiver;
 import org.ballerinalang.natives.annotations.ReturnType;
 import org.ballerinalang.net.http.DataContext;
 import org.ballerinalang.net.http.HttpConstants;
+import org.ballerinalang.net.http.HttpUtil;
 
 /**
  * {@code Submit} action can be used to invoke a http call with any httpVerb in asynchronous manner.
@@ -51,7 +53,9 @@ public class Submit extends Execute {
 
     @Override
     public void execute(Context context, CallableUnitCallback callback) {
-        DataContext dataContext = new DataContext(context, callback, createOutboundRequestMsg(context));
+        BStruct requestStruct = HttpUtil.getBallerinaHttpMessage(context, true);
+        DataContext dataContext = new DataContext(context, callback, requestStruct,
+                createOutboundRequestMsg(context, requestStruct));
         // Execute the operation
         executeNonBlockingAction(dataContext, true);
     }

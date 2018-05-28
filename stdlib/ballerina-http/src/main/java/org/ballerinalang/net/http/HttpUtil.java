@@ -42,12 +42,15 @@ import org.ballerinalang.mime.util.EntityWrapper;
 import org.ballerinalang.mime.util.HeaderUtil;
 import org.ballerinalang.mime.util.MimeUtil;
 import org.ballerinalang.mime.util.MultipartDecoder;
+import org.ballerinalang.model.types.TypeTags;
+import org.ballerinalang.model.values.BBlob;
 import org.ballerinalang.model.values.BString;
 import org.ballerinalang.model.values.BStruct;
 import org.ballerinalang.model.values.BValue;
 import org.ballerinalang.net.http.caching.RequestCacheControlStruct;
 import org.ballerinalang.net.http.caching.ResponseCacheControlStruct;
 import org.ballerinalang.net.http.session.Session;
+import org.ballerinalang.runtime.message.StringDataSource;
 import org.ballerinalang.services.ErrorHandlerUtils;
 import org.ballerinalang.util.codegen.ProgramFile;
 import org.ballerinalang.util.exceptions.BallerinaException;
@@ -90,12 +93,14 @@ import static org.ballerinalang.mime.util.Constants.ONE_BYTE;
 import static org.ballerinalang.mime.util.Constants.PROTOCOL_PACKAGE_MIME;
 import static org.ballerinalang.mime.util.Constants.REQUEST_ENTITY_INDEX;
 import static org.ballerinalang.mime.util.Constants.RESPONSE_ENTITY_INDEX;
+import static org.ballerinalang.mime.util.Constants.TEXT_PLAIN;
 import static org.ballerinalang.mime.util.EntityBodyHandler.checkEntityBodyAvailability;
 import static org.ballerinalang.net.http.HttpConstants.ALWAYS;
 import static org.ballerinalang.net.http.HttpConstants.ANN_CONFIG_ATTR_CHUNKING;
 import static org.ballerinalang.net.http.HttpConstants.ANN_CONFIG_ATTR_COMPRESSION;
 import static org.ballerinalang.net.http.HttpConstants.ENTITY_INDEX;
 import static org.ballerinalang.net.http.HttpConstants.HTTP_MESSAGE_INDEX;
+import static org.ballerinalang.net.http.HttpConstants.HTTP_PACKAGE_PATH;
 import static org.ballerinalang.net.http.HttpConstants.HTTP_STATUS_CODE;
 import static org.ballerinalang.net.http.HttpConstants.NEVER;
 import static org.ballerinalang.net.http.HttpConstants.PROTOCOL_PACKAGE_HTTP;
@@ -181,6 +186,49 @@ public class HttpUtil {
                 , entity);
         httpMessageStruct.addNativeData(IS_BODY_BYTE_CHANNEL_ALREADY_SET, false);
         return entity;
+    }
+
+    public static BStruct createNewRequestStruct(Context context) {
+        BStruct requestStruct = BLangConnectorSPIUtil.createBStruct(context, HTTP_PACKAGE_PATH, REQUEST);
+        HttpUtil.checkEntityAvailability(context, requestStruct);
+        return requestStruct;
+    }
+
+    public static BStruct getBallerinaHttpMessage(Context context, boolean isRequest) {
+        BStruct message = null;
+        BValue result = context.getNullableRefArgument(1);
+        switch (result.getType().getTag()) {
+            case TypeTags.NULL_TAG:
+                message = HttpUtil.createNewRequestStruct(context);
+                break;
+            case TypeTags.STRING_TAG:
+                message = HttpUtil.createNewRequestStruct(context);
+                BStruct entityStruct = (BStruct) message.getRefField(isRequest ? REQUEST_ENTITY_INDEX :
+                        RESPONSE_ENTITY_INDEX);
+                EntityBodyHandler.addMessageDataSource(entityStruct, new StringDataSource(result.stringValue()));
+                message.addNativeData(IS_BODY_BYTE_CHANNEL_ALREADY_SET, true);
+                MimeUtil.setMediaTypeToEntity(context, entityStruct, TEXT_PLAIN);
+                break;
+            case TypeTags.XML_TAG:
+                message = HttpUtil.createNewRequestStruct(context);
+                break;
+            case TypeTags.JSON_TAG:
+                message = HttpUtil.createNewRequestStruct(context);
+                break;
+            case TypeTags.BLOB_TAG:
+                if (result instanceof BBlob) {
+                    message = HttpUtil.createNewRequestStruct(context);
+                }
+                break;
+            case TypeTags.STRUCT_TAG:
+                if (result instanceof BStruct) {
+
+                }
+                break;
+            default:
+                break;
+        }
+        return message;
     }
 
     /**

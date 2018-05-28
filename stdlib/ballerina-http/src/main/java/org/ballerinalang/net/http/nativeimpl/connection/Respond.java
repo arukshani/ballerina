@@ -66,7 +66,8 @@ public class Respond extends ConnectionAction {
         BStruct connectionStruct = (BStruct) context.getRefArgument(0);
         HTTPCarbonMessage inboundRequestMsg = HttpUtil.getCarbonMsg(connectionStruct, null);
         HttpUtil.checkFunctionValidity(connectionStruct, inboundRequestMsg);
-        DataContext dataContext = new DataContext(context, callback, inboundRequestMsg);
+        BStruct requestStruct = HttpUtil.getBallerinaHttpMessage(context, true);
+        DataContext dataContext = new DataContext(context, callback, requestStruct, inboundRequestMsg);
         BStruct outboundResponseStruct = (BStruct) context.getRefArgument(1);
         HTTPCarbonMessage outboundResponseMsg = HttpUtil
                 .getCarbonMsg(outboundResponseStruct, HttpUtil.createHttpCarbonMessage(false));

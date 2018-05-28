@@ -60,16 +60,17 @@ public class Forward extends AbstractHTTPAction {
 
     @Override
     public void execute(Context context, CallableUnitCallback callback) {
-        DataContext dataContext = new DataContext(context, callback, createOutboundRequestMsg(context));
+        BStruct requestStruct = HttpUtil.getBallerinaHttpMessage(context, true);
+        DataContext dataContext = new DataContext(context, callback, requestStruct,
+                createOutboundRequestMsg(context, requestStruct));
         // Execute the operation
         executeNonBlockingAction(dataContext, false);
     }
 
     @Override
-    protected HTTPCarbonMessage createOutboundRequestMsg(Context context) {
+    protected HTTPCarbonMessage createOutboundRequestMsg(Context context, BStruct requestStruct) {
         BStruct bConnector = (BStruct) context.getRefArgument(0);
         String path = context.getStringArgument(0);
-        BStruct requestStruct = ((BStruct) context.getRefArgument(1));
 
         if (requestStruct.getNativeData(HttpConstants.REQUEST) == null &&
                 !HttpUtil.isEntityDataSourceAvailable(requestStruct)) {

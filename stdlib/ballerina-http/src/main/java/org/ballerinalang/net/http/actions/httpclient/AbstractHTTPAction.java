@@ -61,9 +61,7 @@ import java.net.URL;
 import java.util.Optional;
 
 import static org.ballerinalang.mime.util.Constants.REQUEST_ENTITY_INDEX;
-import static org.ballerinalang.net.http.HttpConstants.HTTP_PACKAGE_PATH;
 import static org.ballerinalang.net.http.HttpConstants.HTTP_STATUS_CODE;
-import static org.ballerinalang.net.http.HttpConstants.REQUEST;
 import static org.ballerinalang.net.http.HttpUtil.extractEntity;
 import static org.ballerinalang.runtime.Constants.BALLERINA_VERSION;
 import static org.wso2.transport.http.netty.common.Constants.ENCODING_DEFLATE;
@@ -82,16 +80,18 @@ public abstract class AbstractHTTPAction implements NativeCallableUnit {
         CACHE_BALLERINA_VERSION = System.getProperty(BALLERINA_VERSION);
     }
 
-    protected HTTPCarbonMessage createOutboundRequestMsg(Context context) {
+    protected HTTPCarbonMessage createOutboundRequestMsg(Context context, BStruct requestStruct) {
 
         // Extract Argument values
         BStruct bConnector = (BStruct) context.getRefArgument(0);
         String path = context.getStringArgument(0);
 
-        BStruct requestStruct = ((BStruct) context.getNullableRefArgument(1));
+       /* BStruct requestStruct = ((BStruct) context.getNullableRefArgument(1));
         if (requestStruct == null) {
             requestStruct = BLangConnectorSPIUtil.createBStruct(context, HTTP_PACKAGE_PATH, REQUEST);
-        }
+        }*/
+
+       // BStruct requestStruct = getBallerinaHttpMessage(context);
 
         HTTPCarbonMessage requestMsg = HttpUtil
                 .getCarbonMsg(requestStruct, HttpUtil.createHttpCarbonMessage(true));
@@ -306,9 +306,9 @@ public abstract class AbstractHTTPAction implements NativeCallableUnit {
         }
         try {
             if (boundaryString != null) {
-                serializeMultiparts(dataContext.context, messageOutputStream, boundaryString);
+                serializeMultiparts(dataContext.getBallerinaRequest(), messageOutputStream, boundaryString);
             } else {
-                serializeDataSource(dataContext.context, messageOutputStream);
+                serializeDataSource(dataContext.getBallerinaRequest(), messageOutputStream);
             }
         } catch (IOException | EncoderException serializerException) {
             // We don't have to do anything here as the client connector will notify
@@ -333,20 +333,20 @@ public abstract class AbstractHTTPAction implements NativeCallableUnit {
      * Serialize multipart entity body. If an array of body parts exist, encode body parts else serialize body content
      * if it exist as a byte channel.
      *
-     * @param context             Represent the ballerina context which is the runtime state of the program
      * @param boundaryString      Boundary string that should be used in encoding body parts
      * @param messageOutputStream Output stream to which the payload is written
      */
-    private void serializeMultiparts(Context context, OutputStream messageOutputStream, String boundaryString)
+    private void serializeMultiparts(BStruct requestStruct, OutputStream messageOutputStream, String boundaryString)
             throws IOException {
-        BStruct entityStruct = getEntityStruct(context);
+        BStruct entityStruct = extractEntity(requestStruct);
+       // BStruct entityStruct = getEntityStruct(context);
         if (entityStruct != null) {
             BRefValueArray bodyParts = EntityBodyHandler.getBodyPartArray(entityStruct);
             if (bodyParts != null && bodyParts.size() > 0) {
                 serializeMultipartDataSource(messageOutputStream, boundaryString,
                                              entityStruct);
             } else { //If the content is in a byte channel
-                serializeDataSource(context, messageOutputStream);
+                serializeDataSource(requestStruct, messageOutputStream);
             }
         }
     }
@@ -370,8 +370,8 @@ public abstract class AbstractHTTPAction implements NativeCallableUnit {
         HttpUtil.closeMessageOutputStream(messageOutputStream);
     }
 
-    private void serializeDataSource(Context context, OutputStream messageOutputStream) throws IOException {
-        BStruct requestStruct = ((BStruct) context.getNullableRefArgument(1));
+    private void serializeDataSource(BStruct requestStruct, OutputStream messageOutputStream) throws IOException {
+      //  BStruct requestStruct = ((BStruct) context.getNullableRefArgument(1));
         if (requestStruct == null) {
             return;
         }

@@ -39,7 +39,7 @@ public type CallerActions object {
         R{{}} The response for the request or an `error` if failed to establish communication with the upstream server
     }
     public native function post(@sensitive string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
-                                                        requestOrPayload = ()) returns Response|error;
+                                                        requestOrPayload) returns Response|error;
 
     documentation {
         The `head()` function can be used to send HTTP HEAD requests to HTTP endpoints.

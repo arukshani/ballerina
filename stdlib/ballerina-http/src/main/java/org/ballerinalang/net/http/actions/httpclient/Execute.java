@@ -57,18 +57,19 @@ public class Execute extends AbstractHTTPAction {
 
     @Override
     public void execute(Context context, CallableUnitCallback callback) {
-        DataContext dataContext = new DataContext(context, callback, createOutboundRequestMsg(context));
+        BStruct requestStruct = HttpUtil.getBallerinaHttpMessage(context, true);
+        DataContext dataContext = new DataContext(context, callback, requestStruct,
+                createOutboundRequestMsg(context, requestStruct));
         // Execute the operation
         executeNonBlockingAction(dataContext, false);
     }
 
     @Override
-    protected HTTPCarbonMessage createOutboundRequestMsg(Context context) {
+    protected HTTPCarbonMessage createOutboundRequestMsg(Context context, BStruct requestStruct) {
         // Extract Argument values
         BStruct bConnector = (BStruct) context.getRefArgument(0);
         String httpVerb = context.getStringArgument(0);
         String path = context.getStringArgument(1);
-        BStruct requestStruct = ((BStruct) context.getRefArgument(1));
 
         HTTPCarbonMessage outboundRequestMsg = HttpUtil
                 .getCarbonMsg(requestStruct, HttpUtil.createHttpCarbonMessage(true));

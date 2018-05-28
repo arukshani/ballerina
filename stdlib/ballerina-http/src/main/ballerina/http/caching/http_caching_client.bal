@@ -267,11 +267,12 @@ public function createHttpCachingClient(string url, ClientEndpointConfig config,
     return httpCachingClient;
 }
 
-public function HttpCachingClient::post(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
+public function HttpCachingClient::post(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]| ()
                                                         requestOrPayload = ()) returns Response|error {
     //Request req = request ?: new;
     Request req = new;
     match requestOrPayload {
+        () => {}
         Request request => {req = request;}
         string textContent => {req.setTextPayload(textContent);}
         xml xmlContent => {req.setXmlPayload(xmlContent);}
@@ -279,11 +280,10 @@ public function HttpCachingClient::post(string path, Request|string|xml|json|blo
         blob blobContent => {req.setBinaryPayload(blobContent);}
         io:ByteChannel byteChannelContent => {req.setByteChannel(byteChannelContent);}
         mime:Entity[] bodyParts => {req.setBodyParts(bodyParts);}
-        () => {};
     }
     setRequestCacheControlHeader(req);
 
-    match self.httpClient.post(path, requestOrPayload = req) {
+    match self.httpClient.post(path, req) {
         Response inboundResponse => {
             invalidateResponses(self.cache, inboundResponse, path);
             return inboundResponse;

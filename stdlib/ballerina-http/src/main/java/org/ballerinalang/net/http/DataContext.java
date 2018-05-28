@@ -38,29 +38,29 @@ public class DataContext {
     public Context context;
     public CallableUnitCallback callback;
     private HTTPCarbonMessage correlatedMessage;
+    private BStruct ballerinaRequest;
 
-    public DataContext(Context context, CallableUnitCallback callback, HTTPCarbonMessage correlatedMessage) {
+    public DataContext(Context context, CallableUnitCallback callback, BStruct ballerinaRequest,
+                       HTTPCarbonMessage correlatedMessage) {
         this.context = context;
         this.callback = callback;
+        this.ballerinaRequest = ballerinaRequest;
         this.correlatedMessage = correlatedMessage;
     }
 
     public void notifyInboundResponseStatus(BStruct inboundResponse, BStruct httpConnectorError) {
         //Make the request associate with this response consumable again so that it can be reused.
-        if (correlatedMessage != null) { //Null check is needed because of http2 scenarios
-            BStruct requestStruct = ((BStruct) context.getNullableRefArgument(1));
-            if (requestStruct != null) {
-                BStruct entityStruct = extractEntity(requestStruct);
-                if (entityStruct != null) {
-                    MessageDataSource messageDataSource = EntityBodyHandler.getMessageDataSource(entityStruct);
-                    if (messageDataSource == null && EntityBodyHandler.getByteChannel(entityStruct) == null) {
-                        correlatedMessage.addHttpContent(new DefaultLastHttpContent());
-                    } else {
-                        correlatedMessage.waitAndReleaseAllEntities();
-                    }
-                } else {
+        if (correlatedMessage != null && ballerinaRequest != null) { //Null check is needed because of http2 scenarios
+            BStruct entityStruct = extractEntity(ballerinaRequest);
+            if (entityStruct != null) {
+                MessageDataSource messageDataSource = EntityBodyHandler.getMessageDataSource(entityStruct);
+                if (messageDataSource == null && EntityBodyHandler.getByteChannel(entityStruct) == null) {
                     correlatedMessage.addHttpContent(new DefaultLastHttpContent());
+                } else {
+                    correlatedMessage.waitAndReleaseAllEntities();
                 }
+            } else {
+                correlatedMessage.addHttpContent(new DefaultLastHttpContent());
             }
         }
         if (inboundResponse != null) {
@@ -86,5 +86,9 @@ public class DataContext {
 
     public HTTPCarbonMessage getOutboundRequest() {
         return correlatedMessage;
+    }
+
+    public BStruct getBallerinaRequest() {
+        return ballerinaRequest;
     }
 }

@@ -65,7 +65,8 @@ public class PushPromisedResponse extends ConnectionAction {
     public void execute(Context context, CallableUnitCallback callback) {
         BStruct connectionStruct = (BStruct) context.getRefArgument(0);
         HTTPCarbonMessage inboundRequestMsg = HttpUtil.getCarbonMsg(connectionStruct, null);
-        DataContext dataContext = new DataContext(context, callback, inboundRequestMsg);
+        BStruct requestStruct = HttpUtil.getBallerinaHttpMessage(context, true);
+        DataContext dataContext = new DataContext(context, callback, requestStruct, inboundRequestMsg);
         HttpUtil.serverConnectionStructCheck(inboundRequestMsg);
 
         BStruct pushPromiseStruct = (BStruct) context.getRefArgument(1);

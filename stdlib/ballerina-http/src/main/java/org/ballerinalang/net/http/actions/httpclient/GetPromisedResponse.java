@@ -58,7 +58,7 @@ public class GetPromisedResponse extends AbstractHTTPAction {
     @Override
     public void execute(Context context, CallableUnitCallback callback) {
 
-        DataContext dataContext = new DataContext(context, callback, null);
+        DataContext dataContext = new DataContext(context, callback, null, null);
         BStruct pushPromiseStruct = (BStruct) context.getRefArgument(1);
         Http2PushPromise http2PushPromise = HttpUtil.getPushPromise(pushPromiseStruct, null);
         if (http2PushPromise == null) {
