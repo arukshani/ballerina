@@ -198,9 +198,9 @@ public class HttpUtil {
         BStruct message = null;
         BValue result = context.getNullableRefArgument(1);
         switch (result.getType().getTag()) {
-            case TypeTags.NULL_TAG:
+          /*  case TypeTags.NULL_TAG:
                 message = HttpUtil.createNewRequestStruct(context);
-                break;
+                break;*/
             case TypeTags.STRING_TAG:
                 message = HttpUtil.createNewRequestStruct(context);
                 BStruct entityStruct = (BStruct) message.getRefField(isRequest ? REQUEST_ENTITY_INDEX :
@@ -209,7 +209,14 @@ public class HttpUtil {
                 message.addNativeData(IS_BODY_BYTE_CHANNEL_ALREADY_SET, true);
                 MimeUtil.setMediaTypeToEntity(context, entityStruct, TEXT_PLAIN);
                 break;
-            case TypeTags.XML_TAG:
+            case TypeTags.STRUCT_TAG:
+                if (result instanceof BStruct) {
+                    if (result.getType().getName().equals(REQUEST)) {
+                        return (BStruct) result;
+                    }
+                }
+                break;
+           /* case TypeTags.XML_TAG:
                 message = HttpUtil.createNewRequestStruct(context);
                 break;
             case TypeTags.JSON_TAG:
@@ -226,7 +233,7 @@ public class HttpUtil {
                 }
                 break;
             default:
-                break;
+                break;*/
         }
         return message;
     }
