@@ -238,21 +238,52 @@ public function Client::init(ClientEndpointConfig config) {
         }
     }
     if (httpClientRequired) {
-        var retryConfigVal = config.retryConfig;
-        match retryConfigVal {
-            RetryConfig retryConfig => {
-                self.httpClient = createRetryClient(url, config);
+        var redirectConfigVal = config.followRedirects;
+        match redirectConfigVal {
+            FollowRedirects redirectConfig => {
+                self.httpClient = createRedirectClient(url, config);
             }
             () => {
-                if (config.cache.enabled) {
-                    self.httpClient = createHttpCachingClient(url, config, config.cache);
-                } else {
-                    self.httpClient = createHttpSecureClient(url, config);
-                }
+               checkForRetry(url, config);
             }
         }
     } else {
         self.httpClient = createCircuitBreakerClient(url, config);
+    }
+
+    //////////////////
+    //if (httpClientRequired) {
+    //    var retryConfigVal = config.retryConfig;
+    //    match retryConfigVal {
+    //        RetryConfig retryConfig => {
+    //            self.httpClient = createRetryClient(url, config);
+    //        }
+    //        () => {
+    //            if (config.cache.enabled) {
+    //                self.httpClient = createHttpCachingClient(url, config, config.cache);
+    //            } else {
+    //                self.httpClient = createHttpSecureClient(url, config);
+    //            }
+    //        }
+    //    }
+    //} else {
+    //    self.httpClient = createCircuitBreakerClient(url, config);
+    //}
+}
+
+function checkForRetry(string url, ClientEndpointConfig config) {
+    var retryConfigVal = config.retryConfig;
+    match retryConfigVal {
+        RetryConfig retryConfig => {
+            self.httpClient = createRetryClient(url, config);
+        }
+        () => {
+            if (config.cache.enabled) {
+                self.httpClient = createHttpCachingClient(url, config, config.cache);
+            } else {
+                self.httpClient = createHttpSecureClient(url, config);
+            }
+        }
     }
 }
 
@@ -303,6 +334,22 @@ function createCircuitBreakerClient(string uri, ClientEndpointConfig configurati
             } else {
                 return createHttpSecureClient(uri, configuration);
             }
+        }
+    }
+}
+
+function createRedirectClient(string url, ClientEndpointConfig configuration) returns CallerActions {
+    var redirectConfigVal = configuration.followRedirects;
+    match redirectConfigVal {
+        FollowRedirects redirectConfig => {
+            if (redirectConfig.enabled) {
+                return new RedirectClient(url, configuration, redirectConfig, createRetryClient(url, configuration));
+            } else {
+                return createRetryClient(url, configuration);
+            }
+        }
+        () => {
+            return createRetryClient(url, configuration);
         }
     }
 }
