@@ -15,9 +15,8 @@
 // under the License.
 
 import ballerina/io;
-import ballerina/math;
-import ballerina/mime;
 import ballerina/runtime;
+import ballerina/mime;
 
 documentation {
     Provides the HTTP actions for interacting with an HTTP endpoint. This is created by wrapping the HTTP client
@@ -209,91 +208,91 @@ public type RedirectClient object {
     public function rejectPromise(PushPromise promise);
 };
 
-public function RetryClient::post(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
+public function RedirectClient::post(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
     message) returns Response|error {
     //io:println("Redirect post");
     Request req = buildRequest(message);
     return self.httpClient.post(path, req);
 }
 
-public function RetryClient::head(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
+public function RedirectClient::head(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
     message = ()) returns Response|error {
     //io:println("Redirect head");
     Request req = buildRequest(message);
     return self.httpClient.post(path, message = req);
 }
 
-public function RetryClient::put(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
+public function RedirectClient::put(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
     message) returns Response|error {
     //io:println("Redirect put");
     Request req = buildRequest(message);
     return self.httpClient.put(path, req);
 }
 
-public function RetryClient::forward(string path, Request request) returns Response|error {
+public function RedirectClient::forward(string path, Request request) returns Response|error {
     //io:println("Redirect forward");
     return self.httpClient.forward(path, req);
 }
 
-public function RetryClient::execute(string httpVerb, string path, Request|string|xml|json|blob|io:ByteChannel
+public function RedirectClient::execute(string httpVerb, string path, Request|string|xml|json|blob|io:ByteChannel
     |mime:Entity[]|() message) returns Response|error {
     //io:println("Redirect execute");
     Request req = buildRequest(message);
     return self.httpClient.forward(httpVerb, path, req);
 }
 
-public function RetryClient::patch(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
+public function RedirectClient::patch(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
     message) returns Response|error {
     //io:println("Redirect patch");
     Request req = buildRequest(message);
     return self.httpClient.patch(path, req);
 }
 
-public function RetryClient::delete(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
+public function RedirectClient::delete(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
     message) returns Response|error {
     //io:println("Redirect delete");
     Request req = buildRequest(message);
     return self.httpClient.delete(path, req);
 }
 
-public function RetryClient::get(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
+public function RedirectClient::get(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
     message = ()) returns Response|error {
     //io:println("Redirect get");
     Request req = buildRequest(message);
     return self.httpClient.get(path, message = req);
 }
 
-public function RetryClient::options(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
+public function RedirectClient::options(string path, Request|string|xml|json|blob|io:ByteChannel|mime:Entity[]|()
     message = ()) returns Response|error {
     //io:println("Redirect options");
     Request req = buildRequest(message);
     return self.httpClient.options(path, message = req);
 }
 
-public function RetryClient::submit(string httpVerb, string path, Request|string|xml|json|blob|io:ByteChannel|
+public function RedirectClient::submit(string httpVerb, string path, Request|string|xml|json|blob|io:ByteChannel|
     mime:Entity[]|() message) returns HttpFuture|error {
     //io:println("Redirect submit");
     Request req = buildRequest(message);
     return self.httpClient.submit(path, req);
 }
 
-public function RetryClient::getResponse(HttpFuture httpFuture) returns Response|error {
+public function RedirectClient::getResponse(HttpFuture httpFuture) returns Response|error {
     return self.httpClient.getResponse(httpFuture);
 }
 
-public function RetryClient::hasPromise(HttpFuture httpFuture) returns boolean {
+public function RedirectClient::hasPromise(HttpFuture httpFuture) returns boolean {
     return self.httpClient.hasPromise(httpFuture);
 }
 
-public function RetryClient::getNextPromise(HttpFuture httpFuture) returns PushPromise|error {
+public function RedirectClient::getNextPromise(HttpFuture httpFuture) returns PushPromise|error {
     return self.httpClient.getNextPromise(httpFuture);
 }
 
-public function RetryClient::getPromisedResponse(PushPromise promise) returns Response|error {
+public function RedirectClient::getPromisedResponse(PushPromise promise) returns Response|error {
     return self.httpClient.getPromisedResponse(promise);
 }
 
-public function RetryClient::rejectPromise(PushPromise promise) {
+public function RedirectClient::rejectPromise(PushPromise promise) {
     return self.httpClient.rejectPromise(promise);
 }
 

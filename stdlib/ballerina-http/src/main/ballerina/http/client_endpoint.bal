@@ -237,38 +237,38 @@ public function Client::init(ClientEndpointConfig config) {
             httpClientRequired = true;
         }
     }
-    if (httpClientRequired) {
-        var redirectConfigVal = config.followRedirects;
-        match redirectConfigVal {
-            FollowRedirects redirectConfig => {
-                self.httpClient = createRedirectClient(url, config);
-            }
-            () => {
-               checkForRetry(url, config);
-            }
-        }
-    } else {
-        self.httpClient = createCircuitBreakerClient(url, config);
-    }
-
-    //////////////////
     //if (httpClientRequired) {
-    //    var retryConfigVal = config.retryConfig;
-    //    match retryConfigVal {
-    //        RetryConfig retryConfig => {
-    //            self.httpClient = createRetryClient(url, config);
+    //    var redirectConfigVal = config.followRedirects;
+    //    match redirectConfigVal {
+    //        FollowRedirects redirectConfig => {
+    //            self.httpClient = createRedirectClient(url, config);
     //        }
     //        () => {
-    //            if (config.cache.enabled) {
-    //                self.httpClient = createHttpCachingClient(url, config, config.cache);
-    //            } else {
-    //                self.httpClient = createHttpSecureClient(url, config);
-    //            }
+    //           checkForRetry(url, config);
     //        }
     //    }
     //} else {
     //    self.httpClient = createCircuitBreakerClient(url, config);
     //}
+
+    //////////////////
+    if (httpClientRequired) {
+        var retryConfigVal = config.retryConfig;
+        match retryConfigVal {
+            RetryConfig retryConfig => {
+                self.httpClient = createRetryClient(url, config);
+            }
+            () => {
+                if (config.cache.enabled) {
+                    self.httpClient = createHttpCachingClient(url, config, config.cache);
+                } else {
+                    self.httpClient = createHttpSecureClient(url, config);
+                }
+            }
+        }
+    } else {
+        self.httpClient = createCircuitBreakerClient(url, config);
+    }
 }
 
 function checkForRetry(string url, ClientEndpointConfig config) {
