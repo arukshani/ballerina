@@ -53,7 +53,7 @@ public class MatchExpressionTest {
         results = BRunUtil.invoke(compileResult, "testMatchExpr", new BValue[] { new BFloat(3.4) });
         Assert.assertEquals(results[0].stringValue(), "value2");
 
-        results = BRunUtil.invoke(compileResult, "getError");
+        results = BRunUtil.invoke(compileResult, "createError");
         results = BRunUtil.invoke(compileResult, "testMatchExpr", results);
         Assert.assertEquals(results[0].stringValue(), "value3");
 
@@ -77,7 +77,7 @@ public class MatchExpressionTest {
                 BRunUtil.invoke(compileResult, "testMatchExprWithImplicitDefault_1", new BValue[] { new BFloat(3.4) });
         Assert.assertEquals(results[0].stringValue(), "value2");
 
-        results = BRunUtil.invoke(compileResult, "getError");
+        results = BRunUtil.invoke(compileResult, "createError");
         results = BRunUtil.invoke(compileResult, "testMatchExprWithImplicitDefault_1", results);
         Assert.assertEquals(results[0].stringValue(), "value3");
 
@@ -101,7 +101,7 @@ public class MatchExpressionTest {
         results = BRunUtil.invoke(compileResult, "testMatchExprInUnaryOperator", new BValue[] { new BFloat(3.4) });
         Assert.assertEquals(results[0].stringValue(), "HELLO value2");
 
-        results = BRunUtil.invoke(compileResult, "getError");
+        results = BRunUtil.invoke(compileResult, "createError");
         results = BRunUtil.invoke(compileResult, "testMatchExprInUnaryOperator", results);
         Assert.assertEquals(results[0].stringValue(), "HELLO value3");
 
@@ -118,7 +118,7 @@ public class MatchExpressionTest {
         results = BRunUtil.invoke(compileResult, "testMatchExprInBinaryOperator", new BValue[] { new BFloat(3.4) });
         Assert.assertEquals(results[0].stringValue(), "HELLO value2");
 
-        results = BRunUtil.invoke(compileResult, "getError");
+        results = BRunUtil.invoke(compileResult, "createError");
         results = BRunUtil.invoke(compileResult, "testMatchExprInBinaryOperator", results);
         Assert.assertEquals(results[0].stringValue(), "HELLO value3");
 
@@ -136,7 +136,7 @@ public class MatchExpressionTest {
         results = BRunUtil.invoke(compileResult, "testMatchExprInFuncCall", new BValue[] { new BFloat(3.4) });
         Assert.assertEquals(results[0].stringValue(), "value2");
 
-        results = BRunUtil.invoke(compileResult, "getError");
+        results = BRunUtil.invoke(compileResult, "createError");
         results = BRunUtil.invoke(compileResult, "testMatchExprInFuncCall", results);
         Assert.assertEquals(results[0].stringValue(), "value3");
 
@@ -152,7 +152,7 @@ public class MatchExpressionTest {
         results = BRunUtil.invoke(compileResult, "testNestedMatchExpr", new BValue[] { new BFloat(3.4) });
         Assert.assertEquals(results[0].stringValue(), "value2");
 
-        results = BRunUtil.invoke(compileResult, "getError");
+        results = BRunUtil.invoke(compileResult, "createError");
         results = BRunUtil.invoke(compileResult, "testNestedMatchExpr", results);
         Assert.assertEquals(results[0].stringValue(), "value3");
 
@@ -174,7 +174,7 @@ public class MatchExpressionTest {
         Assert.assertTrue(results[0] instanceof BJSON);
         Assert.assertEquals(results[0].stringValue(), "jsonStr1");
 
-        results = BRunUtil.invoke(compileResult, "getError");
+        results = BRunUtil.invoke(compileResult, "createError");
         results = BRunUtil.invoke(compileResult, "testAssignabileTypesInPatterns", results);
         Assert.assertTrue(results[0] instanceof BJSON);
         Assert.assertEquals(results[0].stringValue(), "jsonStr2");

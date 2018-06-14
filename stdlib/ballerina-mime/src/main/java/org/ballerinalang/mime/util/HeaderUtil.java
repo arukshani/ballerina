@@ -182,55 +182,6 @@ public class HeaderUtil {
         return headerValue.toString();
     }
 
-    /**
-     * Override a header with a given value.
-     *
-     * @param entityHeaders A map of entity headers
-     * @param headerName    Header name as a string
-     * @param headerValue   Header value as a string
-     */
-    public static void overrideEntityHeader(BMap<String, BValue> entityHeaders, String headerName, String
-            headerValue) {
-        BStringArray valueArray = new BStringArray(new String[]{headerValue});
-        entityHeaders.put(headerName, valueArray);
-    }
-
-    /**
-     * Add MediaType struct info as an entity header.
-     *
-     * @param bodyPart      Represent a ballerina body part
-     * @param entityHeaders Map of entity headers
-     */
-    static void setContentTypeHeader(BStruct bodyPart, HttpHeaders entityHeaders) {
-
-    }
-
-    /**
-     * Add ContentDisposition struct info as an entity header.
-     *
-     * @param bodyPart      Represent a ballerina body part
-     * @param entityHeaders Map of entity headers
-     */
-    static void setContentDispositionHeader(BStruct bodyPart, BMap<String, BValue> entityHeaders) {
-        String contentDisposition = MimeUtil.getContentDisposition(bodyPart);
-        if (MimeUtil.isNotNullAndEmpty(contentDisposition)) {
-            overrideEntityHeader(entityHeaders, HttpHeaderNames.CONTENT_DISPOSITION.toString(), contentDisposition);
-        }
-    }
-
-    /**
-     * Add content id as an entity header.
-     *
-     * @param bodyPart      Represent a ballerina body part
-     * @param entityHeaders Map of entity headers
-     */
-    static void setContentIdHeader(BStruct bodyPart, BMap<String, BValue> entityHeaders) {
-        String contentId = bodyPart.getStringField(CONTENT_ID_INDEX);
-        if (MimeUtil.isNotNullAndEmpty(contentId)) {
-            overrideEntityHeader(entityHeaders, CONTENT_ID, contentId);
-        }
-    }
-
     public static boolean isMultipart(String contentType) {
         return contentType != null && contentType.startsWith(MULTIPART_AS_PRIMARY_TYPE);
     }
@@ -259,20 +210,6 @@ public class HeaderUtil {
             entity.addNativeData(ENTITY_HEADERS, httpHeaders);
         }
         httpHeaders.set(key, value);
-    }
-
-    public static BMap<String, BValue> getAllHeadersAsBMap(HttpHeaders headers) {
-        BMap<String, BValue> headerMap = new BMap<>();
-        for (Map.Entry<String, String> header : headers.entries()) {
-            if (headerMap.keySet().contains(header.getKey())) {
-                BStringArray valueArray = (BStringArray) headerMap.get(header.getKey());
-                valueArray.add(valueArray.size(), header.getValue());
-            } else {
-                BStringArray valueArray = new BStringArray(new String[]{header.getValue()});
-                headerMap.put(header.getKey(), valueArray);
-            }
-        }
-        return headerMap;
     }
 
     public static String getBaseType(BStruct entityStruct) throws MimeTypeParseException {

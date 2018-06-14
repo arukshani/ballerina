@@ -83,13 +83,13 @@ public class AppointmentTest {
                 new BValue[]{
                         new BString(w1CronExpression), new BString(w1ErrMsg)});
         await().atMost(10, SECONDS).until(() -> {
-            BValue[] errors = BRunUtil.invokeStateful(compileResult, "getError");
+            BValue[] errors = BRunUtil.invokeStateful(compileResult, "createError");
             return errors != null && errors[0] != null && errors[0].stringValue() != null && !errors[0].stringValue()
                     .equals("");
         });
 
         // Now test whether the onError Ballerina function got called
-        BValue[] error = BRunUtil.invokeStateful(compileResult, "getError");
+        BValue[] error = BRunUtil.invokeStateful(compileResult, "createError");
         assertNotNull(error[0], "Expected error not returned.");
         assertEquals(error[0].stringValue(), w1ErrMsg, "Expected error message not returned.");
 

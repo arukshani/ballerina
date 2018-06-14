@@ -104,12 +104,12 @@ public class TimerTest {
                         new BString(errMsg)});
 
         await().atMost(5, SECONDS).until(() -> {
-            BValue[] error = BRunUtil.invokeStateful(timerCompileResult, "getError");
+            BValue[] error = BRunUtil.invokeStateful(timerCompileResult, "createError");
             return error != null && error[0] != null && !error[0].stringValue().isEmpty();
         });
 
         // Now test whether the onError Ballerina function got called
-        BValue[] error = BRunUtil.invokeStateful(timerCompileResult, "getError");
+        BValue[] error = BRunUtil.invokeStateful(timerCompileResult, "createError");
         assertNotNull(error[0], "Expected error not returned.");
         assertEquals(error[0].stringValue(), errMsg, "Expected error message not returned.");
 
