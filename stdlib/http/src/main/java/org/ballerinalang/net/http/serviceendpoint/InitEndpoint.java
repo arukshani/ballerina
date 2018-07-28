@@ -34,6 +34,8 @@ import org.ballerinalang.net.http.HttpConnectionManager;
 import org.ballerinalang.net.http.HttpConstants;
 import org.ballerinalang.net.http.HttpUtil;
 import org.ballerinalang.util.exceptions.BallerinaException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.transport.http.netty.config.ListenerConfiguration;
 import org.wso2.transport.http.netty.config.Parameter;
 import org.wso2.transport.http.netty.config.RequestSizeValidationConfig;
@@ -60,6 +62,7 @@ import static org.ballerinalang.runtime.Constants.BALLERINA_VERSION;
         isPublic = true
 )
 public class InitEndpoint extends AbstractHttpNativeFunction {
+    private static final Logger LOGGER = LoggerFactory.getLogger(InitEndpoint.class);
 
     private static final ConfigRegistry configRegistry = ConfigRegistry.getInstance();
 
@@ -77,7 +80,7 @@ public class InitEndpoint extends AbstractHttpNativeFunction {
 
             //Adding service registries to native data
             resetRegistry(serviceEndpoint);
-
+            LOGGER.info("Create a server connector : " + Thread.currentThread().getId() + "-" + Thread.currentThread().getName());
             context.setReturnValues((BValue) null);
         } catch (Throwable throwable) {
             BMap<String, BValue> errorStruct = HttpUtil.getError(context, throwable);

@@ -19,6 +19,8 @@ package org.ballerinalang.net.http;
 import org.ballerinalang.bre.bvm.CallableUnitCallback;
 import org.ballerinalang.model.values.BMap;
 import org.ballerinalang.model.values.BValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.transport.http.netty.message.HttpCarbonMessage;
 
 /**
@@ -27,6 +29,7 @@ import org.wso2.transport.http.netty.message.HttpCarbonMessage;
  * @since 0.94
  */
 public class HttpCallableUnitCallback implements CallableUnitCallback {
+    private static final Logger log = LoggerFactory.getLogger(HttpCallableUnitCallback.class);
     private HttpCarbonMessage requestMessage;
 
     public HttpCallableUnitCallback(HttpCarbonMessage requestMessage) {
@@ -35,6 +38,7 @@ public class HttpCallableUnitCallback implements CallableUnitCallback {
 
     @Override
     public void notifySuccess() {
+        log.info("Callback from ballerina side : " + Thread.currentThread().getId() + "-" + Thread.currentThread().getName());
         requestMessage.waitAndReleaseAllEntities();
     }
 

@@ -74,6 +74,8 @@ public class Respond extends ConnectionAction {
         BMap<String, BValue> outboundResponseStruct = (BMap<String, BValue>) context.getRefArgument(1);
         HttpCarbonMessage outboundResponseMsg = HttpUtil
                 .getCarbonMsg(outboundResponseStruct, HttpUtil.createHttpCarbonMessage(false));
+        log.info("Getting ready to respond back to client : " + Thread.currentThread().getId() + "-" +
+                Thread.currentThread().getName());
         outboundResponseMsg.setSequenceId(inboundRequestMsg.getSequenceId());
 
         setCacheControlHeader(outboundResponseStruct, outboundResponseMsg);

@@ -63,6 +63,8 @@ public class BallerinaHTTPConnectorListener implements HttpConnectorListener {
     @Override
     public void onMessage(HttpCarbonMessage inboundMessage) {
         try {
+            log.info("BallerinaHttpConnectorListner onMessage. Dispatch the incoming request to correct resource :" +
+                    Thread.currentThread().getId() + "-" + Thread.currentThread().getName());
             HttpResource httpResource;
             if (accessed(inboundMessage)) {
                 httpResource = (HttpResource) inboundMessage.getProperty(HTTP_RESOURCE);
@@ -108,7 +110,8 @@ public class BallerinaHTTPConnectorListener implements HttpConnectorListener {
             ctx.addTag(TAG_KEY_PROTOCOL, (String) inboundMessage.getProperty(HttpConstants.PROTOCOL));
             ctx.addTag(TAG_KEY_HTTP_URL, (String) inboundMessage.getProperty(HttpConstants.REQUEST_URL));
         });
-
+        log.info("Found the resource and start resource execution: " + Thread.currentThread().getId() + "-" +
+                Thread.currentThread().getName());
         CallableUnitCallback callback = new HttpCallableUnitCallback(inboundMessage);
         //TODO handle BallerinaConnectorException
         Executor.submit(balResource, callback, properties, observerContext.orElse(null), signatureParams);

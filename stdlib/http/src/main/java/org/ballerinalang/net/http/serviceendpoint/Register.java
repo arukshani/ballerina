@@ -35,6 +35,8 @@ import org.ballerinalang.net.http.WebSocketServerConnectorListener;
 import org.ballerinalang.net.http.WebSocketService;
 import org.ballerinalang.net.http.WebSocketServicesRegistry;
 import org.ballerinalang.util.exceptions.BallerinaException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.transport.http.netty.contract.ServerConnector;
 import org.wso2.transport.http.netty.contract.ServerConnectorFuture;
 
@@ -53,7 +55,7 @@ import org.wso2.transport.http.netty.contract.ServerConnectorFuture;
         isPublic = true
 )
 public class Register extends AbstractHttpNativeFunction {
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(Register.class);
     @Override
     public void execute(Context context) {
         Service service = BLangConnectorSPIUtil.getServiceRegistered(context);
@@ -81,6 +83,7 @@ public class Register extends AbstractHttpNativeFunction {
     private void startServerConnector(Struct serviceEndpoint, HTTPServicesRegistry httpServicesRegistry,
                                       WebSocketServicesRegistry webSocketServicesRegistry) {
         ServerConnector serverConnector = getServerConnector(serviceEndpoint);
+        LOGGER.info("Inside service register just before binding server host and port : " + Thread.currentThread().getId() + "-" + Thread.currentThread().getName());
         ServerConnectorFuture serverConnectorFuture = serverConnector.start();
         serverConnectorFuture.setHttpConnectorListener(
                 new BallerinaHTTPConnectorListener(httpServicesRegistry, serviceEndpoint
