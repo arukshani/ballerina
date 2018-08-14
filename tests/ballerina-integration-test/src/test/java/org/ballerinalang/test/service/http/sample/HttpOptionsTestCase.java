@@ -45,7 +45,7 @@ public class HttpOptionsTestCase {
         ballerinaServer.startBallerinaServer(relativePath);
     }
 
-    @Test(description = "Test OPTIONS content length header sample test case")
+    @Test(description = "Test OPTIONS content length header sample test case", enabled = false)
     public void testOptionsContentLengthHeader() throws Exception {
         Map<String, String> headers = new HashMap<>();
         headers.put(HttpHeaderNames.CONTENT_TYPE.toString(), TestConstant.CONTENT_TYPE_JSON);
