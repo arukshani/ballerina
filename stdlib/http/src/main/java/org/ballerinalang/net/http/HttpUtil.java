@@ -361,6 +361,7 @@ public class HttpUtil {
                                                           HttpCarbonMessage responseMsg) {
         HttpResponseFuture responseFuture;
         try {
+            responseMsg.setSequenceId(requestMsg.getSequenceId());
             responseFuture = requestMsg.respond(responseMsg);
         } catch (org.wso2.transport.http.netty.contract.ServerConnectorException e) {
             throw new BallerinaConnectorException("Error occurred during response", e);
