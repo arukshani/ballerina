@@ -88,7 +88,7 @@ public class TableToXMLStreamingTestCase extends BaseTest {
             String query = "INSERT INTO Data VALUES (?, ?, ?);";
             conn.setAutoCommit(true);
             PreparedStatement ps = conn.prepareStatement(query);
-            for (int i = 0; i < 100000; i++) {
+            for (int i = 0; i < 5000; i++) { //100000
                 ps.setInt(1, i);
                 ps.setString(2, strDataEntry);
                 ps.setString(3, strDataEntry);

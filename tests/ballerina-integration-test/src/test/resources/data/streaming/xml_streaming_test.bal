@@ -39,6 +39,7 @@ service<http:Service> dataService bind { port: 9090 } {
         }
 
         xml xmlConversionRet = check <xml>dt;
+      //  xml xmlConversionRet = xml `<ss>dd</ss>`;
         res.setPayload(untaint xmlConversionRet);
 
         caller->respond(res) but {
