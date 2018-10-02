@@ -75,6 +75,7 @@ public type TargetService record {
 # + cache - HTTP caching related configurations
 # + compression - Specifies the way of handling compression (`accept-encoding`) header
 # + auth - HTTP authentication releated configurations
+# + cookieConfig - HTTP cookie releated configurations
 public type ClientEndpointConfig record {
     string url;
     CircuitBreakerConfig? circuitBreaker;
@@ -91,6 +92,7 @@ public type ClientEndpointConfig record {
     CacheConfig cache;
     Compression compression = COMPRESSION_AUTO;
     AuthConfig? auth;
+    CookieConfig? cookieConfig;
     !...
 };
 
@@ -208,6 +210,24 @@ public type AuthConfig record {
     !...
 };
 
+//public type CookieStoreType “IN_MEMORY” | “PERSISTENT”;
+//@final public CookieStoreType IN_MEMORY = "IN_MEMORY";
+//@final public CookieStoreType PERSISTENT = "PERSISTENT";
+
+# Defines cookie configurations for HTTP client.
+#
+# + enabled - Enable/disable cookies. Cookie handling in HTTP client is disabled by default.
+# + maxPerCookieSize - Maximum size of a cookie. Default size is 4096 bytes.
+# + maxCookieCount - Maximum number of cookies allowed to be stored in cookie storage. Default value is 3000.
+# + storeType - Defines cookie storage type to be used by HTTP client
+public type CookieConfig record {
+    boolean enabled = false;
+    int maxPerCookieSize = 4096;
+    int maxCookieCount = 3000;
+    //CookieStoreType storeType = CookieStoreType.IN_MEMORY;
+    !...
+};
+
 function Client::init(ClientEndpointConfig c) {
     boolean httpClientRequired = false;
     string url = c.url;
@@ -268,11 +288,12 @@ function checkForRetry(string url, ClientEndpointConfig config) returns CallerAc
             return createRetryClient(url, config);
         }
         () => {
-            if (config.cache.enabled) {
-                return createHttpCachingClient(url, config, config.cache);
-            } else {
-                return createHttpSecureClient(url, config);
-            }
+            //if (config.cache.enabled) {
+            //    return createHttpCachingClient(url, config, config.cache);
+            //} else {
+            //    return createHttpSecureClient(url, config);
+            //}
+            return createCookieClient(url, config);
         }
     }
 }
@@ -315,32 +336,74 @@ function createCircuitBreakerClient(string uri, ClientEndpointConfig configurati
         }
         () => {
             //remove following once we can ignore
-            if (configuration.cache.enabled) {
-                return createHttpCachingClient(uri, configuration, configuration.cache);
-            } else {
-                return createHttpSecureClient(uri, configuration);
-            }
+            //if (configuration.cache.enabled) {
+            //    return createHttpCachingClient(uri, configuration, configuration.cache);
+            //} else {
+            //    return createHttpSecureClient(uri, configuration);
+            //}
+            return createCookieClient(uri, configuration);
         }
     }
 }
+
+//function createRetryClient(string url, ClientEndpointConfig configuration) returns CallerActions {
+//    var retryConfigVal = configuration.retryConfig;
+//    match retryConfigVal {
+//        RetryConfig retryConfig => {
+//            if (configuration.cache.enabled) {
+//                return new RetryClient(url, configuration, retryConfig, createHttpCachingClient(url, configuration, configuration.cache));
+//            } else{
+//                return new RetryClient(url, configuration, retryConfig, createHttpSecureClient(url, configuration));
+//            }
+//        }
+//        () => {
+//            //remove following once we can ignore
+//            if (configuration.cache.enabled) {
+//                return createHttpCachingClient(url, configuration, configuration.cache);
+//            } else {
+//                return createHttpSecureClient(url, configuration);
+//            }
+//        }
+//    }
+//}
 
 function createRetryClient(string url, ClientEndpointConfig configuration) returns CallerActions {
     var retryConfigVal = configuration.retryConfig;
     match retryConfigVal {
         RetryConfig retryConfig => {
-            if (configuration.cache.enabled) {
-                return new RetryClient(url, configuration, retryConfig, createHttpCachingClient(url, configuration, configuration.cache));
-            } else{
-                return new RetryClient(url, configuration, retryConfig, createHttpSecureClient(url, configuration));
+                return new RetryClient(url, configuration, retryConfig, createCookieClient(url, configuration));
+        }
+        () => {
+            return createCookieClient(url, configuration);
+        }
+    }
+}
+
+function createCookieClient(string url, ClientEndpointConfig configuration) returns CallerActions {
+    var cookieConfigVal = configuration.cookieConfig;
+    match cookieConfigVal {
+        CookieConfig cookieConfig => {
+            if (cookieConfig.enabled) {
+                if (configuration.cache.enabled) {
+                    return new CookieClient(url, configuration, cookieConfig, createHttpCachingClient(url, configuration,
+                    configuration.cache));
+                } else {
+                    return new CookieClient(url, configuration, cookieConfig, createHttpSecureClient(url, configuration));
+                }
+            } else {
+                return createDefaultClient(url, configuration);
             }
         }
         () => {
-            //remove following once we can ignore
-            if (configuration.cache.enabled) {
-                return createHttpCachingClient(url, configuration, configuration.cache);
-            } else {
-                return createHttpSecureClient(url, configuration);
-            }
+            return createDefaultClient(url, configuration);
         }
+    }
+}
+
+function createDefaultClient(string url, ClientEndpointConfig configuration) returns CallerActions {
+    if (configuration.cache.enabled) {
+        return createHttpCachingClient(url, configuration, configuration.cache);
+    } else {
+        return createHttpSecureClient(url, configuration);
     }
 }
