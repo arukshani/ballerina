@@ -14,10 +14,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import ballerina/crypto;
 import ballerina/file;
 import ballerina/io;
+import ballerina/log;
 import ballerina/mime;
-import ballerina/crypto;
 import ballerina/time;
 
 # Represents an HTTP response.
@@ -220,6 +221,13 @@ public type Response object {
     # + payload - Payload can be of type `string`, `xml`, `json`, `byte[]`, `ByteChannel` or `Entity[]` (i.e: a set
     #             of body parts)
     public function setPayload(string|xml|json|byte[]|io:ByteChannel|mime:Entity[] payload);
+
+    # Add cookies to response. Multiple `Set-Cookie` headers will result in call to this function.
+    public function addCookies(ServerCookie[] serverCookies);
+
+    public function addCookie(ServerCookie serverCookie);
+
+    public function getCookies() returns ServerCookie[]|error;
 };
 
 /////////////////////////////////
@@ -424,4 +432,38 @@ function Response::setPayload(string|xml|json|byte[]|io:ByteChannel|mime:Entity[
         io:ByteChannel byteChannelContent => self.setByteChannel(byteChannelContent);
         mime:Entity[] bodyParts => self.setBodyParts(bodyParts);
     }
+}
+
+function Response::addCookies(ServerCookie[] serverCookies) {
+    foreach serverCookie in serverCookies {
+        if(serverCookie.name != "") {
+            self.addHeader(SET_COOKIE_HEADER, serverCookie.toString());
+        } else {
+            log:printWarn("Cookie name is empty therefore it will not be set as a header");
+        }
+    }
+}
+
+function Response::addCookie(ServerCookie serverCookie) {
+    if(serverCookie.name != "") {
+        self.addHeader(SET_COOKIE_HEADER, serverCookie.toString());
+    } else {
+        log:printWarn("Cookie name is empty therefore it will not be set as a header");
+    }
+}
+
+function Response::getCookies() returns ServerCookie[]|error {
+    ServerCookie[] returnCookies = [];
+    string[] cookieValues = self.getHeaders(SET_COOKIE_HEADER);
+    int i = 0;
+    foreach cookieValue in cookieValues {
+        var result = parseServerCookie(cookieValue);
+        match result {
+            ServerCookie serverCookie => {returnCookies[i] = serverCookie;}
+            error parserError => {return parserError;}
+            () => {}
+        }
+        i += 1;
+    }
+    return returnCookies;
 }

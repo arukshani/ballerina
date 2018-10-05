@@ -234,6 +234,8 @@ public type Request object {
     #             of body parts)
     public function setPayload(string|xml|json|byte[]|io:ByteChannel|mime:Entity[] payload);
 
+    //public function getCookies() returns ClientCookie[]|error;
+
     // For use within the package. Takes the Cache-Control header and parses it to a RequestCacheControl object.
     function parseCacheControlHeader();
 };
@@ -464,3 +466,6 @@ function Request::setPayload(string|xml|json|byte[]|io:ByteChannel|mime:Entity[]
     }
 }
 
+//function Request::getCookies() returns ClientCookie[]|error{
+//
+//}

@@ -14,10 +14,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerina/io;
-import ballerina/mime;
-import ballerina/log;
 import ballerina/config;
+import ballerina/io;
+import ballerina/log;
+import ballerina/mime;
+import ballerina/time;
 
 # Provides cookie functionality across HTTP client actions.
 #
@@ -54,6 +55,7 @@ public type CookieClient object {
     # + return - The HTTP `Response` message, or an error if the invocation fails
     public function get(string path, Request|string|xml|json|byte[]|io:ByteChannel|mime:Entity[]|() message = ())
                                                                                             returns Response|error {
+        log:printInfo("Cookie client");
         Request request = buildRequest(message);
         return self.httpClient.get(path, message = request);
     }
