@@ -58,6 +58,7 @@ public type RedirectClient object {
     # + return - The HTTP `Response` message, or an error if the invocation fails
     public function get(string path, Request|string|xml|json|byte[]|io:ByteChannel|mime:Entity[]|()
                                         message = ()) returns Response|error {
+        log:printInfo("Redirect client");
         Request request = buildRequest(message);
         return performRedirectIfEligible(self, path, request, HTTP_GET);
     }

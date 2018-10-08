@@ -48,7 +48,7 @@ public type ServerCookie object {
 
 public function parseServerCookie(string header) returns ServerCookie?|error {
     ServerCookie? serverCookie;
-    string[] bites = header.split(";");
+    string[] bites = header.split("[;,]"); //Match semicolon or comma
     int i = 0;
     foreach bite in bites {
         string[] crumbs = bites[i].split("="); //split limit should be 2 but we dont have a function for that
@@ -79,10 +79,12 @@ public function parseServerCookie(string header) returns ServerCookie?|error {
                     serverCookie.maxAge = <int>value but { error => -1 };
                 } else if (SECURE.equalsIgnoreCase(name)) {
                     serverCookie.secure = true;
-                }else if (name.equalsIgnoreCase(HTTPONLY)) {
+                }else if (HTTPONLY.equalsIgnoreCase(name)) {
                     serverCookie.httpOnly = true;
+                } else if (EXPIRES_FOR_COOKIE.equalsIgnoreCase(name)) {
+                    i += 1;
+                    cookie.expiry = time:parse(value + ", " + bites[i], time:TIME_FORMAT_RFC_1123);
                 }
-                //TODO: Handle expiry
             }
             () => { serverCookie = new ServerCookie(name, value); }
         }
@@ -111,8 +113,6 @@ function ServerCookie::toString() returns string {
         cookieString = appendNameValuePair(cookieString, MAX_AGE_FOR_COOKIE, self.maxAge);
     }
 
-    //TODO: Add expires
-
     if (self.path != "") {
         cookieString = appendNameValuePair(cookieString, PATH, self.path);
     }
@@ -127,6 +127,10 @@ function ServerCookie::toString() returns string {
 
     if (self.httpOnly) {
         cookieString = appendSingleValue(cookieString, HTTPONLY);
+    }
+
+    match expiry {
+        time:Time
     }
 
     return cookieString;
