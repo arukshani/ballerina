@@ -48,10 +48,10 @@ public type ServerCookie object {
 
 # Represent client cookies that will be send from the client to server.
 type ClientCookie object {
-    @readonly string name;
-    @readonly string value;
-    @readonly string path;
-    @readonly string domain;
+    @readonly public string name;
+    @readonly public string value;
+    @readonly public string path;
+    @readonly public string domain;
     //There are few private properties that needs to be maintained for implementation. To be added later.
     //public function parseCookie(String header) returns ClientCookie[];
     //public function toString(ClientCookie[] cookie) returns String;
@@ -187,4 +187,5 @@ function appendSemiColon(string cookieString) returns string {
 @final string SECURE = "Secure";
 @final string HTTPONLY = "HttpOnly";
 
-@final string SET_COOKIE_HEADER = "Set-Cookie";
+@final string SET_COOKIE_HEADER = "set-cookie";
+@final string COOKIE_HEADER = "cookie";
