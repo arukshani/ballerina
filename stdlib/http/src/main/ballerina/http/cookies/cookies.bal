@@ -32,7 +32,7 @@ import ballerina/time;
 # + httpOnly - Omit the cookie when providing access to cookies via non - HTTP APIs
 public type ServerCookie object {
 
-    new(name, value) {}
+    public new(name, value) {}
 
     public string name;
     public string value;
@@ -46,9 +46,20 @@ public type ServerCookie object {
     public function toString() returns string;
 };
 
+# Represent client cookies that will be send from the client to server.
+type ClientCookie object {
+    @readonly string name;
+    @readonly string value;
+    @readonly string path;
+    @readonly string domain;
+    //There are few private properties that needs to be maintained for implementation. To be added later.
+    //public function parseCookie(String header) returns ClientCookie[];
+    //public function toString(ClientCookie[] cookie) returns String;
+};
+
 public function parseServerCookie(string header) returns ServerCookie?|error {
     ServerCookie? serverCookie;
-    string[] bites = header.split("[;,]"); //Match semicolon or comma
+    string[] bites = header.split(";"); //Match semicolon or comma
     int i = 0;
     foreach bite in bites {
         string[] crumbs = bites[i].split("="); //split limit should be 2 but we dont have a function for that
@@ -82,8 +93,13 @@ public function parseServerCookie(string header) returns ServerCookie?|error {
                 }else if (HTTPONLY.equalsIgnoreCase(name)) {
                     serverCookie.httpOnly = true;
                 } else if (EXPIRES_FOR_COOKIE.equalsIgnoreCase(name)) {
-                    i += 1;
-                    cookie.expiry = time:parse(value + ", " + bites[i], time:TIME_FORMAT_RFC_1123);
+                    try {
+                        cookie.expiry = time:parse(value, time:TIME_FORMAT_RFC_1123);
+                    }catch (error err) {
+                        string errMsg = "Error occurred while parsing expiry date in set-cookie: " + err.message;
+                        error parserError = {message: errMsg};
+                        return parserError;
+                    }
                 }
             }
             () => { serverCookie = new ServerCookie(name, value); }
@@ -93,32 +109,29 @@ public function parseServerCookie(string header) returns ServerCookie?|error {
     return serverCookie;
 }
 
-# Represent client cookies that will be send from the client to server.
-type ClientCookie object {
-    @readonly string name;
-    @readonly string value;
-    @readonly string path;
-    @readonly string domain;
-    //There are few private properties that needs to be maintained for implementation. To be added later.
-    //public function parseCookie(String header) returns ClientCookie[];
-    //public function toString(ClientCookie[] cookie) returns String;
-};
-
 function ServerCookie::toString() returns string {
     string cookieString;
     //cookie name value pair
     cookieString = appendNameValuePair(cookieString, self.name, self.value);
 
     if (self.maxAge > 0) {
-        cookieString = appendNameValuePair(cookieString, MAX_AGE_FOR_COOKIE, self.maxAge);
+        cookieString = appendAttribute(cookieString, MAX_AGE_FOR_COOKIE, self.maxAge);
+    }
+
+    match self.expiry {
+        time:Time expires => {
+            cookieString = appendAttribute(cookieString, EXPIRES_FOR_COOKIE,
+                                expires.format(time:TIME_FORMAT_RFC_1123));
+        }
+        () => {}
     }
 
     if (self.path != "") {
-        cookieString = appendNameValuePair(cookieString, PATH, self.path);
+        cookieString = appendAttribute(cookieString, PATH, self.path);
     }
 
     if (self.domain != "") {
-        cookieString = appendNameValuePair(cookieString, DOMAIN, self.domain);
+        cookieString = appendAttribute(cookieString, DOMAIN, self.domain);
     }
 
     if (self.secure) {
@@ -129,29 +142,36 @@ function ServerCookie::toString() returns string {
         cookieString = appendSingleValue(cookieString, HTTPONLY);
     }
 
-    //match expiry {
-    //    time:Time
-    //}
-
     return cookieString;
 }
 
-function appendNameValuePair(string cookieString, string name, string|int value) returns string {
+function appendNameValuePair(string cookieString, string name, string value) returns string {
     string returnValue = cookieString;
+    returnValue += name;
+    returnValue += EQUALS;
+    returnValue += value;
+    return returnValue;
+}
+
+function appendAttribute(string cookieString, string name, string|int value) returns string {
+    string returnValue = appendSemiColon(cookieString);
     returnValue += name;
     returnValue += EQUALS;
     match value {
         string stringVal => returnValue += stringVal;
         int intVal => returnValue += intVal;
     }
-    returnValue += SEMICOLON;
-    returnValue += SPACE;
     return returnValue;
 }
 
 function appendSingleValue(string cookieString, string name) returns string {
-    string returnValue = cookieString;
+    string returnValue = appendSemiColon(cookieString);
     returnValue += name;
+    return returnValue;
+}
+
+function appendSemiColon(string cookieString) returns string {
+    string returnValue = cookieString;
     returnValue += SEMICOLON;
     returnValue += SPACE;
     return returnValue;
@@ -165,6 +185,6 @@ function appendSingleValue(string cookieString, string name) returns string {
 @final string PATH = "Path";
 @final string DOMAIN = "Domain";
 @final string SECURE = "Secure";
-@final string HTTPONLY = "HTTPOnly";
+@final string HTTPONLY = "HttpOnly";
 
 @final string SET_COOKIE_HEADER = "Set-Cookie";

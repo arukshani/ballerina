@@ -439,7 +439,7 @@ function Response::addCookies(ServerCookie[] serverCookies) {
         if(serverCookie.name != "") {
             self.addHeader(SET_COOKIE_HEADER, serverCookie.toString());
         } else {
-            log:printWarn("Cookie name is empty therefore it will not be set as a header");
+            log:printWarn("Cookie name is empty therefore it will not be set as a header: " + serverCookie.toString());
         }
     }
 }
@@ -448,7 +448,7 @@ function Response::addCookie(ServerCookie serverCookie) {
     if(serverCookie.name != "") {
         self.addHeader(SET_COOKIE_HEADER, serverCookie.toString());
     } else {
-        log:printWarn("Cookie name is empty therefore it will not be set as a header");
+        log:printWarn("Cookie name is empty therefore it will not be set as a header: " + serverCookie.toString());
     }
 }
 
