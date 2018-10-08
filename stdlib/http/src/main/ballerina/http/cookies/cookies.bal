@@ -129,9 +129,9 @@ function ServerCookie::toString() returns string {
         cookieString = appendSingleValue(cookieString, HTTPONLY);
     }
 
-    match expiry {
-        time:Time
-    }
+    //match expiry {
+    //    time:Time
+    //}
 
     return cookieString;
 }
