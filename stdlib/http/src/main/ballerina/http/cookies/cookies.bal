@@ -47,22 +47,23 @@ public type ServerCookie object {
 };
 
 # Represent client cookies that will be send from the client to server.
-type ClientCookie object {
+public type ClientCookie object {
+
+    public new(name, value) {}
+
     @readonly public string name;
     @readonly public string value;
     @readonly public string path;
     @readonly public string domain;
-    //There are few private properties that needs to be maintained for implementation. To be added later.
-    //public function parseCookie(String header) returns ClientCookie[];
+
     //public function toString(ClientCookie[] cookie) returns String;
 };
 
 public function parseServerCookie(string header) returns ServerCookie?|error {
     ServerCookie? serverCookie;
-    string[] bites = header.split(";"); //Match semicolon or comma
-    int i = 0;
+    string[] bites = header.split(";");
     foreach bite in bites {
-        string[] crumbs = bites[i].split("="); //split limit should be 2 but we dont have a function for that
+        string[] crumbs = bite.split("="); //split limit should be 2 but we dont have a function for that
         int lengthOfCrumbs = lengthof crumbs;
         if (lengthOfCrumbs > 2) {
             error parserError = {message: "Invalid cookie string detected"};
@@ -104,9 +105,40 @@ public function parseServerCookie(string header) returns ServerCookie?|error {
             }
             () => { serverCookie = new ServerCookie(name, value); }
         }
-        i += 1;
     }
     return serverCookie;
+}
+
+//Adheres to RFC6265. This is balantly different from how RFC2965 parses the cookie header. All the attributes that
+//starts with $ mark are ignored.
+public function parseClientCookie(string header) returns ClientCookie[]|error {
+    ClientCookie[] clientCookies;
+    string[] bites = header.split(";");
+    int i = 0;
+    foreach bite in bites {
+        string[] crumbs = bite.split("="); //split limit should be 2 but we dont have a function for that
+        int lengthOfCrumbs = lengthof crumbs;
+        if (lengthOfCrumbs > 2) {
+            error parserError = {message: "Invalid cookie string detected"};
+            return parserError;
+        }
+        //If there are more than 0 crumbs we know for sure that a name part is there in cookie name, value pair or
+        //attribute value pair
+        string name = lengthof crumbs > 0 ? crumbs[0].trim() : "";
+        //If there are more than 1 crumbs we know for sure that a value part is there in cookie name, value pair or
+        //attribute value pair
+        string value = lengthof crumbs > 1 ? crumbs[1].trim() : "";
+
+        //Remove quotes
+        if (value.hasPrefix("\"") && value.hasSuffix("\"") && value.length() > 1) {
+            value = value.substring(1, value.length() - 1);
+        }
+        if (!name.hasSuffix("$")) {
+            ClientCookie clientCookie = new ClientCookie(name, value);
+            clientCookies[i] = clientCookie;
+        }
+    }
+    return clientCookies;
 }
 
 function ServerCookie::toString() returns string {
@@ -142,6 +174,16 @@ function ServerCookie::toString() returns string {
         cookieString = appendSingleValue(cookieString, HTTPONLY);
     }
 
+    return cookieString;
+}
+
+public function convertClientCookiestoString(ClientCookie[] cookies) returns string {
+    string cookieString;
+    foreach cookie in cookies {
+        //cookie name value pair
+        cookieString = appendNameValuePair(cookieString, cookie.name, cookie.value);
+        cookieString = appendSemiColon(cookieString);
+    }
     return cookieString;
 }
 

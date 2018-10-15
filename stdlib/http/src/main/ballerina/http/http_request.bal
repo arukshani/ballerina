@@ -466,18 +466,14 @@ function Request::setPayload(string|xml|json|byte[]|io:ReadableByteChannel|mime:
     }
 }
 
-function Request::getCookies() returns ClientCookie[]|error{
+function Request::getCookies() returns ClientCookie[]|error {
     ClientCookie[] returnCookies = [];
-    //string[] cookieValues = self.getHeaders(COOKIE_HEADER);
-    //int i = 0;
-    //foreach cookieValue in cookieValues {
-    //    var result = parseClientCookie(cookieValue);
-    //    match result {
-    //        ClientCookie clientCookie => {returnCookies[i] = serverCookie;}
-    //        error parserError => {return parserError;}
-    //        () => {}
-    //    }
-    //    i += 1;
-    //}
+    //TODO: HTTP2 can send multiple cookie header values, need to support that
+    string cookieHeader = self.getHeader(COOKIE_HEADER);
+    var result = parseClientCookie(cookieHeader);
+    match result {
+        ClientCookie[] clientCookies => {returnCookies = clientCookies;}
+        error parserError => {return parserError;}
+    }
     return returnCookies;
 }
