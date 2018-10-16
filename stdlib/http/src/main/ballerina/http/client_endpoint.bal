@@ -20,6 +20,8 @@ import ballerina/io;
 ///// HTTP Client Endpoint /////
 ////////////////////////////////
 
+CookieJar? cookieJar; //Cookie jar should be accessed via HTTP client.
+
 # The HTTP client provides the capability for initiating contact with a remote HTTP service. The API it
 # provides includes functions for the standard HTTP methods, forwarding a received request and sending requests
 # using custom HTTP verbs.
@@ -46,6 +48,20 @@ public type Client object {
     public function getCallerActions() returns CallerActions {
         return self.httpClient;
     }
+
+    public function getCookieJar() returns CookieJar {
+        match cookieJar {
+            CookieJar cookieJar => {return cookieJar}
+            () => {
+                //Once the persistent storage support is implemented, need to populate the jar with relavant cookies.
+            }
+        }
+    }
+};
+
+public type CookieJar object {
+    public function getCookies() returns ClientCookie[];
+    public function clear() returns boolean;
 };
 
 # Represents a single service and its related configurations.
@@ -211,7 +227,7 @@ public type AuthConfig record {
 };
 
 //public type CookieStoreType “IN_MEMORY” | “PERSISTENT”;
-//@final public CookieStoreType IN_MEMORY = "IN_MEMORY";
+@final public CookieJarType IN_MEMORY = "IN_MEMORY";
 //@final public CookieStoreType PERSISTENT = "PERSISTENT";
 
 # Defines cookie configurations for HTTP client.
@@ -224,7 +240,8 @@ public type CookieConfig record {
     boolean enabled = false;
     int maxPerCookieSize = 4096;
     int maxCookieCount = 3000;
-    //CookieStoreType storeType = CookieStoreType.IN_MEMORY;
+    boolean blockThirdPartyCookies = true;
+    CookieJarType cookieJarType = CookieJarType.IN_MEMORY;
     !...
 };
 
