@@ -20,8 +20,6 @@ import ballerina/io;
 ///// HTTP Client Endpoint /////
 ////////////////////////////////
 
-CookieJar? cookieJar; //Cookie jar should be accessed via HTTP client.
-
 # The HTTP client provides the capability for initiating contact with a remote HTTP service. The API it
 # provides includes functions for the standard HTTP methods, forwarding a received request and sending requests
 # using custom HTTP verbs.
@@ -34,6 +32,7 @@ public type Client object {
     public string epName;
     public ClientEndpointConfig config;
     public CallerActions httpClient;
+    CookieJar? cookieJar;
 
     # Gets invoked to initialize the endpoint. During initialization, configurations provided through the `config`
     # record is used to determine which type of additional behaviours are added to the endpoint (e.g: caching,
@@ -51,17 +50,14 @@ public type Client object {
 
     public function getCookieJar() returns CookieJar {
         match cookieJar {
-            CookieJar cookieJar => {return cookieJar}
+            CookieJar clientCookieJar => {
+                return clientCookieJar;
+            }
             () => {
-                //Once the persistent storage support is implemented, need to populate the jar with relavant cookies.
+               return new CookieJar();
             }
         }
     }
-};
-
-public type CookieJar object {
-    public function getCookies() returns ClientCookie[];
-    public function clear() returns boolean;
 };
 
 # Represents a single service and its related configurations.
@@ -226,22 +222,17 @@ public type AuthConfig record {
     !...
 };
 
-//public type CookieStoreType “IN_MEMORY” | “PERSISTENT”;
-@final public CookieJarType IN_MEMORY = "IN_MEMORY";
-//@final public CookieStoreType PERSISTENT = "PERSISTENT";
-
 # Defines cookie configurations for HTTP client.
 #
 # + enabled - Enable/disable cookies. Cookie handling in HTTP client is disabled by default.
 # + maxPerCookieSize - Maximum size of a cookie. Default size is 4096 bytes.
 # + maxCookieCount - Maximum number of cookies allowed to be stored in cookie storage. Default value is 3000.
-# + storeType - Defines cookie storage type to be used by HTTP client
+#                    (At least 50 cookies per domain.)
 public type CookieConfig record {
     boolean enabled = false;
     int maxPerCookieSize = 4096;
     int maxCookieCount = 3000;
     boolean blockThirdPartyCookies = true;
-    CookieJarType cookieJarType = CookieJarType.IN_MEMORY;
     !...
 };
 

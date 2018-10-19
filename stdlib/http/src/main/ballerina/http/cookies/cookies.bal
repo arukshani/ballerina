@@ -224,6 +224,33 @@ function appendSemiColon(string cookieString) returns string {
     return returnValue;
 }
 
+public type CookieJar object {
+
+    private ServerCookie[] serverCookies;
+
+    public function getCookies() returns ServerCookie[] {
+        //TODO:Iterate through server cookies and pick the relavant cookies and return them as client cookies
+        // ClientCookie[] cookies = [];
+        // return cookies;
+
+        //This is just for testing, must remove
+        return serverCookies;
+    }
+
+    public function clear() returns boolean {
+        return true;
+    }
+
+    function addCookie(ServerCookie serverCookie) {
+        int noOfCookies = lengthof serverCookies;
+        if (noOfCookies != 0) {
+            serverCookies[noOfCookies] = serverCookie;
+        } else {
+            serverCookies[0] = serverCookie;
+        }
+    }
+};
+
 @final string EQUALS = "=";
 @final string SEMICOLON = ";";
 @final string SPACE = " ";
