@@ -23,6 +23,7 @@ public type FailoverClient object {
 
     public string epName;
     public FailoverClientEndpointConfiguration failoverClientConfig;
+    private CookieJar? cookieJar;
 
     private Client httpEP;
 
@@ -36,6 +37,19 @@ public type FailoverClient object {
     # + return - The HTTP failover actions associated with the endpoint
     public function getCallerActions() returns FailoverActions {
         return check <FailoverActions>httpEP.httpClient;
+    }
+
+    public function getCookieJar() returns CookieJar {
+        match self.cookieJar {
+            CookieJar clientCookieJar => {
+                return clientCookieJar;
+            }
+            () => {
+                CookieJar newCookieJar = new CookieJar();
+                self.cookieJar = newCookieJar;
+                return newCookieJar;
+            }
+        }
     }
 };
 
@@ -78,7 +92,8 @@ public type FailoverClientEndpointConfiguration record {
 };
 
 function FailoverClient::init(FailoverClientEndpointConfiguration foClientConfig) {
-    self.httpEP.httpClient = createFailOverClient(foClientConfig);
+    CookieJar clientCookieJar = self.getCookieJar();
+    self.httpEP.httpClient = createFailOverClient(foClientConfig, clientCookieJar);
     self.httpEP.config.circuitBreaker = foClientConfig.circuitBreaker;
     self.httpEP.config.timeoutMillis = foClientConfig.timeoutMillis;
     self.httpEP.config.httpVersion = foClientConfig.httpVersion;
@@ -114,11 +129,11 @@ function createClientEPConfigFromFailoverEPConfig(FailoverClientEndpointConfigur
 }
 
 
-function createFailOverClient(FailoverClientEndpointConfiguration failoverClientConfig) returns CallerActions {
+function createFailOverClient(FailoverClientEndpointConfiguration failoverClientConfig, CookieJar clientCookieJar) returns CallerActions {
     ClientEndpointConfig config = createClientEPConfigFromFailoverEPConfig(
                                       failoverClientConfig,
                                       failoverClientConfig.targets[0]);
-    CallerActions[] clients = createFailoverHttpClientArray(failoverClientConfig);
+    CallerActions[] clients = createFailoverHttpClientArray(failoverClientConfig, clientCookieJar);
     boolean[] failoverCodes = populateErrorCodeIndex(failoverClientConfig.failoverCodes);
     FailoverInferredConfig failoverInferredConfig = {
         failoverClientsArray:clients,
@@ -128,7 +143,7 @@ function createFailOverClient(FailoverClientEndpointConfiguration failoverClient
     return new FailoverActions(config.url, config, failoverInferredConfig);
 }
 
-function createFailoverHttpClientArray(FailoverClientEndpointConfiguration failoverClientConfig) returns CallerActions[] {
+function createFailoverHttpClientArray(FailoverClientEndpointConfiguration failoverClientConfig, CookieJar clientCookieJar) returns CallerActions[] {
     CallerActions[] httpClients = [];
     int i = 0;
     boolean httpClientRequired = false;
@@ -155,12 +170,12 @@ function createFailoverHttpClientArray(FailoverClientEndpointConfiguration failo
             uri = uri.substring(0, lastIndex);
         }
         if (!httpClientRequired) {
-            httpClients[i] = createCircuitBreakerClient(uri, epConfig);
+            httpClients[i] = createCircuitBreakerClient(uri, epConfig, clientCookieJar);
         } else {
             var retryConfigVal = epConfig.retryConfig;
             match retryConfigVal {
                 RetryConfig retryConfig => {
-                    httpClients[i] = createRetryClient(uri, epConfig);
+                    httpClients[i] = createRetryClient(uri, epConfig, clientCookieJar);
                 }
                 () => {
                     if (epConfig.cache.enabled) {

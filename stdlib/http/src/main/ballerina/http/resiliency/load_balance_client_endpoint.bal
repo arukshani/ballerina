@@ -23,6 +23,7 @@ public type LoadBalanceClient object {
 
     public string epName;
     public LoadBalanceClientEndpointConfiguration loadBalanceClientConfig;
+    private CookieJar? cookieJar;
 
     private Client httpEP;
 
@@ -36,6 +37,19 @@ public type LoadBalanceClient object {
     # + return - The HTTP LoadBalancer actions associated with the endpoint
     public function getCallerActions() returns LoadBalancerActions {
         return check <LoadBalancerActions> httpEP.httpClient;
+    }
+
+    public function getCookieJar() returns CookieJar {
+        match self.cookieJar {
+            CookieJar clientCookieJar => {
+                return clientCookieJar;
+            }
+            () => {
+                CookieJar newCookieJar = new CookieJar();
+                self.cookieJar = newCookieJar;
+                return newCookieJar;
+            }
+        }
     }
 };
 
@@ -78,7 +92,8 @@ public type LoadBalanceClientEndpointConfiguration record {
 };
 
 function LoadBalanceClient::init(LoadBalanceClientEndpointConfiguration lbClientConfig) {
-    self.httpEP.httpClient = createLoadBalancerClient(lbClientConfig);
+    CookieJar clientCookieJar = self.getCookieJar();
+    self.httpEP.httpClient = createLoadBalancerClient(lbClientConfig, clientCookieJar);
     self.httpEP.config.circuitBreaker = lbClientConfig.circuitBreaker;
     self.httpEP.config.timeoutMillis = lbClientConfig.timeoutMillis;
     self.httpEP.config.httpVersion = lbClientConfig.httpVersion;
@@ -113,16 +128,16 @@ function createClientEPConfigFromLoalBalanceEPConfig(LoadBalanceClientEndpointCo
     return clientEPConfig;
 }
 
-function createLoadBalancerClient(LoadBalanceClientEndpointConfiguration loadBalanceClientConfig)
+function createLoadBalancerClient(LoadBalanceClientEndpointConfiguration loadBalanceClientConfig, CookieJar clientCookieJar)
                                                                                     returns CallerActions {
     ClientEndpointConfig config = createClientEPConfigFromLoalBalanceEPConfig(loadBalanceClientConfig,
                                                                             loadBalanceClientConfig.targets[0]);
-    CallerActions[] lbClients = createLoadBalanceHttpClientArray(loadBalanceClientConfig);
+    CallerActions[] lbClients = createLoadBalanceHttpClientArray(loadBalanceClientConfig, clientCookieJar);
     return new LoadBalancerActions(loadBalanceClientConfig.targets[0].url, config, lbClients,
                                             loadBalanceClientConfig.algorithm, 0, loadBalanceClientConfig.failover);
 }
 
-function createLoadBalanceHttpClientArray(LoadBalanceClientEndpointConfiguration loadBalanceClientConfig)
+function createLoadBalanceHttpClientArray(LoadBalanceClientEndpointConfiguration loadBalanceClientConfig, CookieJar clientCookieJar)
                                                                                     returns CallerActions[] {
     CallerActions[] httpClients = [];
     int i = 0;
@@ -150,12 +165,12 @@ function createLoadBalanceHttpClientArray(LoadBalanceClientEndpointConfiguration
             uri = uri.substring(0, lastIndex);
         }
         if (!httpClientRequired) {
-            httpClients[i] = createCircuitBreakerClient(uri, epConfig);
+            httpClients[i] = createCircuitBreakerClient(uri, epConfig, clientCookieJar);
         } else {
             var retryConfigVal = epConfig.retryConfig;
             match retryConfigVal {
                 RetryConfig retryConfig => {
-                    httpClients[i] = createRetryClient(uri, epConfig);
+                    httpClients[i] = createRetryClient(uri, epConfig, clientCookieJar);
                 }
                 () => {
                     if (epConfig.cache.enabled) {

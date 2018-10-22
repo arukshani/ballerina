@@ -137,7 +137,7 @@ public function parseClientCookie(string header) returns ClientCookie[]|error {
             ClientCookie clientCookie = new ClientCookie(name, value);
             clientCookies[i] = clientCookie;
         }
-        i++;
+        i = i + 1;
     }
     return clientCookies;
 }
@@ -184,7 +184,7 @@ public function convertClientCookiestoString(ClientCookie[] cookies) returns str
     foreach cookie in cookies {
         //cookie name value pair
         cookieString = appendNameValuePair(cookieString, cookie.name, cookie.value);
-        i++;
+        i = i + 1;
         if (lengthof cookies != i) {
             cookieString = appendSemiColon(cookieString);
         }

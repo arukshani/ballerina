@@ -35,6 +35,7 @@ public type RedirectClient object {
     public FollowRedirects redirectConfig;
     public CallerActions httpClient;
     public int currentRedirectCount = 0;
+    public CookieJar clientCookieJar;
 
     # Create a redirect client with the given configurations.
     #
@@ -42,11 +43,12 @@ public type RedirectClient object {
     # + config - HTTP ClientEndpointConfig to be used for HTTP client invocation
     # + redirectConfig - Configurations associated with redirect
     # + httpClient - HTTP client for outbound HTTP requests
-    public new(serviceUri, config, redirectConfig, httpClient) {
+    public new(serviceUri, config, redirectConfig, clientCookieJar, httpClient) {
         self.serviceUri = serviceUri;
         self.config = config;
         self.redirectConfig = redirectConfig;
         self.httpClient = httpClient;
+        self.clientCookieJar = clientCookieJar;
     }
 
     # If the received response for the `get()` action is redirect eligible, redirect will be performed automatically
@@ -309,7 +311,7 @@ function performRedirection(string location, RedirectClient redirectClient, Http
                                        Request request, Response response) returns @untainted Response|error {
     log:printDebug("Redirect using new clientEP : " + location);
     CallerActions newCallerAction = createRetryClient(location,
-        createNewEndpoint(location, redirectClient.config));
+        createNewEndpoint(location, redirectClient.config), redirectClient.clientCookieJar);
     Response|error result = invokeEndpoint("", createRedirectRequest(response.statusCode, request),
         redirectMethod, newCallerAction);
     return checkRedirectEligibility(result, location, redirectMethod, request, redirectClient);

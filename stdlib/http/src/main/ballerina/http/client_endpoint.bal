@@ -32,7 +32,7 @@ public type Client object {
     public string epName;
     public ClientEndpointConfig config;
     public CallerActions httpClient;
-    CookieJar? cookieJar;
+    private CookieJar? cookieJar;
 
     # Gets invoked to initialize the endpoint. During initialization, configurations provided through the `config`
     # record is used to determine which type of additional behaviours are added to the endpoint (e.g: caching,
@@ -49,12 +49,14 @@ public type Client object {
     }
 
     public function getCookieJar() returns CookieJar {
-        match cookieJar {
+        match self.cookieJar {
             CookieJar clientCookieJar => {
                 return clientCookieJar;
             }
             () => {
-               return new CookieJar();
+                CookieJar newCookieJar = new CookieJar();
+                self.cookieJar = newCookieJar;
+                return newCookieJar;
             }
         }
     }
@@ -241,6 +243,7 @@ public type CookieConfig record {
 };
 
 function Client::init(ClientEndpointConfig c) {
+    CookieJar clientCookieJar = self.getCookieJar();
     boolean httpClientRequired = false;
     string url = c.url;
     if (url.hasSuffix("/")) {
@@ -266,38 +269,38 @@ function Client::init(ClientEndpointConfig c) {
         var redirectConfigVal = c.followRedirects;
         match redirectConfigVal {
             FollowRedirects redirectConfig => {
-                self.httpClient = createRedirectClient(url, c);
+                self.httpClient = createRedirectClient(url, c, clientCookieJar);
             }
             () => {
-                self.httpClient = checkForRetry(url, c);
+                self.httpClient = checkForRetry(url, c, clientCookieJar);
             }
         }
     } else {
-        self.httpClient = createCircuitBreakerClient(url, c);
+        self.httpClient = createCircuitBreakerClient(url, c, clientCookieJar);
     }
 }
 
-function createRedirectClient(string url, ClientEndpointConfig configuration) returns CallerActions {
+function createRedirectClient(string url, ClientEndpointConfig configuration, CookieJar clientCookieJar) returns CallerActions {
     var redirectConfigVal = configuration.followRedirects;
     match redirectConfigVal {
         FollowRedirects redirectConfig => {
             if (redirectConfig.enabled) {
-                return new RedirectClient(url, configuration, redirectConfig, createRetryClient(url, configuration));
+                return new RedirectClient(url, configuration, redirectConfig, clientCookieJar, createRetryClient(url, configuration, clientCookieJar));
             } else {
-                return createRetryClient(url, configuration);
+                return createRetryClient(url, configuration, clientCookieJar);
             }
         }
         () => {
-            return createRetryClient(url, configuration);
+            return createRetryClient(url, configuration, clientCookieJar);
         }
     }
 }
 
-function checkForRetry(string url, ClientEndpointConfig config) returns CallerActions {
+function checkForRetry(string url, ClientEndpointConfig config, CookieJar clientCookieJar) returns CallerActions {
     var retryConfigVal = config.retryConfig;
     match retryConfigVal {
         RetryConfig retryConfig => {
-            return createRetryClient(url, config);
+            return createRetryClient(url, config, clientCookieJar);
         }
         () => {
             //if (config.cache.enabled) {
@@ -305,12 +308,12 @@ function checkForRetry(string url, ClientEndpointConfig config) returns CallerAc
             //} else {
             //    return createHttpSecureClient(url, config);
             //}
-            return createCookieClient(url, config);
+            return createCookieClient(url, config, clientCookieJar);
         }
     }
 }
 
-function createCircuitBreakerClient(string uri, ClientEndpointConfig configuration) returns CallerActions {
+function createCircuitBreakerClient(string uri, ClientEndpointConfig configuration, CookieJar clientCookieJar) returns CallerActions {
     var cbConfig = configuration.circuitBreaker;
     match cbConfig {
         CircuitBreakerConfig cb => {
@@ -320,10 +323,10 @@ function createCircuitBreakerClient(string uri, ClientEndpointConfig configurati
             var redirectConfigVal = configuration.followRedirects;
             match redirectConfigVal {
                 FollowRedirects redirectConfig => {
-                    cbHttpClient = createRedirectClient(uri, configuration);
+                    cbHttpClient = createRedirectClient(uri, configuration, clientCookieJar);
                 }
                 () => {
-                    cbHttpClient = checkForRetry(uri, configuration);
+                    cbHttpClient = checkForRetry(uri, configuration, clientCookieJar);
                 }
             }
 
@@ -359,7 +362,7 @@ function createCircuitBreakerClient(string uri, ClientEndpointConfig configurati
             //} else {
             //    return createHttpSecureClient(uri, configuration);
             //}
-            return createCookieClient(uri, configuration);
+            return createCookieClient(uri, configuration, clientCookieJar);
         }
     }
 }
@@ -385,28 +388,28 @@ function createCircuitBreakerClient(string uri, ClientEndpointConfig configurati
 //    }
 //}
 
-function createRetryClient(string url, ClientEndpointConfig configuration) returns CallerActions {
+function createRetryClient(string url, ClientEndpointConfig configuration, CookieJar clientCookieJar) returns CallerActions {
     var retryConfigVal = configuration.retryConfig;
     match retryConfigVal {
         RetryConfig retryConfig => {
-                return new RetryClient(url, configuration, retryConfig, createCookieClient(url, configuration));
+                return new RetryClient(url, configuration, retryConfig, createCookieClient(url, configuration, clientCookieJar));
         }
         () => {
-            return createCookieClient(url, configuration);
+            return createCookieClient(url, configuration, clientCookieJar);
         }
     }
 }
 
-function createCookieClient(string url, ClientEndpointConfig configuration) returns CallerActions {
+function createCookieClient(string url, ClientEndpointConfig configuration, CookieJar clientCookieJar) returns CallerActions {
     var cookieConfigVal = configuration.cookieConfig;
     match cookieConfigVal {
         CookieConfig cookieConfig => {
             if (cookieConfig.enabled) {
                 if (configuration.cache.enabled) {
-                    return new CookieClient(url, configuration, cookieConfig, createHttpCachingClient(url, configuration,
+                    return new CookieClient(url, configuration, cookieConfig, clientCookieJar, createHttpCachingClient(url, configuration,
                     configuration.cache));
                 } else {
-                    return new CookieClient(url, configuration, cookieConfig, createHttpSecureClient(url, configuration));
+                    return new CookieClient(url, configuration, cookieConfig, clientCookieJar, createHttpSecureClient(url, configuration));
                 }
             } else {
                 return createDefaultClient(url, configuration);

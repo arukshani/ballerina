@@ -32,6 +32,7 @@ public type CookieClient object {
     public ClientEndpointConfig config;
     public CookieConfig cookieConfig;
     public CallerActions httpClient;
+    public CookieJar clientCookieJar;
 
     # Create a redirect client with the given configurations.
     #
@@ -39,11 +40,12 @@ public type CookieClient object {
     # + config - HTTP ClientEndpointConfig to be used for HTTP client invocation
     # + redirectConfig - Configurations associated with redirect
     # + httpClient - HTTP client for outbound HTTP requests
-    public new(serviceUri, config, cookieConfig, httpClient) {
+    public new(serviceUri, config, cookieConfig, clientCookieJar, httpClient) {
         self.serviceUri = serviceUri;
         self.config = config;
         self.cookieConfig = cookieConfig;
         self.httpClient = httpClient;
+        self.clientCookieJar = clientCookieJar;
     }
 
     # If the received response for the `get()` action is redirect eligible, redirect will be performed automatically
@@ -57,7 +59,20 @@ public type CookieClient object {
                                                                                             returns Response|error {
         log:printInfo("Cookie client");
         Request request = buildRequest(message);
-        return self.httpClient.get(path, message = request);
+        match self.httpClient.get(path, message = request) {
+            Response response => {
+                match response.getCookies() {
+                    ServerCookie[] cookies => {
+
+                    }
+                    error parseErr => {
+                        log:printWarn(parseErr.message);
+                    }
+                }
+                return response;
+            }
+            error err => { return err; }
+        }
     }
 
     # If the received response for the `post()` action is redirect eligible, redirect will be performed automatically
