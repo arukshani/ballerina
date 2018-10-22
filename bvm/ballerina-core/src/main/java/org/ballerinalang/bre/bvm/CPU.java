@@ -70,9 +70,10 @@ import org.ballerinalang.model.values.BXML;
 import org.ballerinalang.model.values.BXMLAttributes;
 import org.ballerinalang.model.values.BXMLQName;
 import org.ballerinalang.model.values.BXMLSequence;
+import org.ballerinalang.persistence.states.State;
+import org.ballerinalang.persistence.store.PersistenceStore;
 import org.ballerinalang.runtime.Constants;
 import org.ballerinalang.util.TransactionStatus;
-import org.ballerinalang.util.codegen.AttachedFunctionInfo;
 import org.ballerinalang.util.codegen.ErrorTableEntry;
 import org.ballerinalang.util.codegen.ForkjoinInfo;
 import org.ballerinalang.util.codegen.FunctionInfo;
@@ -129,6 +130,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
+import static org.ballerinalang.runtime.Constants.STATE_ID;
 import static org.ballerinalang.util.BLangConstants.BBYTE_MAX_VALUE;
 import static org.ballerinalang.util.BLangConstants.BBYTE_MIN_VALUE;
 import static org.ballerinalang.util.BLangConstants.STRING_NULL_VALUE;
@@ -522,11 +524,10 @@ public class CPU {
 
                         StructureTypeInfo structInfo = (ObjectTypeInfo) ((BStructureType)
                                 structVal.getType()).getTypeInfo();
-                        AttachedFunctionInfo attachedFuncInfo = structInfo.funcInfoEntries
+                        FunctionInfo attachedFuncInfo = structInfo.funcInfoEntries
                                 .get(funcRefCPEntry.getFunctionInfo().getName());
-                        FunctionInfo concreteFuncInfo = attachedFuncInfo.functionInfo;
 
-                        BFunctionPointer fPointer = new BFunctionPointer(concreteFuncInfo, typeEntry.getType());
+                        BFunctionPointer fPointer = new BFunctionPointer(attachedFuncInfo, typeEntry.getType());
                         sf.refRegs[j] = fPointer;
                         findAndAddAdditionalVarRegIndexes(ctx, operands, fPointer);
                         break;
@@ -751,7 +752,9 @@ public class CPU {
                         if (index >= 0 && (table.compensations.get(index).scope.equals(compIn
                                 .scopeName) || compIn.childScopes.contains(table.compensations.get(index).scope))) {
                             CompensationTable.CompensationEntry entry = table.compensations.get(index);
-                            ctx = invokeCompensate(ctx, entry.fPointer, entry.functionInfo, sf);
+
+                            int[] retRegsIndexes = {compIn.retRegIndex};
+                            ctx = invokeCompensate(ctx, entry.fPointer, entry.functionInfo, sf, retRegsIndexes);
                         }
                         if (ctx == null) {
                             return;
@@ -801,7 +804,15 @@ public class CPU {
         if (pendingCtx != null) {
             //inject the value to the ctx
             copyArgValueForWorkerReceive(pendingCtx.context.workerLocal, pendingCtx.regIndex, dataType, dataVal);
+            if (pendingCtx.context.interruptible) {
+                String stateId = (String) pendingCtx.context.globalProps.get(STATE_ID);
+                PersistenceStore.persistState(new State(pendingCtx.context, stateId, pendingCtx.context.ip + 1));
+            }
             BLangScheduler.resume(pendingCtx.context);
+        }
+        if (ctx.interruptible) {
+            String stateId = (String) ctx.globalProps.get(STATE_ID);
+            PersistenceStore.persistState(new State(ctx, stateId, ctx.ip + 1));
         }
     }
 
@@ -826,6 +837,10 @@ public class CPU {
                 receiverType);
         if (value != null) {
             copyArgValueForWorkerReceive(ctx.workerLocal, receiverReg, receiverType, (BRefType) value);
+            if (ctx.interruptible) {
+                String stateId = (String) ctx.globalProps.get(STATE_ID);
+                PersistenceStore.persistState(new State(ctx, stateId, ctx.ip + 1));
+            }
             return true;
         }
 
@@ -888,11 +903,11 @@ public class CPU {
     }
 
     private static WorkerExecutionContext invokeCompensate(WorkerExecutionContext ctx, BFunctionPointer fp,
-            FunctionInfo functionInfo, WorkerData sf) {
+                                                           FunctionInfo functionInfo, WorkerData sf, int[] retRegs) {
         List<BClosure> closureVars = fp.getClosureVars();
         if (closureVars.isEmpty()) {
-            //compensate functions has no args apart from closure vars, no return as well
-            return BLangFunctions.invokeCallable(functionInfo, ctx, new int[0], new int[0], false);
+            //compensate functions has no args apart from closure vars
+            return BLangFunctions.invokeCallable(functionInfo, ctx, new int[0], retRegs, false);
         }
 
         int[] newArgRegs = new int[closureVars.size()];
@@ -906,38 +921,38 @@ public class CPU {
 
         for (BClosure closure : closureVars) {
             switch (closure.getType().getTag()) {
-            case TypeTags.INT_TAG: {
-                sf.longRegs[longIndex] = ((BInteger) closure.value()).intValue();
-                newArgRegs[argRegIndex++] = longIndex++;
-                break;
-            }
-            case TypeTags.BYTE_TAG: {
-                sf.intRegs[intIndex] = ((BByte) closure.value()).byteValue();
-                newArgRegs[argRegIndex++] = intIndex++;
-                break;
-            }
-            case TypeTags.FLOAT_TAG: {
-                sf.doubleRegs[doubleIndex] = ((BFloat) closure.value()).floatValue();
-                newArgRegs[argRegIndex++] = doubleIndex++;
-                break;
-            }
-            case TypeTags.BOOLEAN_TAG: {
-                sf.intRegs[intIndex] = ((BBoolean) closure.value()).booleanValue() ? 1 : 0;
-                newArgRegs[argRegIndex++] = intIndex++;
-                break;
-            }
-            case TypeTags.STRING_TAG: {
-                sf.stringRegs[stringIndex] = (closure.value()).stringValue();
-                newArgRegs[argRegIndex++] = stringIndex++;
-                break;
-            }
-            default:
-                sf.refRegs[refIndex] = ((BRefType<?>) closure.value());
-                newArgRegs[argRegIndex++] = refIndex++;
+                case TypeTags.INT_TAG: {
+                    sf.longRegs[longIndex] = ((BInteger) closure.value()).intValue();
+                    newArgRegs[argRegIndex++] = longIndex++;
+                    break;
+                }
+                case TypeTags.BYTE_TAG: {
+                    sf.intRegs[intIndex] = ((BByte) closure.value()).byteValue();
+                    newArgRegs[argRegIndex++] = intIndex++;
+                    break;
+                }
+                case TypeTags.FLOAT_TAG: {
+                    sf.doubleRegs[doubleIndex] = ((BFloat) closure.value()).floatValue();
+                    newArgRegs[argRegIndex++] = doubleIndex++;
+                    break;
+                }
+                case TypeTags.BOOLEAN_TAG: {
+                    sf.intRegs[intIndex] = ((BBoolean) closure.value()).booleanValue() ? 1 : 0;
+                    newArgRegs[argRegIndex++] = intIndex++;
+                    break;
+                }
+                case TypeTags.STRING_TAG: {
+                    sf.stringRegs[stringIndex] = (closure.value()).stringValue();
+                    newArgRegs[argRegIndex++] = stringIndex++;
+                    break;
+                }
+                default:
+                    sf.refRegs[refIndex] = ((BRefType<?>) closure.value());
+                    newArgRegs[argRegIndex++] = refIndex++;
             }
         }
 
-        return BLangFunctions.invokeCallable(functionInfo, ctx, newArgRegs, new int[0], false);
+        return BLangFunctions.invokeCallable(functionInfo, ctx, newArgRegs, retRegs, false);
     }
 
     private static int expandLongRegs(WorkerData sf, BFunctionPointer fp) {
@@ -2155,7 +2170,7 @@ public class CPU {
                 }
 
                 try {
-                    sf.refRegs[j] = XMLUtils.tableToXML((BTable) bRefType, ctx.isInTransaction());
+                    sf.refRegs[j] = XMLUtils.tableToXML((BTable) bRefType);
                 } catch (Exception e) {
                     sf.refRegs[j] = null;
                     handleTypeConversionError(ctx, sf, j, TypeConstants.TABLE_TNAME, TypeConstants.XML_TNAME);
@@ -2687,9 +2702,8 @@ public class CPU {
 
         // TODO use ObjectTypeInfo once record init function is removed
         StructureTypeInfo structInfo = (StructureTypeInfo) ((BStructureType) structVal.getType()).getTypeInfo();
-        AttachedFunctionInfo attachedFuncInfo = structInfo.funcInfoEntries.get(virtualFuncInfo.getName());
-        FunctionInfo concreteFuncInfo = attachedFuncInfo.functionInfo;
-        return BLangFunctions.invokeCallable(concreteFuncInfo, ctx, argRegs, retRegs, false, flags);
+        FunctionInfo attachedFuncInfo = structInfo.funcInfoEntries.get(virtualFuncInfo.getName());
+        return BLangFunctions.invokeCallable(attachedFuncInfo, ctx, argRegs, retRegs, false, flags);
     }
 
     private static void handleWorkerSend(WorkerExecutionContext ctx, WorkerDataChannelInfo workerDataChannelInfo,

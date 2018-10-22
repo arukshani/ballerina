@@ -42,7 +42,9 @@ function testOrderBy() {
         from teacherStream window lengthBatch(10)
         select name, age, status order by age
         => (Employee[] emp) {
-            employeeStream.publish(emp);
+            foreach e in emp {
+                employeeStream.publish(e);
+            }
         }
     }
 }
@@ -72,7 +74,7 @@ function startOrderBy() returns (Employee[]) {
     }
 
     while (lengthof globalEmployeeArray != 10 || index < 20) {
-        index++;
+        index += 1;
         runtime:sleep(500);
     }
 
@@ -100,7 +102,9 @@ function testOrderBy2() {
         from teacherStream2 window lengthBatch(10)
         select name, age, status order by age ascending
         => (Employee[] emp) {
-            employeeStream2.publish(emp);
+            foreach e in emp {
+                employeeStream2.publish(e);
+            }
         }
     }
 }
@@ -130,7 +134,7 @@ function startOrderBy2() returns (Employee[]) {
     }
 
     while (lengthof globalEmployeeArray2 != 10 || index < 20) {
-        index++;
+        index += 1;
         runtime:sleep(500);
     }
 
@@ -157,7 +161,9 @@ function testOrderBy3() {
         from teacherStream3 window lengthBatch(10)
         select name, age, status order by age descending
         => (Employee[] emp) {
-            employeeStream3.publish(emp);
+            foreach e in emp {
+                employeeStream3.publish(e);
+            }
         }
     }
 }
@@ -187,7 +193,7 @@ function startOrderBy3() returns (Employee[]) {
     }
 
     while (lengthof globalEmployeeArray3 != 10 || index < 20) {
-        index++;
+        index += 1;
         runtime:sleep(500);
     }
 
@@ -214,7 +220,9 @@ function testOrderBy4() {
         from teacherStream4 window lengthBatch(10)
         select name, age, status order by status, age
         => (Employee[] emp) {
-            employeeStream4.publish(emp);
+            foreach e in emp {
+                employeeStream4.publish(e);
+            }
         }
     }
 }
@@ -244,7 +252,7 @@ function startOrderBy4() returns (Employee[]) {
     }
 
     while (lengthof globalEmployeeArray4 != 10 || index < 20) {
-        index++;
+        index += 1;
         runtime:sleep(500);
     }
 
@@ -271,7 +279,9 @@ function testOrderBy5() {
         from teacherStream5 window lengthBatch(10)
         select name, age, status order by status ascending, age descending
         => (Employee[] emp) {
-            employeeStream5.publish(emp);
+            foreach e in emp {
+                employeeStream5.publish(e);
+            }
         }
     }
 }
@@ -301,7 +311,7 @@ function startOrderBy5() returns (Employee[]) {
     }
 
     while (lengthof globalEmployeeArray5 != 10 || index < 20) {
-        index++;
+        index += 1;
         runtime:sleep(500);
     }
 

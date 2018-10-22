@@ -43,7 +43,9 @@ function testPipelineQuery() {
         from teacherStream3 where age > 18
         select *
         => (Teacher[] emp) {
-            preProcessedStatusCountStream.publish(emp);
+            foreach e in emp {
+                preProcessedStatusCountStream.publish(e);
+            }
         }
     }
 
@@ -53,7 +55,9 @@ function testPipelineQuery() {
         group by status
         having totalCount > 1
         => (StatusCount[] emp) {
-            filteredStatusCountStream1.publish(emp);
+            foreach e in emp {
+                filteredStatusCountStream1.publish(e);
+            }
         }
     }
 }
@@ -74,7 +78,7 @@ function startPipelineQuery() returns (StatusCount[]) {
     int count = 0;
     while(true) {
         runtime:sleep(500);
-        count++;
+        count += 1;
         if((lengthof globalStatusCountArray) > 0 || count == 10) {
             break;
         }

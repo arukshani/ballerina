@@ -36,7 +36,9 @@ function deployPeakTempDetectionRules() {
             e2[e2.length - 1].temp as peakTemp
         => (TempDiffInfo[] tempDiffInfos) {
         // If the sequence is matched, the data is pushed/published to the output stream.
-            tempDiffInfoStream.publish(tempDiffInfos);
+            foreach t in tempDiffInfos {
+                tempDiffInfoStream.publish(t);
+            }
         }
     }
 }
@@ -82,7 +84,7 @@ public function main() {
     int count = 0;
     while (true) {
         runtime:sleep(500);
-        count++;
+        count += 1;
         if ((lengthof tempDiffInfoArray) > 1 || count == 10) {
             break;
         }

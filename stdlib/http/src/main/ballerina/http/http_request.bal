@@ -236,7 +236,7 @@ public type Request object {
 
     public function getCookies() returns ClientCookie[]|error;
 
-    // For use within the package. Takes the Cache-Control header and parses it to a RequestCacheControl object.
+    // For use within the module. Takes the Cache-Control header and parses it to a RequestCacheControl object.
     function parseCacheControlHeader();
 };
 

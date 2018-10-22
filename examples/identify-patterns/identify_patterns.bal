@@ -39,7 +39,9 @@ function deployRegulatorActionDecisionRules() {
             e2 == null ? "none" : "stop" as userAction
         having userAction != "none"
         => (RoomKeyAction[] keyAction) {
-            regulatorActionStream.publish(keyAction);
+            foreach k in keyAction {
+                regulatorActionStream.publish(k);
+            }
         }
     }
 }
@@ -75,7 +77,7 @@ public function main() {
     int count = 0;
     while (true) {
         runtime:sleep(500);
-        count++;
+        count += 1;
         if ((lengthof roomActions) > 0 || count == 10) {
             break;
         }
