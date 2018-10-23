@@ -63,7 +63,9 @@ public type CookieClient object {
             Response response => {
                 match response.getCookies() {
                     ServerCookie[] cookies => {
-
+                        foreach(cookie in cookies) {
+                            self.clientCookieJar.addCookie(cookie);
+                        }
                     }
                     error parseErr => {
                         log:printWarn(parseErr.message);
