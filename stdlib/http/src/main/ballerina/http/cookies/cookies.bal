@@ -242,6 +242,10 @@ public type CookieJar object {
     }
 
     function addCookie(ServerCookie serverCookie) {
+
+        //TODO: Remove matching serverCookie from servercookie[]
+        //TODO: If it is not expired add it. (!cookie.isExpired(new Date()))
+
         int noOfCookies = lengthof serverCookies;
         if (noOfCookies != 0) {
             serverCookies[noOfCookies] = serverCookie;
