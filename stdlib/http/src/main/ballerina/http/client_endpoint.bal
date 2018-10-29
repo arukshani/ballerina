@@ -120,11 +120,13 @@ extern function createSimpleHttpClient(string uri, ClientEndpointConfig config) 
 # + interval - Retry interval in milliseconds
 # + backOffFactor - Multiplier of the retry interval to exponentailly increase retry interval
 # + maxWaitInterval - Maximum time of the retry interval in milliseconds
+# + statusCodes - HTTP response status codes which are considered as failures
 public type RetryConfig record {
     int count;
     int interval;
     float backOffFactor;
     int maxWaitInterval;
+    int[] statusCodes;
     !...
 };
 
@@ -367,14 +369,45 @@ function createCircuitBreakerClient(string uri, ClientEndpointConfig configurati
     }
 }
 
+function createRetryClient(string url, ClientEndpointConfig configuration, CookieJar clientCookieJar) returns CallerActions {
+    var retryConfigVal = configuration.retryConfig;
+    match retryConfigVal {
+        boolean[] statusCodes = populateErrorCodeIndex(retryConfig.statusCodes);
+        RetryInferredConfig retryInferredConfig = {
+        count: retryConfig.count,
+        interval: retryConfig.interval,
+        backOffFactor: retryConfig.backOffFactor,
+        maxWaitInterval: retryConfig.maxWaitInterval,
+        statusCodes: statusCodes
+        };
+        RetryConfig retryConfig => {
+            return new RetryClient(url, configuration, retryInferredConfig, createCookieClient(url, configuration, clientCookieJar));
+        }
+        () => {
+            return createCookieClient(url, configuration, clientCookieJar);
+        }
+    }
+}
+
+////vvvvvvvvv
 //function createRetryClient(string url, ClientEndpointConfig configuration) returns CallerActions {
 //    var retryConfigVal = configuration.retryConfig;
 //    match retryConfigVal {
 //        RetryConfig retryConfig => {
+//            boolean[] statusCodes = populateErrorCodeIndex(retryConfig.statusCodes);
+//            RetryInferredConfig retryInferredConfig = {
+//                count: retryConfig.count,
+//                interval: retryConfig.interval,
+//                backOffFactor: retryConfig.backOffFactor,
+//                maxWaitInterval: retryConfig.maxWaitInterval,
+//                statusCodes: statusCodes
+//            };
 //            if (configuration.cache.enabled) {
-//                return new RetryClient(url, configuration, retryConfig, createHttpCachingClient(url, configuration, configuration.cache));
+//                return new RetryClient(url, configuration, retryInferredConfig,
+//                createHttpCachingClient(url, configuration, configuration.cache));
 //            } else{
-//                return new RetryClient(url, configuration, retryConfig, createHttpSecureClient(url, configuration));
+//                return new RetryClient(url, configuration, retryInferredConfig,
+//                createHttpSecureClient(url, configuration));
 //            }
 //        }
 //        () => {
@@ -388,21 +421,9 @@ function createCircuitBreakerClient(string uri, ClientEndpointConfig configurati
 //    }
 //}
 
-function createRetryClient(string url, ClientEndpointConfig configuration, CookieJar clientCookieJar) returns CallerActions {
-    var retryConfigVal = configuration.retryConfig;
-    match retryConfigVal {
-        RetryConfig retryConfig => {
-                return new RetryClient(url, configuration, retryConfig, createCookieClient(url, configuration, clientCookieJar));
-        }
-        () => {
-            return createCookieClient(url, configuration, clientCookieJar);
-        }
-    }
-}
-
 function createCookieClient(string url, ClientEndpointConfig configuration, CookieJar clientCookieJar) returns CallerActions {
     var cookieConfigVal = configuration.cookieConfig;
-    match cookieConfigVal {
+        match cookieConfigVal {
         CookieConfig cookieConfig => {
             if (cookieConfig.enabled) {
                 if (configuration.cache.enabled) {
