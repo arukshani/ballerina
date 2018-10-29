@@ -372,15 +372,15 @@ function createCircuitBreakerClient(string uri, ClientEndpointConfig configurati
 function createRetryClient(string url, ClientEndpointConfig configuration, CookieJar clientCookieJar) returns CallerActions {
     var retryConfigVal = configuration.retryConfig;
     match retryConfigVal {
-        boolean[] statusCodes = populateErrorCodeIndex(retryConfig.statusCodes);
-        RetryInferredConfig retryInferredConfig = {
-        count: retryConfig.count,
-        interval: retryConfig.interval,
-        backOffFactor: retryConfig.backOffFactor,
-        maxWaitInterval: retryConfig.maxWaitInterval,
-        statusCodes: statusCodes
-        };
         RetryConfig retryConfig => {
+            boolean[] statusCodes = populateErrorCodeIndex(retryConfig.statusCodes);
+            RetryInferredConfig retryInferredConfig = {
+            count: retryConfig.count,
+            interval: retryConfig.interval,
+            backOffFactor: retryConfig.backOffFactor,
+            maxWaitInterval: retryConfig.maxWaitInterval,
+            statusCodes: statusCodes
+            };
             return new RetryClient(url, configuration, retryInferredConfig, createCookieClient(url, configuration, clientCookieJar));
         }
         () => {
