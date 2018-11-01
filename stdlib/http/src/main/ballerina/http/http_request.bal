@@ -236,6 +236,9 @@ public type Request object {
 
     public function getCookies() returns ClientCookie[]|error;
 
+    # Add cookies to request. Single `Cookie` header will result in call to this function.
+    public function addCookies(ClientCookie[] clientCookies);
+
     // For use within the module. Takes the Cache-Control header and parses it to a RequestCacheControl object.
     function parseCacheControlHeader();
 };
@@ -476,4 +479,9 @@ function Request::getCookies() returns ClientCookie[]|error {
         error parserError => {return parserError;}
     }
     return returnCookies;
+}
+
+function Request::addCookies(ClientCookie[] clientCookies) {
+    string clientCookieValue = convertClientCookiestoString(clientCookies);
+    self.addHeader(COOKIE_HEADER, clientCookieValue);
 }

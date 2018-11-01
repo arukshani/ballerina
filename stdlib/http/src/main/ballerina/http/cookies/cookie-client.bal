@@ -59,11 +59,46 @@ public type CookieClient object {
                                                                                             returns Response|error {
         log:printInfo("Cookie client");
         Request request = buildRequest(message);
+
+        ClientCookie[] matchedCookies = [];
+        //Pick releavant cookies from cookie jar
+        ServerCookie[] cookies = self.clientCookieJar.getCookies();
+        int i = 0;
+        foreach cookie in cookies {
+            //Is expired
+            match cookie.expiry {
+                time:Time expiryDate => {
+                    int currentTime = time:currentTime().time;
+                    if (expiryDate > currentTime) {
+                        if(cookieEligible(cookie, self)) {
+                            ClientCookie matchedCookie = new (cookie.name, cookie.value);
+                            matchedCookies[i] = matchedCookie;
+                            i = i+1;
+                        }
+                    } else {
+                        //TODO: Remove from cookie jar
+
+                    }
+                }
+                () => {
+                    if(cookieEligible(cookie, self)) {
+                        ClientCookie matchedCookie = new (cookie.name, cookie.value);
+                        matchedCookies[i] = matchedCookie;
+                        i = i +1;
+                    }
+                }
+            }
+        }
+
+        if (lengthof matchedCookies > 0) {
+             request.addCookies(matchedCookies);
+        }
+
         match self.httpClient.get(path, message = request) {
             Response response => {
                 match response.getCookies() {
-                    ServerCookie[] cookies => {
-                        foreach(cookie in cookies) {
+                    ServerCookie[] serverCookies => {
+                        foreach(cookie in serverCookies) {
                             self.clientCookieJar.addCookie(cookie);
                         }
                     }
@@ -232,3 +267,15 @@ public type CookieClient object {
         self.httpClient.rejectPromise(promise);
     }
 };
+
+//Check whether the cookie is eligible to be sent with the request
+function cookieEligible(ServerCookie cookie, CookieClient client) returns boolean {
+    //Is secure
+    boolean isSecureMatch = !cookie.secure || client.serviceUri.hasSuffix(HTTPS_SCHEME);
+    if (isSecureMatch) {
+        //TODO: Domain match
+        //TODO: Path match
+        return true;
+    }
+    return false;
+}

@@ -229,16 +229,11 @@ public type CookieJar object {
     private ServerCookie[] serverCookies;
 
     public function getCookies() returns ServerCookie[] {
-        //TODO:Iterate through server cookies and pick the relavant cookies and return them as client cookies
-        // ClientCookie[] cookies = [];
-        // return cookies;
-
-        //This is just for testing, must remove
         return serverCookies;
     }
 
-    public function clear() returns boolean {
-        return true;
+    public function clear() {
+        serverCookies = [];
     }
 
     function addCookie(ServerCookie serverCookie) {
