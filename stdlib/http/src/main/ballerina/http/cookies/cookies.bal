@@ -226,28 +226,37 @@ function appendSemiColon(string cookieString) returns string {
 
 public type CookieJar object {
 
-    private ServerCookie[] serverCookies;
+    //private ServerCookie[] serverCookies;
+    //
+    //public function getCookies() returns ServerCookie[] {
+    //    return serverCookies;
+    //}
+    //
+    //public function clear() {
+    //    serverCookies = [];
+    //}
+    //
+    //function addCookie(ServerCookie serverCookie) {
+    //
+    //    //TODO: Remove matching serverCookie from servercookie[]
+    //    //TODO: If it is not expired add it. (!cookie.isExpired(new Date()))
+    //
+    //    int noOfCookies = lengthof serverCookies;
+    //    if (noOfCookies != 0) {
+    //        serverCookies[noOfCookies] = serverCookie;
+    //    } else {
+    //        serverCookies[0] = serverCookie;
+    //    }
+    //}
 
-    public function getCookies() returns ServerCookie[] {
-        return serverCookies;
-    }
+    public extern function getCookies() returns ServerCookie[];
 
-    public function clear() {
-        serverCookies = [];
-    }
+    extern function clear();
 
-    function addCookie(ServerCookie serverCookie) {
+    //Cookie will be added to cookie jar based on the rules defined in RFC6265
+    extern function addCookie(ServerCookie serverCookie);
 
-        //TODO: Remove matching serverCookie from servercookie[]
-        //TODO: If it is not expired add it. (!cookie.isExpired(new Date()))
-
-        int noOfCookies = lengthof serverCookies;
-        if (noOfCookies != 0) {
-            serverCookies[noOfCookies] = serverCookie;
-        } else {
-            serverCookies[0] = serverCookie;
-        }
-    }
+    //extern function selectEligibleCookies() returns ServerCookie[];
 };
 
 @final string EQUALS = "=";
