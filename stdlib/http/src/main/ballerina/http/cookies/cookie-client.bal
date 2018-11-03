@@ -60,35 +60,39 @@ public type CookieClient object {
         log:printInfo("Cookie client");
         Request request = buildRequest(message);
 
-        //ClientCookie[] matchedCookies = [];
-        ////Pick releavant cookies from cookie jar
-        //ServerCookie[] cookies = self.clientCookieJar.getCookies();
-        //int i = 0;
-        //foreach cookie in cookies {
-        //    //Is expired
-        //    match cookie.expiry {
-        //        time:Time expiryDate => {
-        //            int currentTime = time:currentTime().time;
-        //            if (expiryDate > currentTime) {
-        //                if(cookieEligible(cookie, self)) {
-        //                    ClientCookie matchedCookie = new (cookie.name, cookie.value);
-        //                    matchedCookies[i] = matchedCookie;
-        //                    i = i+1;
-        //                }
-        //            } else {
-        //                //TODO: Remove from cookie jar
-        //
-        //            }
-        //        }
-        //        () => {
-        //            if(cookieEligible(cookie, self)) {
-        //                ClientCookie matchedCookie = new (cookie.name, cookie.value);
-        //                matchedCookies[i] = matchedCookie;
-        //                i = i +1;
-        //            }
-        //        }
-        //    }
-        //}
+        ClientCookie[] matchedCookies = [];
+        //Pick releavant cookies from cookie jar
+        var result = self.clientCookieJar.getCookies();
+        match result {
+            ServerCookie[] cookies => {
+                int i = 0;
+                foreach cookie in cookies {
+                    //Is expired
+                    match cookie.expiry {
+                        time:Time expiryDate => {
+                            int currentTime = time:currentTime().time;
+                            if (expiryDate.time > currentTime) {
+                                if(cookieEligible(cookie, self)) {
+                                ClientCookie matchedCookie = new (cookie.name, cookie.value);
+                                matchedCookies[i] = matchedCookie;
+                                i = i+1;
+                                }
+                            } else {
+                                self.clientCookieJar.deleteCookie(cookie);
+                            }
+                        }
+                        () => {
+                            if(cookieEligible(cookie, self)) {
+                                ClientCookie matchedCookie = new (cookie.name, cookie.value);
+                                matchedCookies[i] = matchedCookie;
+                                i = i +1;
+                            }
+                        }
+                    }
+                }
+            }
+            error err => {}
+        }
 
         if (lengthof matchedCookies > 0) {
              request.addCookies(matchedCookies);

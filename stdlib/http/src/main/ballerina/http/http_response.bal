@@ -222,11 +222,19 @@ public type Response object {
     #             of body parts)
     public function setPayload(string|xml|json|byte[]|io:ReadableByteChannel|mime:Entity[] payload);
 
-    # Add cookies to response. Multiple `Set-Cookie` headers will result in call to this function.
+    # Adds cookies to the response. Multiple `Set-Cookie` headers get added to the response as a result.
+    #
+    # + serverCookies - Represents an array of server cookies
     public function addCookies(ServerCookie[] serverCookies);
 
+    # Adds a single cookie to the response. A single `Set-Cookie` header gets added to the response as a result.
+    #
+    # + serverCookies - Represents a single server cookie
     public function addCookie(ServerCookie serverCookie);
 
+    # Gets all the cookies in the response.
+    #
+    # + return - An array of server cookies or an `error`
     public function getCookies() returns ServerCookie[]|error;
 };
 

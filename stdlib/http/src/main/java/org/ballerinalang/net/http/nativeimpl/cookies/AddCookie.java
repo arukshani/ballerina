@@ -2,10 +2,8 @@ package org.ballerinalang.net.http.nativeimpl.cookies;
 
 import org.ballerinalang.bre.Context;
 import org.ballerinalang.bre.bvm.BlockingNativeCallableUnit;
-import org.ballerinalang.model.types.BStructureType;
 import org.ballerinalang.model.types.TypeKind;
 import org.ballerinalang.model.values.BMap;
-import org.ballerinalang.model.values.BRefValueArray;
 import org.ballerinalang.model.values.BValue;
 import org.ballerinalang.natives.annotations.BallerinaFunction;
 import org.ballerinalang.natives.annotations.Receiver;
@@ -32,18 +30,12 @@ public class AddCookie extends BlockingNativeCallableUnit {
         if (cookieJar.getNativeData(SERVER_COOKIES) != null) {
             ArrayList<BMap<String, BValue>> cookies = (ArrayList<BMap<String, BValue>>) cookieJar.getNativeData(
                     SERVER_COOKIES);
-            //cookies.getValues();
+            cookies.add(cookieToBeAdded);
         } else {
             //No Cookies in Jar
             ArrayList<BMap<String, BValue>> cookies = new ArrayList<>();
             cookies.add(cookieToBeAdded);
             cookieJar.addNativeData(SERVER_COOKIES, cookies);
         }
-    }
-
-    static BRefValueArray getArrayOfCookies(ArrayList<BMap<String, BValue>> cookies) {
-        BStructureType typeOfCookie = (BStructureType) cookies.get(0).getType();
-        BMap<String, BValue>[] result = cookies.toArray(new BMap[cookies.size()]);
-        return new BRefValueArray(result, typeOfCookie);
     }
 }

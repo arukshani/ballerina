@@ -80,3 +80,9 @@
 
 # HTTP header key `transfer-encoding`. Specifies what type of transformation has been applied to entity body. 
 @final public string TRANSFER_ENCODING = "transfer-encoding";
+
+# HTTP header key `set-cookie`. The `set-cookie` HTTP header is used to send cookies from the server to the user agent
+@final public string SET_COOKIE_HEADER = "set-cookie";
+
+# HTTP header key `cookie`. `Cookie` header is used by the user agent to send the stored cookies to the origin server
+@final public string COOKIE_HEADER = "cookie";

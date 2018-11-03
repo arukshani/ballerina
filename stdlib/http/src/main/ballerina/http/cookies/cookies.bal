@@ -18,18 +18,18 @@ import ballerina/io;
 import ballerina/log;
 import ballerina/time;
 
-# Represent server cookies that will be send from the server to the user agent.
+# Represents a cookie that is sent from the server to the client.
 #
-# + name - Cookie name
-# + value - Cookie value
-# + path - URI path for which the cookie is valid
-# + domain - Hosts to which the cookie will be sent
+# + name - Specifies the name of the cookie
+# + value - Specifies the value of the cookie
+# + path - Indicates the URI path to which the cookie is valid
+# + domain - Indicates the hosts to which the cookie is sent
 # + maxAge - Maximum lifetime of the cookie, represented as the number of seconds until the cookie expires. This has
-#            precedence over date
+#            precedence over date.
 # + expiry - Maximum lifetime of the cookie, represented as the date and time at which the cookie expires
-# + secure - Client should include the cookie in an HTTP request only if the request is transmitted over a secure
-#            channel
-# + httpOnly - Omit the cookie when providing access to cookies via non - HTTP APIs
+# + secure - Indicates that the client should include the cookie in an HTTP request only if the request is transmitted
+#            over a secure channel
+# + httpOnly - Omits the cookie when providing access to cookies via non - HTTP APIs
 public type ServerCookie object {
 
     public new(name, value) {}
@@ -43,10 +43,18 @@ public type ServerCookie object {
     public boolean secure;
     public boolean httpOnly;
 
+    # String representation of the server cookie which can be used as a header value for `set-cookie` header.
+    #
+    # + return - `ServerCookie` in `string` format
     public function toString() returns string;
 };
 
-# Represent client cookies that will be send from the client to server.
+# Represents a cookie that is sent from the client to the server.
+#
+# + name - Specifies the name of the cookie
+# + value - Specifies the value of the cookie
+# + path - Indicates the URI path to which the cookie is sent
+# + domain - Indicates the hosts to which the cookie is sent
 public type ClientCookie object {
 
     public new(name, value) {}
@@ -56,14 +64,37 @@ public type ClientCookie object {
     @readonly public string path;
     @readonly public string domain;
 
-    //public function toString(ClientCookie[] cookie) returns String;
 };
 
-public function parseServerCookie(string header) returns ServerCookie?|error {
+# `CookieJar` contains a collection of HTTP cookies in `ServerCookie` format.
+public type CookieJar object {
+
+    # Gets all the cookies stored in the cookie jar.
+    #
+    # + return - An array of `ServerCookies` or an `error` if the cookie jar is empty
+    public extern function getCookies() returns ServerCookie[]|error;
+
+    # Deletes a given `ServerCookie` from the cookie jar.
+    public extern function deleteCookie(ServerCookie serverCookie);
+
+    # Deletes all `ServerCookies` stored in the cookie jar.
+    public extern function clear();
+
+    # Adds a given `ServerCookie` to the cookie jar. Cookies can be added to the cookie jar only by the HTTP client,
+    # hence this function has not been exposed to the public.
+    extern function addCookie(ServerCookie serverCookie);
+};
+
+# Given a value of the `set-cookie` header, construct a `ServerCookie`.
+#
+# + headerValue - Represents a valid `set-cookie` header value
+# + return - A `ServerCookie` or an `error`
+public function parseServerCookie(string headerValue) returns ServerCookie?|error {
+
     ServerCookie? serverCookie;
-    string[] bites = header.split(";");
+    string[] bites = headerValue.split(SEMICOLON);
     foreach bite in bites {
-        string[] crumbs = bite.split("="); //split limit should be 2 but we dont have a function for that
+        string[] crumbs = bite.split(EQUALS); //split limit should be 2 but we dont have a function for that
         int lengthOfCrumbs = lengthof crumbs;
         if (lengthOfCrumbs > 2) {
             error parserError = {message: "Invalid cookie string detected"};
@@ -77,7 +108,7 @@ public function parseServerCookie(string header) returns ServerCookie?|error {
         string value = lengthof crumbs > 1 ? crumbs[1].trim() : "";
 
         //Remove quotes
-        if (value.hasPrefix("\"") && value.hasSuffix("\"") && value.length() > 1) {
+        if (value.hasPrefix(QUOTE) && value.hasSuffix(QUOTE) && value.length() > 1) {
             value = value.substring(1, value.length() - 1);
         }
 
@@ -109,14 +140,17 @@ public function parseServerCookie(string header) returns ServerCookie?|error {
     return serverCookie;
 }
 
-//Adheres to RFC6265. This is balantly different from how RFC2965 parses the cookie header. All the attributes that
-//starts with $ mark are ignored.
-public function parseClientCookie(string header) returns ClientCookie[]|error {
+# Given a value of the `cookie` header, construct an array of `ClientCookies`. Parsing adheres to the RFC6265. This is
+# balantly different from how the RFC2965 parses the cookie header. All the attributes that start with `$` mark are ignored.
+#
+# + headerValue - Valid `set-cookie` header value
+# + return - An array of `ClientCookies` or an `error`
+public function parseClientCookie(string headerValue) returns ClientCookie[]|error {
     ClientCookie[] clientCookies;
-    string[] bites = header.split(";");
+    string[] bites = headerValue.split(SEMICOLON);
     int i = 0;
     foreach bite in bites {
-        string[] crumbs = bite.split("="); //split limit should be 2 but we dont have a function for that
+        string[] crumbs = bite.split(EQUALS); //split limit should be 2 but we dont have a function for that
         int lengthOfCrumbs = lengthof crumbs;
         if (lengthOfCrumbs > 2) {
             error parserError = {message: "Invalid cookie string detected"};
@@ -130,10 +164,10 @@ public function parseClientCookie(string header) returns ClientCookie[]|error {
         string value = lengthof crumbs > 1 ? crumbs[1].trim() : "";
 
         //Remove quotes
-        if (value.hasPrefix("\"") && value.hasSuffix("\"") && value.length() > 1) {
+        if (value.hasPrefix(QUOTE) && value.hasSuffix(QUOTE) && value.length() > 1) {
             value = value.substring(1, value.length() - 1);
         }
-        if (!name.hasSuffix("$")) {
+        if (!name.hasSuffix(DOLLAR)) {
             ClientCookie clientCookie = new ClientCookie(name, value);
             clientCookies[i] = clientCookie;
         }
@@ -178,6 +212,10 @@ function ServerCookie::toString() returns string {
     return cookieString;
 }
 
+# String representation of an array of client cookies which can be used as a header value for the `cookie` header.
+#
+# + cookies - Represents an array of `ClientCookies`
+# + return - An array of client cookies in string format
 public function convertClientCookiestoString(ClientCookie[] cookies) returns string {
     string cookieString;
     int i = 0;
@@ -224,50 +262,14 @@ function appendSemiColon(string cookieString) returns string {
     return returnValue;
 }
 
-public type CookieJar object {
-
-    //private ServerCookie[] serverCookies;
-    //
-    //public function getCookies() returns ServerCookie[] {
-    //    return serverCookies;
-    //}
-    //
-    //public function clear() {
-    //    serverCookies = [];
-    //}
-    //
-    //function addCookie(ServerCookie serverCookie) {
-    //
-    //    //TODO: Remove matching serverCookie from servercookie[]
-    //    //TODO: If it is not expired add it. (!cookie.isExpired(new Date()))
-    //
-    //    int noOfCookies = lengthof serverCookies;
-    //    if (noOfCookies != 0) {
-    //        serverCookies[noOfCookies] = serverCookie;
-    //    } else {
-    //        serverCookies[0] = serverCookie;
-    //    }
-    //}
-
-    public extern function getCookies() returns ServerCookie[];
-
-    extern function clear();
-
-    //Cookie will be added to cookie jar based on the rules defined in RFC6265
-    extern function addCookie(ServerCookie serverCookie);
-
-    //extern function selectEligibleCookies() returns ServerCookie[];
-};
-
 @final string EQUALS = "=";
 @final string SEMICOLON = ";";
 @final string SPACE = " ";
+@final string DOLLAR = "$";
+@final string QUOTE = "\"";
 @final string MAX_AGE_FOR_COOKIE = "Max-Age";
 @final string EXPIRES_FOR_COOKIE = "Expires";
 @final string PATH = "Path";
 @final string DOMAIN = "Domain";
 @final string SECURE = "Secure";
 @final string HTTPONLY = "HttpOnly";
-
-@final string SET_COOKIE_HEADER = "set-cookie";
-@final string COOKIE_HEADER = "cookie";

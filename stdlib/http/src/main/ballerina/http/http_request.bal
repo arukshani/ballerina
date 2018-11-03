@@ -234,13 +234,13 @@ public type Request object {
     #             of body parts)
     public function setPayload(string|xml|json|byte[]|io:ReadableByteChannel|mime:Entity[] payload);
 
-    public function getCookies() returns ClientCookie[]|error;
-
-    # Add cookies to request. Single `Cookie` header will result in call to this function.
-    public function addCookies(ClientCookie[] clientCookies);
-
     // For use within the module. Takes the Cache-Control header and parses it to a RequestCacheControl object.
     function parseCacheControlHeader();
+
+    public function getCookies() returns ClientCookie[]|error;
+
+    # Adds cookies to request. Single `Cookie` header results in call to this function.
+    public function addCookies(ClientCookie[] clientCookies);
 };
 
 /////////////////////////////////
@@ -483,5 +483,6 @@ function Request::getCookies() returns ClientCookie[]|error {
 
 function Request::addCookies(ClientCookie[] clientCookies) {
     string clientCookieValue = convertClientCookiestoString(clientCookies);
-    self.addHeader(COOKIE_HEADER, clientCookieValue);
+    //TODO:User defined headers are overriden. Those needs to be appended
+    self.setHeader(COOKIE_HEADER, clientCookieValue);
 }
