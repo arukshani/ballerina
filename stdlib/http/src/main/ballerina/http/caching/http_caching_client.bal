@@ -328,7 +328,6 @@ function HttpCachingClient::delete(string path, Request|string|xml|json|byte[]|i
 
 function HttpCachingClient::get(string path, Request|string|xml|json|byte[]|io:ReadableByteChannel|mime:Entity[]|()
                                                         message = ()) returns Response|error {
-    log:printInfo("caching client");
     Request req = buildRequest(message);
     setRequestCacheControlHeader(req);
     return getCachedResponse(self.cache, self.httpClient, req, GET, path, self.cacheConfig.isShared);

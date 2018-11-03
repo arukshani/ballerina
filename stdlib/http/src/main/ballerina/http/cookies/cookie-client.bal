@@ -22,10 +22,11 @@ import ballerina/time;
 
 # Provides cookie functionality across HTTP client actions.
 #
-# + serviceUri - Target service url
+# + serviceUri - Represents the target service url
 # + config - HTTP ClientEndpointConfig to be used for HTTP client invocation
-# + cookieConfig - Configurations associated with cookies
+# + cookieConfig - Defines cookie configurations
 # + httpClient - HTTP client for outbound HTTP requests
+# + clientCookieJar - CookieJar associated with the HTTP client
 public type CookieClient object {
 
     public string serviceUri;
@@ -34,11 +35,12 @@ public type CookieClient object {
     public CallerActions httpClient;
     public CookieJar clientCookieJar;
 
-    # Create a redirect client with the given configurations.
+    # Creates a cookie client with the given configurations.
     #
     # + serviceUri - Target service url
     # + config - HTTP ClientEndpointConfig to be used for HTTP client invocation
-    # + redirectConfig - Configurations associated with redirect
+    # + cookieConfig - Defines cookie configurations
+    # + clientCookieJar - CookieJar associated with the HTTP client
     # + httpClient - HTTP client for outbound HTTP requests
     public new(serviceUri, config, cookieConfig, clientCookieJar, httpClient) {
         self.serviceUri = serviceUri;
@@ -48,8 +50,8 @@ public type CookieClient object {
         self.clientCookieJar = clientCookieJar;
     }
 
-    # If the received response for the `get()` action is redirect eligible, redirect will be performed automatically
-    # by this `get()` function.
+    # Picks eligible cookies from the cookie jar and sends them with the client request. The response is intercepted to
+    # add relevant cookies to the cookie jar before handing out the response to the client.
     #
     # + path - Resource path
     # + message - An optional HTTP outbound request message or any payload of type `string`, `xml`, `json`,
@@ -57,67 +59,19 @@ public type CookieClient object {
     # + return - The HTTP `Response` message, or an error if the invocation fails
     public function get(string path, Request|string|xml|json|byte[]|io:ReadableByteChannel|mime:Entity[]|() message = ())
                                                                                             returns Response|error {
-        log:printInfo("Cookie client");
         Request request = buildRequest(message);
-
-        ClientCookie[] matchedCookies = [];
-        //Pick releavant cookies from cookie jar
-        var result = self.clientCookieJar.getCookies();
-        match result {
-            ServerCookie[] cookies => {
-                int i = 0;
-                foreach cookie in cookies {
-                    //Is expired
-                    match cookie.expiry {
-                        time:Time expiryDate => {
-                            int currentTime = time:currentTime().time;
-                            if (expiryDate.time > currentTime) {
-                                if(cookieEligible(cookie, self)) {
-                                ClientCookie matchedCookie = new (cookie.name, cookie.value);
-                                matchedCookies[i] = matchedCookie;
-                                i = i+1;
-                                }
-                            } else {
-                                self.clientCookieJar.deleteCookie(cookie);
-                            }
-                        }
-                        () => {
-                            if(cookieEligible(cookie, self)) {
-                                ClientCookie matchedCookie = new (cookie.name, cookie.value);
-                                matchedCookies[i] = matchedCookie;
-                                i = i +1;
-                            }
-                        }
-                    }
-                }
-            }
-            error err => {}
-        }
-
-        if (lengthof matchedCookies > 0) {
-             request.addCookies(matchedCookies);
-        }
-
+        addCookiesToRequest(self, request);
         match self.httpClient.get(path, message = request) {
             Response response => {
-                match response.getCookies() {
-                    ServerCookie[] serverCookies => {
-                        foreach(cookie in serverCookies) {
-                            self.clientCookieJar.addCookie(cookie);
-                        }
-                    }
-                    error parseErr => {
-                        log:printWarn(parseErr.message);
-                    }
-                }
+                addCookiesToJar(self, response);
                 return response;
             }
             error err => { return err; }
         }
     }
 
-    # If the received response for the `post()` action is redirect eligible, redirect will be performed automatically
-    # by this `post()` function.
+    # Picks eligible cookies from the cookie jar and sends them with the client request. The response is intercepted to
+    # add relevant cookies to the cookie jar before handing out the response to the client.
     #
     # + path - Resource path
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
@@ -129,8 +83,8 @@ public type CookieClient object {
         return self.httpClient.post(path, request);
     }
 
-    # If the received response for the `head()` action is redirect eligible, redirect will be performed automatically
-    # by this `head()` function.
+    # Picks eligible cookies from the cookie jar and sends them with the client request. The response is intercepted to
+    # add relevant cookies to the cookie jar before handing out the response to the client.
     #
     # + path - Resource path
     # + message - An optional HTTP outbound request message or or any payload of type `string`, `xml`, `json`,
@@ -142,8 +96,8 @@ public type CookieClient object {
         return self.httpClient.head(path, message = request);
     }
 
-    # If the received response for the `put()` action is redirect eligible, redirect will be performed automatically
-    # by this `put()` function.
+    # Picks eligible cookies from the cookie jar and sends them with the client request. The response is intercepted to
+    # add relevant cookies to the cookie jar before handing out the response to the client.
     #
     # + path - Resource path
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
@@ -177,8 +131,8 @@ public type CookieClient object {
         return self.httpClient.execute(httpVerb, path, request);
     }
 
-    # If the received response for the `patch()` action is redirect eligible, redirect will be performed automatically
-    # by this `patch()` function.
+    # Picks eligible cookies from the cookie jar and sends them with the client request. The response is intercepted to
+    # add relevant cookies to the cookie jar before handing out the response to the client.
     #
     # + path - Resource path
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
@@ -190,8 +144,8 @@ public type CookieClient object {
         return self.httpClient.patch(path, request);
     }
 
-    # If the received response for the `delete()` action is redirect eligible, redirect will be performed automatically
-    # by this `delete()` function.
+    # Picks eligible cookies from the cookie jar and sends them with the client request. The response is intercepted to
+    # add relevant cookies to the cookie jar before handing out the response to the client.
     #
     # + path - Resource path
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
@@ -203,8 +157,8 @@ public type CookieClient object {
         return self.httpClient.delete(path, request);
     }
 
-    # If the received response for the `options()` action is redirect eligible, redirect will be performed automatically
-    # by this `options()` function.
+    # Picks eligible cookies from the cookie jar and sends them with the client request. The response is intercepted to
+    # add relevant cookies to the cookie jar before handing out the response to the client.
     #
     # + path - Resource path
     # + message - An optional HTTP outbound request message or any payload of type `string`, `xml`, `json`,
@@ -272,8 +226,66 @@ public type CookieClient object {
     }
 };
 
+function addCookiesToRequest(CookieClient cookieClient, Request request) {
+    ClientCookie[] matchedCookies = getEligibleCookies(cookieClient);
+    if (lengthof matchedCookies > 0) {
+        request.addCookies(matchedCookies);
+    }
+}
+
+//Add cookies to cookie jar
+function addCookiesToJar(CookieClient cookieClient, Response response) {
+    match response.getCookies() {
+        ServerCookie[] serverCookies => {
+            foreach(cookie in serverCookies) {
+                cookieClient.clientCookieJar.addCookie(cookie);
+            }
+        }
+        error parseErr => {
+            log:printWarn(parseErr.message);
+        }
+    }
+}
+
+function getEligibleCookies(CookieClient cookieClient) returns ClientCookie[] {
+    ClientCookie[] matchedCookies = [];
+    //Pick releavant cookies from cookie jar
+    var result = cookieClient.clientCookieJar.getCookies();
+    match result {
+        ServerCookie[] cookies => {
+            int i = 0;
+            foreach cookie in cookies {
+                //Is expired
+                match cookie.expiry {
+                    time:Time expiryDate => {
+                        int currentTime = time:currentTime().time;
+                        if (expiryDate.time > currentTime) {
+                            if(isCookieEligible(cookie, cookieClient)) {
+                                ClientCookie matchedCookie = new (cookie.name, cookie.value);
+                                matchedCookies[i] = matchedCookie;
+                                i = i+1;
+                            }
+                        } else {
+                            cookieClient.clientCookieJar.deleteCookie(cookie);
+                        }
+                    }
+                    () => {
+                        if(isCookieEligible(cookie, cookieClient)) {
+                            ClientCookie matchedCookie = new (cookie.name, cookie.value);
+                            matchedCookies[i] = matchedCookie;
+                            i = i +1;
+                        }
+                    }
+                }
+            }
+        }
+        error err => {}
+    }
+    return matchedCookies;
+}
+
 //Check whether the cookie is eligible to be sent with the request
-function cookieEligible(ServerCookie cookie, CookieClient client) returns boolean {
+function isCookieEligible(ServerCookie cookie, CookieClient client) returns boolean {
     //Is secure
     boolean isSecureMatch = !cookie.secure || client.serviceUri.hasSuffix(HTTPS_SCHEME);
     if (isSecureMatch) {

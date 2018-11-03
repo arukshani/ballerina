@@ -27,6 +27,7 @@ import ballerina/io;
 # + epName - The name of the client
 # + config - The configurations associated with the client
 # + httpClient - The provider which implements the HTTP methods
+# + cookieJar - The cookie jar that stores cookies
 public type Client object {
 
     public string epName;
@@ -48,6 +49,10 @@ public type Client object {
         return self.httpClient;
     }
 
+    # Gets the cookie jar associated with the endpoint. If the cookie jar doesn't exist, create a new jar for the
+    # endpoint.
+    #
+    # + return - The `CookieJar` that stores the cookies
     public function getCookieJar() returns CookieJar {
         match self.cookieJar {
             CookieJar clientCookieJar => {
@@ -233,14 +238,8 @@ public type AuthConfig record {
 # Defines cookie configurations for HTTP client.
 #
 # + enabled - Enable/disable cookies. Cookie handling in HTTP client is disabled by default.
-# + maxPerCookieSize - Maximum size of a cookie. Default size is 4096 bytes.
-# + maxCookieCount - Maximum number of cookies allowed to be stored in cookie storage. Default value is 3000.
-#                    (At least 50 cookies per domain.)
 public type CookieConfig record {
     boolean enabled = false;
-    int maxPerCookieSize = 4096;
-    int maxCookieCount = 3000;
-    boolean blockThirdPartyCookies = true;
     !...
 };
 
@@ -305,11 +304,6 @@ function checkForRetry(string url, ClientEndpointConfig config, CookieJar client
             return createRetryClient(url, config, clientCookieJar);
         }
         () => {
-            //if (config.cache.enabled) {
-            //    return createHttpCachingClient(url, config, config.cache);
-            //} else {
-            //    return createHttpSecureClient(url, config);
-            //}
             return createCookieClient(url, config, clientCookieJar);
         }
     }
@@ -358,12 +352,6 @@ function createCircuitBreakerClient(string uri, ClientEndpointConfig configurati
             return new CircuitBreakerClient(uri, configuration, circuitBreakerInferredConfig, cbHttpClient, circuitHealth);
         }
         () => {
-            //remove following once we can ignore
-            //if (configuration.cache.enabled) {
-            //    return createHttpCachingClient(uri, configuration, configuration.cache);
-            //} else {
-            //    return createHttpSecureClient(uri, configuration);
-            //}
             return createCookieClient(uri, configuration, clientCookieJar);
         }
     }
@@ -388,38 +376,6 @@ function createRetryClient(string url, ClientEndpointConfig configuration, Cooki
         }
     }
 }
-
-////vvvvvvvvv
-//function createRetryClient(string url, ClientEndpointConfig configuration) returns CallerActions {
-//    var retryConfigVal = configuration.retryConfig;
-//    match retryConfigVal {
-//        RetryConfig retryConfig => {
-//            boolean[] statusCodes = populateErrorCodeIndex(retryConfig.statusCodes);
-//            RetryInferredConfig retryInferredConfig = {
-//                count: retryConfig.count,
-//                interval: retryConfig.interval,
-//                backOffFactor: retryConfig.backOffFactor,
-//                maxWaitInterval: retryConfig.maxWaitInterval,
-//                statusCodes: statusCodes
-//            };
-//            if (configuration.cache.enabled) {
-//                return new RetryClient(url, configuration, retryInferredConfig,
-//                createHttpCachingClient(url, configuration, configuration.cache));
-//            } else{
-//                return new RetryClient(url, configuration, retryInferredConfig,
-//                createHttpSecureClient(url, configuration));
-//            }
-//        }
-//        () => {
-//            //remove following once we can ignore
-//            if (configuration.cache.enabled) {
-//                return createHttpCachingClient(url, configuration, configuration.cache);
-//            } else {
-//                return createHttpSecureClient(url, configuration);
-//            }
-//        }
-//    }
-//}
 
 function createCookieClient(string url, ClientEndpointConfig configuration, CookieJar clientCookieJar) returns CallerActions {
     var cookieConfigVal = configuration.cookieConfig;

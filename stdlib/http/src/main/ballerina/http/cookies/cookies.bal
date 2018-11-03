@@ -107,6 +107,17 @@ public function parseServerCookie(string headerValue) returns ServerCookie?|erro
         //attribute value pair
         string value = lengthof crumbs > 1 ? crumbs[1].trim() : "";
 
+        //string name;
+        //string value;
+        //
+        //match getCookieNameValuePair(bite) {
+        //    var (cookieName,cookieValue) => {
+        //        name = cookieName;
+        //        value = cookieValue;
+        //    }
+        //    error err => return err;
+        //}
+
         //Remove quotes
         if (value.hasPrefix(QUOTE) && value.hasSuffix(QUOTE) && value.length() > 1) {
             value = value.substring(1, value.length() - 1);
@@ -140,6 +151,22 @@ public function parseServerCookie(string headerValue) returns ServerCookie?|erro
     return serverCookie;
 }
 
+function getCookieNameValuePair(string bite) returns (string,string)|error {
+    string[] crumbs = bite.split(EQUALS); //split limit should be 2 but we dont have a function for that
+    int lengthOfCrumbs = lengthof crumbs;
+    if (lengthOfCrumbs > 2) {
+        error parserError = {message: "Invalid cookie string detected"};
+        return parserError;
+    }
+    //If there are more than 0 crumbs we know for sure that a name part is there in cookie name, value pair or
+    //attribute value pair
+    string name = lengthof crumbs > 0 ? crumbs[0].trim() : "";
+    //If there are more than 1 crumbs we know for sure that a value part is there in cookie name, value pair or
+    //attribute value pair
+    string value = lengthof crumbs > 1 ? crumbs[1].trim() : "";
+    return (name,value);
+}
+
 # Given a value of the `cookie` header, construct an array of `ClientCookies`. Parsing adheres to the RFC6265. This is
 # balantly different from how the RFC2965 parses the cookie header. All the attributes that start with `$` mark are ignored.
 #
@@ -162,6 +189,17 @@ public function parseClientCookie(string headerValue) returns ClientCookie[]|err
         //If there are more than 1 crumbs we know for sure that a value part is there in cookie name, value pair or
         //attribute value pair
         string value = lengthof crumbs > 1 ? crumbs[1].trim() : "";
+
+        //string name;
+        //string value;
+        //
+        //match getCookieNameValuePair(bite) {
+        //    var (cookieName,cookieValue) => {
+        //        name = cookieName;
+        //        value = cookieValue;
+        //    }
+        //    error err => return err;
+        //}
 
         //Remove quotes
         if (value.hasPrefix(QUOTE) && value.hasSuffix(QUOTE) && value.length() > 1) {
