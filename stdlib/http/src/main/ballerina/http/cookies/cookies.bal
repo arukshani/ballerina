@@ -94,33 +94,16 @@ public function parseServerCookie(string headerValue) returns ServerCookie?|erro
     ServerCookie? serverCookie;
     string[] bites = headerValue.split(SEMICOLON);
     foreach bite in bites {
-        string[] crumbs = bite.split(EQUALS); //split limit should be 2 but we dont have a function for that
-        int lengthOfCrumbs = lengthof crumbs;
-        if (lengthOfCrumbs > 2) {
-            error parserError = {message: "Invalid cookie string detected"};
-            return parserError;
-        }
-        //If there are more than 0 crumbs we know for sure that a name part is there in cookie name, value pair or
-        //attribute value pair
-        string name = lengthof crumbs > 0 ? crumbs[0].trim() : "";
-        //If there are more than 1 crumbs we know for sure that a value part is there in cookie name, value pair or
-        //attribute value pair
-        string value = lengthof crumbs > 1 ? crumbs[1].trim() : "";
+        string name;
+        string value;
 
-        //string name;
-        //string value;
-        //
-        //match getCookieNameValuePair(bite) {
-        //    var (cookieName,cookieValue) => {
-        //        name = cookieName;
-        //        value = cookieValue;
-        //    }
-        //    error err => return err;
-        //}
-
-        //Remove quotes
-        if (value.hasPrefix(QUOTE) && value.hasSuffix(QUOTE) && value.length() > 1) {
-            value = value.substring(1, value.length() - 1);
+        match getCookieNameValuePair(bite) {
+            (string, string) nameValuePair => {
+                var (cookieName,cookieValue) = nameValuePair;
+                name = cookieName;
+                value = cookieValue;
+            }
+            error err => return err;
         }
 
         match serverCookie {
@@ -138,7 +121,7 @@ public function parseServerCookie(string headerValue) returns ServerCookie?|erro
                 } else if (EXPIRES_FOR_COOKIE.equalsIgnoreCase(name)) {
                     try {
                         cookie.expiry = time:parse(value, time:TIME_FORMAT_RFC_1123);
-                    }catch (error err) {
+                    } catch (error err) {
                         string errMsg = "Error occurred while parsing expiry date in set-cookie: " + err.message;
                         error parserError = {message: errMsg};
                         return parserError;
@@ -149,6 +132,37 @@ public function parseServerCookie(string headerValue) returns ServerCookie?|erro
         }
     }
     return serverCookie;
+}
+
+# Given a value of the `cookie` header, construct an array of `ClientCookies`. Parsing adheres to the RFC6265. This is
+# balantly different from how the RFC2965 parses the cookie header. All the attributes that start with `$` mark are ignored.
+#
+# + headerValue - Valid `set-cookie` header value
+# + return - An array of `ClientCookies` or an `error`
+public function parseClientCookie(string headerValue) returns ClientCookie[]|error {
+    ClientCookie[] clientCookies;
+    string[] bites = headerValue.split(SEMICOLON);
+    int i = 0;
+    foreach bite in bites {
+        string name;
+        string value;
+
+        match getCookieNameValuePair(bite) {
+            (string, string) nameValuePair => {
+                var (cookieName,cookieValue) = nameValuePair;
+                name = cookieName;
+                value = cookieValue;
+            }
+            error err => return err;
+        }
+
+        if (!name.hasSuffix(DOLLAR)) {
+            ClientCookie clientCookie = new ClientCookie(name, value);
+            clientCookies[i] = clientCookie;
+        }
+        i = i + 1;
+    }
+    return clientCookies;
 }
 
 function getCookieNameValuePair(string bite) returns (string,string)|error {
@@ -164,54 +178,12 @@ function getCookieNameValuePair(string bite) returns (string,string)|error {
     //If there are more than 1 crumbs we know for sure that a value part is there in cookie name, value pair or
     //attribute value pair
     string value = lengthof crumbs > 1 ? crumbs[1].trim() : "";
-    return (name,value);
-}
 
-# Given a value of the `cookie` header, construct an array of `ClientCookies`. Parsing adheres to the RFC6265. This is
-# balantly different from how the RFC2965 parses the cookie header. All the attributes that start with `$` mark are ignored.
-#
-# + headerValue - Valid `set-cookie` header value
-# + return - An array of `ClientCookies` or an `error`
-public function parseClientCookie(string headerValue) returns ClientCookie[]|error {
-    ClientCookie[] clientCookies;
-    string[] bites = headerValue.split(SEMICOLON);
-    int i = 0;
-    foreach bite in bites {
-        string[] crumbs = bite.split(EQUALS); //split limit should be 2 but we dont have a function for that
-        int lengthOfCrumbs = lengthof crumbs;
-        if (lengthOfCrumbs > 2) {
-            error parserError = {message: "Invalid cookie string detected"};
-            return parserError;
-        }
-        //If there are more than 0 crumbs we know for sure that a name part is there in cookie name, value pair or
-        //attribute value pair
-        string name = lengthof crumbs > 0 ? crumbs[0].trim() : "";
-        //If there are more than 1 crumbs we know for sure that a value part is there in cookie name, value pair or
-        //attribute value pair
-        string value = lengthof crumbs > 1 ? crumbs[1].trim() : "";
-
-        //string name;
-        //string value;
-        //
-        //match getCookieNameValuePair(bite) {
-        //    var (cookieName,cookieValue) => {
-        //        name = cookieName;
-        //        value = cookieValue;
-        //    }
-        //    error err => return err;
-        //}
-
-        //Remove quotes
-        if (value.hasPrefix(QUOTE) && value.hasSuffix(QUOTE) && value.length() > 1) {
-            value = value.substring(1, value.length() - 1);
-        }
-        if (!name.hasSuffix(DOLLAR)) {
-            ClientCookie clientCookie = new ClientCookie(name, value);
-            clientCookies[i] = clientCookie;
-        }
-        i = i + 1;
+    //Remove quotes
+    if (value.hasPrefix(QUOTE) && value.hasSuffix(QUOTE) && value.length() > 1) {
+        value = value.substring(1, value.length() - 1);
     }
-    return clientCookies;
+    return (name,value);
 }
 
 function ServerCookie::toString() returns string {
