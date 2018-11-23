@@ -21,9 +21,8 @@ import org.ballerinalang.connector.api.Annotation;
 import org.ballerinalang.connector.api.ParamDetail;
 import org.ballerinalang.connector.api.Resource;
 import org.ballerinalang.connector.api.Service;
-import org.ballerinalang.model.types.BType;
+import org.ballerinalang.util.codegen.FunctionInfo;
 import org.ballerinalang.util.codegen.LocalVariableInfo;
-import org.ballerinalang.util.codegen.ResourceInfo;
 import org.ballerinalang.util.codegen.attributes.AttributeInfo;
 import org.ballerinalang.util.codegen.attributes.LocalVariableAttributeInfo;
 
@@ -41,10 +40,11 @@ public class ResourceImpl extends AnnotatableNode implements Resource {
     private ServiceImpl service;
 
     //reference to the original resourceInfo object.
-    private ResourceInfo resourceInfo;
+    private FunctionInfo resourceInfo;
 
-    public ResourceImpl(String name, ResourceInfo resourceInfo) {
+    public ResourceImpl(String name, ServiceImpl service, FunctionInfo resourceInfo) {
         this.name = name;
+        this.service = service;
         this.resourceInfo = resourceInfo;
     }
 
@@ -55,7 +55,7 @@ public class ResourceImpl extends AnnotatableNode implements Resource {
 
     @Override
     public String getServiceName() {
-        return resourceInfo.getServiceInfo().getName();
+        return service.getName();
     }
 
     /**
@@ -63,7 +63,7 @@ public class ResourceImpl extends AnnotatableNode implements Resource {
      *
      * @return resourceInfo object.
      */
-    public ResourceInfo getResourceInfo() {
+    public FunctionInfo getResourceInfo() {
         return resourceInfo;
     }
 
@@ -84,18 +84,18 @@ public class ResourceImpl extends AnnotatableNode implements Resource {
 
     @Override
     public List<ParamDetail> getParamDetails() {
-        /*LocalVariableAttributeInfo attributeInfo = (LocalVariableAttributeInfo) resourceInfo.getAttributeInfo
+        LocalVariableAttributeInfo attributeInfo = (LocalVariableAttributeInfo) resourceInfo.getAttributeInfo
                 (AttributeInfo.Kind.LOCAL_VARIABLES_ATTRIBUTE);
         List<ParamDetail> paramDetails = new ArrayList<>();
         for (LocalVariableInfo variableInfo : attributeInfo.getLocalVariableInfoEntries()) {
             paramDetails.add(new ParamDetail(variableInfo.getVariableType(), variableInfo.getVariableName()));
-        }*/
-        List<ParamDetail> paramDetails = new ArrayList<>();
+        }
+       /* List<ParamDetail> paramDetails = new ArrayList<>();
         BType[] variableTypes = resourceInfo.getParamTypes();
         String[] variableNames = resourceInfo.getParamNames();
         for (int i = 0; i < variableTypes.length; i++) {
             paramDetails.add(new ParamDetail(variableTypes[i], variableNames[i]));
-        }
+        }*/
         return paramDetails;
     }
 
