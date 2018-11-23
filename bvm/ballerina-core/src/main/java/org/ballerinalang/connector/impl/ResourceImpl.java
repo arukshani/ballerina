@@ -88,14 +88,11 @@ public class ResourceImpl extends AnnotatableNode implements Resource {
                 (AttributeInfo.Kind.LOCAL_VARIABLES_ATTRIBUTE);
         List<ParamDetail> paramDetails = new ArrayList<>();
         for (LocalVariableInfo variableInfo : attributeInfo.getLocalVariableInfoEntries()) {
+            if (variableInfo.getVariableName().equals("self")) {
+                continue;
+            }
             paramDetails.add(new ParamDetail(variableInfo.getVariableType(), variableInfo.getVariableName()));
         }
-       /* List<ParamDetail> paramDetails = new ArrayList<>();
-        BType[] variableTypes = resourceInfo.getParamTypes();
-        String[] variableNames = resourceInfo.getParamNames();
-        for (int i = 0; i < variableTypes.length; i++) {
-            paramDetails.add(new ParamDetail(variableTypes[i], variableNames[i]));
-        }*/
         return paramDetails;
     }
 
