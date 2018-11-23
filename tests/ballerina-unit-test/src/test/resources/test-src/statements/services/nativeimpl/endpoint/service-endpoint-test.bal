@@ -1,16 +1,18 @@
 import ballerina/http;
 
-endpoint http:NonListener mockEP {
-    port:9090
-};
+//endpoint http:NonListener mockEP {
+//    port:9090
+//};
 
-service<http:Service> hello bind mockEP {
+//listener http:MockServer mockEP = new(9090);
 
-    @http:ResourceConfig {
-        path:"/protocol",
-        methods:["GET"]
-    }
-    protocol (endpoint caller, http:Request req) {
+service hello on new http:MockServer(9090) {
+
+    //@http:ResourceConfig {
+    //    path:"/protocol",
+    //    methods:["GET"]
+    //}
+    resource function protocol (http:Caller caller, http:Request req) {
         http:Response res = new;
         json connectionJson = {protocol:caller.protocol};
         res.statusCode = 200;
@@ -18,11 +20,11 @@ service<http:Service> hello bind mockEP {
         _ = caller -> respond(res);
     }
 
-    @http:ResourceConfig {
-        path:"/local",
-        methods:["GET"]
-    }
-    local (endpoint caller, http:Request req) {
+    //@http:ResourceConfig {
+    //    path:"/local",
+    //    methods:["GET"]
+    //}
+    resource function local (http:Caller caller, http:Request req) {
         http:Response res = new;
         json connectionJson = {local:{host:caller.local.host, port:caller.local.port}};
         res.statusCode = 200;

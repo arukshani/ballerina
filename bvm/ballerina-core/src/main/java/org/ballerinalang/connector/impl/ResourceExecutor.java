@@ -21,6 +21,7 @@ import org.ballerinalang.bre.bvm.CallableUnitCallback;
 import org.ballerinalang.bre.bvm.WorkerExecutionContext;
 import org.ballerinalang.connector.api.BallerinaConnectorException;
 import org.ballerinalang.connector.api.Resource;
+import org.ballerinalang.model.values.BMap;
 import org.ballerinalang.model.values.BValue;
 import org.ballerinalang.persistence.states.RuntimeStates;
 import org.ballerinalang.persistence.states.State;
@@ -63,7 +64,8 @@ public class ResourceExecutor {
             throw new BallerinaConnectorException("invalid arguments provided");
         }
         List<BValue> args = Arrays.asList(bValues);
-        args.add(0, resource.getService().getBValue());
+//        args.add(0, resource.getService().getBValue());
+        args.add(0, new BMap<>());
         ResourceInfo resourceInfo = resource.getResourceInfo();
         if (properties != null) {
             Object interruptible = properties.get(Constants.IS_INTERRUPTIBLE);
