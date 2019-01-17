@@ -53,6 +53,7 @@ import org.wso2.transport.http.netty.contract.HttpClientConnector;
 import org.wso2.transport.http.netty.contract.HttpClientConnectorListener;
 import org.wso2.transport.http.netty.contract.HttpResponseFuture;
 import org.wso2.transport.http.netty.contractimpl.sender.channel.pool.HttpClientConnectionManager;
+import org.wso2.transport.http.netty.contractimpl.sender.channel.pool.PoolConfiguration;
 import org.wso2.transport.http.netty.message.HttpCarbonMessage;
 import org.wso2.transport.http.netty.message.HttpMessageDataStreamer;
 import org.wso2.transport.http.netty.message.PooledDataStreamerFactory;
@@ -71,6 +72,7 @@ import static org.ballerinalang.net.http.HttpConstants.HTTP_STATUS_CODE;
 import static org.ballerinalang.net.http.HttpConstants.REQUEST;
 import static org.ballerinalang.net.http.HttpUtil.extractEntity;
 import static org.ballerinalang.net.http.HttpUtil.getCompressionState;
+import static org.ballerinalang.net.http.HttpUtil.isInteger;
 import static org.ballerinalang.runtime.Constants.BALLERINA_VERSION;
 import static org.wso2.transport.http.netty.contract.Constants.ENCODING_DEFLATE;
 import static org.wso2.transport.http.netty.contract.Constants.ENCODING_GZIP;
@@ -389,8 +391,34 @@ public abstract class AbstractHTTPAction implements InterruptibleNativeCallableU
     }
 
     private void populatePoolingConfig(BMap<String, BValue> globalPoolConfig) {
+        Struct globalConfig = BLangConnectorSPIUtil.toStruct(globalPoolConfig);
         HttpClientConnectionManager globalConnManager = (HttpClientConnectionManager)globalPoolConfig.
                 getNativeData("HTTPClientConnectionManager");
+        PoolConfiguration poolConfiguration = null;
+        if(globalConnManager.getPoolConfiguration() == null) {
+            poolConfiguration = new PoolConfiguration();
+            globalConnManager.setPoolConfiguration(poolConfiguration);
+        }
+        long maxActiveConnections = globalConfig
+                .getIntField(HttpConstants.CONNECTION_POOLING_MAX_ACTIVE_CONNECTIONS);
+        if (!isInteger(maxActiveConnections)) {
+            throw new BallerinaConnectorException("invalid maxActiveConnections value: "
+                    + maxActiveConnections);
+        }
+        globalConnManager.getPoolConfiguration().setMaxActivePerPool((int) maxActiveConnections);
+
+        long waitTime = globalConfig
+                .getIntField(HttpConstants.CONNECTION_POOLING_WAIT_TIME);
+        globalConnManager.getPoolConfiguration().setMaxWaitTime(waitTime);
+
+        long maxActiveStreamsPerConnection = globalConfig.
+                getIntField(HttpConstants.CONNECTION_POOLING_MAX_ACTIVE_STREAMS_PER_CONNECTION);
+        if (!isInteger(maxActiveStreamsPerConnection)) {
+            throw new BallerinaConnectorException("invalid maxActiveStreamsPerConnection value: "
+                    + maxActiveStreamsPerConnection);
+        }
+        globalConnManager.getPoolConfiguration().setHttp2MaxActiveStreamsPerConnection(
+                maxActiveStreamsPerConnection == -1 ? Integer.MAX_VALUE : (int) maxActiveStreamsPerConnection);
 
     }
 

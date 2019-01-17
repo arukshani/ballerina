@@ -359,6 +359,12 @@ public class HttpConstants {
     public static final String CONNECTION_THROTTLING_MAX_ACTIVE_STREAMS_PER_CONNECTION =
             "maxActiveStreamsPerConnection";
 
+    //HTTP Pool configurations
+    public static final String CONNECTION_POOLING_MAX_ACTIVE_CONNECTIONS = "maxActiveConnections";
+    public static final String CONNECTION_POOLING_WAIT_TIME = "waitTimeinMillis";
+    public static final String CONNECTION_POOLING_MAX_ACTIVE_STREAMS_PER_CONNECTION =
+            "maxActiveStreamsPerConnection";
+
     //FollowRedirect field names
     public static final String FOLLOW_REDIRECT_STRUCT_REFERENCE = "followRedirects";
     public static final String FOLLOW_REDIRECT_ENABLED = "enabled";
