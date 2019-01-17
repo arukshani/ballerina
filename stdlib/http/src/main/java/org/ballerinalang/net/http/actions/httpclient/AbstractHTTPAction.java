@@ -52,6 +52,7 @@ import org.wso2.transport.http.netty.contract.EndpointTimeOutException;
 import org.wso2.transport.http.netty.contract.HttpClientConnector;
 import org.wso2.transport.http.netty.contract.HttpClientConnectorListener;
 import org.wso2.transport.http.netty.contract.HttpResponseFuture;
+import org.wso2.transport.http.netty.contractimpl.sender.channel.pool.HttpClientConnectionManager;
 import org.wso2.transport.http.netty.message.HttpCarbonMessage;
 import org.wso2.transport.http.netty.message.HttpMessageDataStreamer;
 import org.wso2.transport.http.netty.message.PooledDataStreamerFactory;
@@ -353,6 +354,12 @@ public abstract class AbstractHTTPAction implements InterruptibleNativeCallableU
                 outboundRequestMsg.setPassthrough(true);
             }
         }
+        BMap<String, BValue> globalPoolConfig = (BMap<String, BValue>)clientEndpoint.getNativeData("GlobalPoolConfig");
+
+        //Only for now
+        if (clientConnector.isUseGlobalConfig()) {
+            populatePoolingConfig(globalPoolConfig);
+        }
 
         HttpResponseFuture future = clientConnector.send(outboundRequestMsg);
         if (async) {
@@ -379,6 +386,12 @@ public abstract class AbstractHTTPAction implements InterruptibleNativeCallableU
                 throw exception;
             }
         }
+    }
+
+    private void populatePoolingConfig(BMap<String, BValue> globalPoolConfig) {
+        HttpClientConnectionManager globalConnManager = (HttpClientConnectionManager)globalPoolConfig.
+                getNativeData("HTTPClientConnectionManager");
+
     }
 
     private HttpMessageDataStreamer getHttpMessageDataStreamer(HttpCarbonMessage outboundRequestMsg) {

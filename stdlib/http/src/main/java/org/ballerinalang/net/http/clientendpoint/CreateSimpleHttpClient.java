@@ -36,6 +36,7 @@ import org.wso2.transport.http.netty.contract.HttpClientConnector;
 import org.wso2.transport.http.netty.contract.HttpWsConnectorFactory;
 import org.wso2.transport.http.netty.contract.config.ProxyServerConfiguration;
 import org.wso2.transport.http.netty.contract.config.SenderConfiguration;
+import org.wso2.transport.http.netty.contractimpl.sender.channel.pool.HttpClientConnectionManager;
 import org.wso2.transport.http.netty.message.HttpConnectorUtil;
 
 import java.net.MalformedURLException;
@@ -68,6 +69,8 @@ public class CreateSimpleHttpClient extends BlockingNativeCallableUnit {
     public void execute(Context context) {
         BMap<String, BValue> configBStruct =
                 (BMap<String, BValue>) context.getRefArgument(HttpConstants.CLIENT_ENDPOINT_CONFIG_INDEX);
+        BMap<String, BValue> globalPool = (BMap<String, BValue>) context
+                .getRefArgument(HttpConstants.CLIENT_GLOBAL_POOL_INDEX);
         Struct clientEndpointConfig = BLangConnectorSPIUtil.toStruct(configBStruct);
         String urlString = context.getStringArgument(HttpConstants.CLIENT_ENDPOINT_URL_INDEX);
         HttpConnectionManager connectionManager = HttpConnectionManager.getInstance();
@@ -92,6 +95,10 @@ public class CreateSimpleHttpClient extends BlockingNativeCallableUnit {
         populateSenderConfigurationOptions(senderConfiguration, clientEndpointConfig);
         Struct connectionThrottling = clientEndpointConfig.getStructField(HttpConstants.
                 CONNECTION_THROTTLING_STRUCT_REFERENCE);
+
+        HttpClientConnector httpClientConnector;
+
+        //First check whether the client specific pool configuration exists
         if (connectionThrottling != null) {
             long maxActiveConnections = connectionThrottling
                     .getIntField(HttpConstants.CONNECTION_THROTTLING_MAX_ACTIVE_CONNECTIONS);
@@ -113,15 +120,28 @@ public class CreateSimpleHttpClient extends BlockingNativeCallableUnit {
             }
             senderConfiguration.getPoolConfiguration().setHttp2MaxActiveStreamsPerConnection(
                     maxActiveStreamsPerConnection == -1 ? Integer.MAX_VALUE : (int) maxActiveStreamsPerConnection);
+
+            httpClientConnector = httpConnectorFactory
+                    .createHttpClientConnector(properties, senderConfiguration);
+        } else {
+            //Take the global pool into consideration
+            HttpClientConnectionManager globalConnManager = (HttpClientConnectionManager)globalPool.getNativeData("HTTPClientConnectionManager");
+            if (globalConnManager == null) {
+                HttpClientConnectionManager globalConnectioManager = HttpClientConnectionManager.getInstance();
+                globalPool.addNativeData("HTTPClientConnectionManager", globalConnectioManager);
+            }
+            boolean isUseGlobalConfig = true;
+            httpClientConnector = httpConnectorFactory
+                    .createHttpClientConnector(properties, senderConfiguration, globalConnManager, isUseGlobalConfig);
         }
-        HttpClientConnector httpClientConnector = httpConnectorFactory
-                .createHttpClientConnector(properties, senderConfiguration);
+
         BMap<String, BValue> httpClient = BLangConnectorSPIUtil.createBStruct(context.getProgramFile(),
                                                                                       HTTP_PACKAGE_PATH,
                                                                                       HTTP_CLIENT, urlString,
                                                                                       clientEndpointConfig);
         httpClient.addNativeData(HttpConstants.HTTP_CLIENT, httpClientConnector);
         httpClient.addNativeData(HttpConstants.CLIENT_ENDPOINT_CONFIG, clientEndpointConfig);
+        httpClient.addNativeData("GlobalPoolConfig", globalPool);
         configBStruct.addNativeData(HttpConstants.HTTP_CLIENT, httpClientConnector);
         context.setReturnValues((httpClient));
     }

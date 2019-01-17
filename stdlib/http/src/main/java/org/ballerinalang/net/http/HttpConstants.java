@@ -340,6 +340,7 @@ public class HttpConstants {
     public static final String CLIENT_ENDPOINT_CONFIG = "config";
     public static final int CLIENT_ENDPOINT_CONFIG_INDEX = 0;
     public static final int CLIENT_ENDPOINT_URL_INDEX = 0;
+    public static final int CLIENT_GLOBAL_POOL_INDEX = 1;
 
     
     //Client Endpoint Config
