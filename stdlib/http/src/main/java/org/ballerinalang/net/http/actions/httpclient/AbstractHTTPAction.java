@@ -363,7 +363,7 @@ public abstract class AbstractHTTPAction implements InterruptibleNativeCallableU
             populatePoolingConfig(globalPoolConfig);
         }
 
-        HttpResponseFuture future = clientConnector.send(outboundRequestMsg);
+        HttpResponseFuture future = clientConnector.sendMessage(outboundRequestMsg);
         if (async) {
             future.setResponseHandleListener(httpClientConnectorLister);
         } else {

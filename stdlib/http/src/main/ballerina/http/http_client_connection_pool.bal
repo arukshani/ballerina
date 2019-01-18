@@ -16,7 +16,17 @@ public type Route record {
     int port;
 };
 
-PoolConfiguration globalHttpClientConnPool = {};
+//This is a hack to get the global map initialized without locking
+type ConnectionManager object {
+    public PoolConfiguration poolConfig = {};
+    public function __init() {
+        self.initGlobalPoolMap(self.poolConfig);
+    }
+    extern function initGlobalPoolMap(PoolConfiguration poolConfig);
+};
+
+ConnectionManager connectionManager = new;
+PoolConfiguration globalHttpClientConnPool = connectionManager.poolConfig;
 
 function poolingSetDefaultMaxActiveConns (int n) {
 
