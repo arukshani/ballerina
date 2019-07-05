@@ -1340,13 +1340,15 @@ public class HttpUtil {
 
         sslConfiguration.setSslHandshakeTimeOut(secureSocket.getDefaultableIntValue(ENDPOINT_CONFIG_HANDSHAKE_TIMEOUT));
 
-        List<Object> ciphersValueList = Arrays.asList(
-                secureSocket.getArrayValue(HttpConstants.SSL_CONFIG_CIPHERS).getValues());
-        if (ciphersValueList.size() > 0) {
-            String ciphers = ciphersValueList.stream().map(Object::toString)
-                    .collect(Collectors.joining(",", "", ""));
-            Parameter clientCiphers = new Parameter(HttpConstants.CIPHERS, ciphers);
-            clientParams.add(clientCiphers);
+        if (secureSocket.getArrayValue(HttpConstants.SSL_CONFIG_CIPHERS).getValues() != null) {
+            List<Object> ciphersValueList = Arrays.asList(
+                    secureSocket.getArrayValue(HttpConstants.SSL_CONFIG_CIPHERS).getValues());
+            if (ciphersValueList.size() > 0) {
+                String ciphers = ciphersValueList.stream().map(Object::toString)
+                        .collect(Collectors.joining(",", "", ""));
+                Parameter clientCiphers = new Parameter(HttpConstants.CIPHERS, ciphers);
+                clientParams.add(clientCiphers);
+            }
         }
         String enableSessionCreation = String.valueOf(secureSocket
                 .getBooleanValue(HttpConstants.SSL_CONFIG_ENABLE_SESSION_CREATION));
