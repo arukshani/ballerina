@@ -19,12 +19,15 @@
 package org.ballerinalang.stdlib.mime;
 
 import org.ballerinalang.bre.bvm.BLangVMErrors;
+import org.ballerinalang.jvm.BallerinaValues;
+import org.ballerinalang.jvm.types.BMapType;
+import org.ballerinalang.jvm.types.BTypes;
+import org.ballerinalang.jvm.values.MapValue;
+import org.ballerinalang.jvm.values.MapValueImpl;
 import org.ballerinalang.jvm.values.ObjectValue;
 import org.ballerinalang.mime.util.EntityBodyHandler;
 import org.ballerinalang.mime.util.MimeUtil;
 import org.ballerinalang.mime.util.MultipartDecoder;
-import org.ballerinalang.model.types.BMapType;
-import org.ballerinalang.model.types.BTypes;
 import org.ballerinalang.model.util.JsonParser;
 import org.ballerinalang.model.util.StringUtils;
 import org.ballerinalang.model.util.XMLUtils;
@@ -56,7 +59,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Base64;
 import java.util.List;
-
 import javax.activation.MimeTypeParseException;
 
 import static org.ballerinalang.mime.util.MimeConstants.CONTENT_DISPOSITION_FILENAME_FIELD;
@@ -88,13 +90,13 @@ public class MimeUtilityFunctionTest {
     private final String mediaTypeStruct = MEDIA_TYPE;
     private final String contentDispositionStruct = CONTENT_DISPOSITION_STRUCT;
     private CommonTestUtils commonTestUtils = new CommonTestUtils();
-    private CompileResult compileResultOnBVM;
+//    private CompileResult compileResultOnBVM;
 
     @BeforeClass
     public void setup() {
         String sourceFilePath = "test-src/mime-test.bal";
         compileResult = BCompileUtil.compile(sourceFilePath);
-        compileResultOnBVM = BCompileUtil.compileOnBVM(sourceFilePath);
+//        compileResultOnBVM = BCompileUtil.compileOnBVM(sourceFilePath);
     }
 
     @Test(description = "Test 'getMediaType' function in ballerina/mime package")
@@ -123,11 +125,12 @@ public class MimeUtilityFunctionTest {
 
     @Test(description = "Test 'getBaseType' function in ballerina/mime package")
     public void testGetBaseTypeOnMediaType() {
-        BMap<String, BValue> mediaType = BCompileUtil
-                .createAndGetStruct(compileResultOnBVM.getProgFile(), protocolPackageMime, mediaTypeStruct);
-        mediaType.put(PRIMARY_TYPE_FIELD, new BString("application"));
-        mediaType.put(SUBTYPE_FIELD, new BString("test+xml"));
-        BValue[] args = {mediaType};
+//        BMap<String, BValue> mediaType = BCompileUtil
+//                .createAndGetStruct(compileResultOnBVM.getProgFile(), protocolPackageMime, mediaTypeStruct);
+        ObjectValue mediaType = BallerinaValues.createObjectValue(PROTOCOL_PACKAGE_MIME, MEDIA_TYPE);
+        mediaType.set(PRIMARY_TYPE_FIELD, "application");
+        mediaType.set(SUBTYPE_FIELD, "test+xml");
+        Object[] args = {mediaType};
         BValue[] returns = BRunUtil.invoke(compileResult, "testGetBaseTypeOnMediaType", args);
         Assert.assertEquals(returns.length, 1);
         Assert.assertEquals(returns[0].stringValue(), "application/test+xml");
@@ -135,14 +138,17 @@ public class MimeUtilityFunctionTest {
 
     @Test(description = "Test 'testToStringOnMediaType' function in ballerina/mime package")
     public void testToStringOnMediaType() {
-        BMap<String, BValue> mediaType = BCompileUtil
-                .createAndGetStruct(compileResultOnBVM.getProgFile(), protocolPackageMime, mediaTypeStruct);
-        mediaType.put(PRIMARY_TYPE_FIELD, new BString("application"));
-        mediaType.put(SUBTYPE_FIELD, new BString("test+xml"));
-        BMap map = new BMap(new BMapType(BTypes.typeString));
-        map.put("charset", new BString("utf-8"));
-        mediaType.put(PARAMETER_MAP_FIELD, map);
-        BValue[] args = {mediaType};
+//        BMap<String, BValue> mediaType = BCompileUtil
+//                .createAndGetStruct(compileResultOnBVM.getProgFile(), protocolPackageMime, mediaTypeStruct);
+        ObjectValue mediaType = BallerinaValues.createObjectValue(PROTOCOL_PACKAGE_MIME, MEDIA_TYPE);
+        mediaType.set(PRIMARY_TYPE_FIELD, "application");
+        mediaType.set(SUBTYPE_FIELD, "test+xml");
+//        BMap map = new BMap(new BMapType(BTypes.typeString));
+//        map.put("charset", new BString("utf-8"));
+        MapValue<String, Object> mapValue = new MapValueImpl<>(new BMapType(BTypes.typeString));
+        mapValue.put("charset", "utf-8");
+        mediaType.set(PARAMETER_MAP_FIELD, mapValue);
+        Object[] args = {mediaType};
         BValue[] returns = BRunUtil.invoke(compileResult, "testToStringOnMediaType", args);
         Assert.assertEquals(returns.length, 1);
         Assert.assertEquals(returns[0].stringValue(), "application/test+xml; charset=utf-8");
@@ -167,12 +173,14 @@ public class MimeUtilityFunctionTest {
 
     @Test
     public void testToStringOnContentDisposition() {
-        BMap<String, BValue> contentDisposition = BCompileUtil
-                .createAndGetStruct(compileResultOnBVM.getProgFile(), protocolPackageMime, contentDispositionStruct);
-        contentDisposition.put(CONTENT_DISPOSITION_FILENAME_FIELD, new BString("file-01.txt"));
-        contentDisposition.put(DISPOSITION_FIELD, new BString("form-data"));
-        contentDisposition.put(CONTENT_DISPOSITION_NAME_FIELD, new BString("test"));
-        BValue[] args = {contentDisposition};
+//        BMap<String, BValue> contentDisposition = BCompileUtil
+//                .createAndGetStruct(compileResultOnBVM.getProgFile(), protocolPackageMime, contentDispositionStruct);
+        ObjectValue contentDisposition = BallerinaValues.createObjectValue(PROTOCOL_PACKAGE_MIME,
+                                                                           CONTENT_DISPOSITION_STRUCT);
+        contentDisposition.set(CONTENT_DISPOSITION_FILENAME_FIELD, "file-01.txt");
+        contentDisposition.set(DISPOSITION_FIELD, "form-data");
+        contentDisposition.set(CONTENT_DISPOSITION_NAME_FIELD, "test");
+        Object[] args = {contentDisposition};
         BValue[] returns = BRunUtil.invoke(compileResult, "testToStringOnContentDisposition", args);
         Assert.assertEquals(returns.length, 1);
         Assert.assertEquals(returns[0].stringValue(), "form-data;name=\"test\";filename=\"file-01.txt\"");
