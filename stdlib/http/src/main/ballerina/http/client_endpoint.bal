@@ -16,7 +16,6 @@
 
 import ballerina/crypto;
 import ballerina/io;
-import ballerina/internal;
 
 ////////////////////////////////
 ///// HTTP Client Endpoint /////
@@ -58,8 +57,8 @@ public type Client client object {
     # + path - Resource path
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function post(@untainted string path, RequestMessage message) returns Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function post(@untainted string path, RequestMessage message) returns Response|error {
         Request req = buildRequest(message);
         return self.httpClient->post(path, req);
     }
@@ -69,8 +68,8 @@ public type Client client object {
     # + path - Resource path
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function head(@untainted string path, RequestMessage message = ()) returns Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function head(@untainted string path, RequestMessage message = ()) returns Response|error {
         Request req = buildRequest(message);
         return self.httpClient->head(path, message = req);
     }
@@ -80,8 +79,8 @@ public type Client client object {
     # + path - Resource path
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function put(@untainted string path, RequestMessage message) returns Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function put(@untainted string path, RequestMessage message) returns Response|error {
         Request req = buildRequest(message);
         return self.httpClient->put(path, req);
     }
@@ -92,8 +91,8 @@ public type Client client object {
     # + path - Resource path
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function execute(@untainted string httpVerb, @untainted string path, RequestMessage message) returns Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function execute(@untainted string httpVerb, @untainted string path, RequestMessage message) returns Response|error {
         Request req = buildRequest(message);
         return self.httpClient->execute(httpVerb, path, req);
     }
@@ -103,8 +102,8 @@ public type Client client object {
     # + path - Resource path
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function patch(@untainted string path, RequestMessage message) returns Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function patch(@untainted string path, RequestMessage message) returns Response|error {
         Request req = buildRequest(message);
         return self.httpClient->patch(path, req);
     }
@@ -114,8 +113,8 @@ public type Client client object {
     # + path - Resource path
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function delete(@untainted string path, RequestMessage message) returns Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function delete(@untainted string path, RequestMessage message) returns Response|error {
         Request req = buildRequest(message);
         return self.httpClient->delete(path, req);
     }
@@ -125,8 +124,8 @@ public type Client client object {
     # + path - Request path
     # + message - An optional HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function get(@untainted string path, RequestMessage message = ()) returns Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function get(@untainted string path, RequestMessage message = ()) returns Response|error {
         Request req = buildRequest(message);
         return self.httpClient->get(path, message = req);
     }
@@ -136,8 +135,8 @@ public type Client client object {
     # + path - Request path
     # + message - An optional HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function options(@untainted string path, RequestMessage message = ()) returns Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function options(@untainted string path, RequestMessage message = ()) returns Response|error {
         Request req = buildRequest(message);
         return self.httpClient->options(path, message = req);
     }
@@ -146,8 +145,8 @@ public type Client client object {
     #
     # + path - Request path
     # + request - An HTTP inbound request message
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function forward(@untainted string path, Request request) returns Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function forward(@untainted string path, Request request) returns Response|error {
         return self.httpClient->forward(path, request);
     }
 
@@ -159,8 +158,8 @@ public type Client client object {
     # + path - The resource path
     # + message - An HTTP outbound request message or any payload of type `string`, `xml`, `json`, `byte[]`,
     #             `io:ReadableByteChannel` or `mime:Entity[]`
-    # + return - An `HttpFuture` that represents an asynchronous service invocation, or an `http:ClientError` if the submission fails
-    public remote function submit(@untainted string httpVerb, string path, RequestMessage message) returns HttpFuture|ClientError {
+    # + return - An `HttpFuture` that represents an asynchronous service invocation, or an `error` if the submission fails
+    public remote function submit(@untainted string httpVerb, string path, RequestMessage message) returns HttpFuture|error {
         Request req = buildRequest(message);
         return self.httpClient->submit(httpVerb, path, req);
 
@@ -170,7 +169,7 @@ public type Client client object {
     #
     # + httpFuture - The `HttpFuture` relates to a previous asynchronous invocation
     # + return - An HTTP response message, or an error if the invocation fails
-    public remote function getResponse(HttpFuture httpFuture) returns Response|ClientError {
+    public remote function getResponse(HttpFuture httpFuture) returns Response|error {
         return self.httpClient->getResponse(httpFuture);
     }
 
@@ -186,7 +185,7 @@ public type Client client object {
     #
     # + httpFuture - The `HttpFuture` relates to a previous asynchronous invocation
     # + return - An HTTP Push Promise message, or an error if the invocation fails
-    public remote function getNextPromise(HttpFuture httpFuture) returns PushPromise|ClientError {
+    public remote function getNextPromise(HttpFuture httpFuture) returns PushPromise|error {
         return self.httpClient->getNextPromise(httpFuture);
     }
 
@@ -194,7 +193,7 @@ public type Client client object {
     #
     # + promise - The related `PushPromise`
     # + return - A promised HTTP `Response` message, or an error if the invocation fails
-    public remote function getPromisedResponse(PushPromise promise) returns Response|ClientError {
+    public remote function getPromisedResponse(PushPromise promise) returns Response|error {
         return self.httpClient->getPromisedResponse(promise);
     }
 
@@ -347,13 +346,13 @@ public type OutboundAuthConfig record {|
 function initialize(string serviceUrl, ClientEndpointConfig config) returns HttpClient|error {
     boolean httpClientRequired = false;
     string url = serviceUrl;
-    if (internal:hasSuffix(url, "/")) {
+    if (url.hasSuffix("/")) {
         int lastIndex = url.length() - 1;
         url = url.substring(0, lastIndex);
     }
     var cbConfig = config.circuitBreaker;
     if (cbConfig is CircuitBreakerConfig) {
-        if (internal:hasSuffix(url, "/")) {
+        if (url.hasSuffix("/")) {
             int lastIndex = url.length() - 1;
             url = url.substring(0, lastIndex);
         }
@@ -372,7 +371,7 @@ function initialize(string serviceUrl, ClientEndpointConfig config) returns Http
     }
 }
 
-function createRedirectClient(string url, ClientEndpointConfig configuration) returns HttpClient|ClientError {
+function createRedirectClient(string url, ClientEndpointConfig configuration) returns HttpClient|error {
     var redirectConfig = configuration.followRedirects;
     if (redirectConfig is FollowRedirects) {
         if (redirectConfig.enabled) {
@@ -390,7 +389,7 @@ function createRedirectClient(string url, ClientEndpointConfig configuration) re
     }
 }
 
-function checkForRetry(string url, ClientEndpointConfig config) returns HttpClient|ClientError {
+function checkForRetry(string url, ClientEndpointConfig config) returns HttpClient|error {
     var retryConfigVal = config.retryConfig;
     if (retryConfigVal is RetryConfig) {
         return createRetryClient(url, config);
@@ -403,7 +402,7 @@ function checkForRetry(string url, ClientEndpointConfig config) returns HttpClie
     }
 }
 
-function createCircuitBreakerClient(string uri, ClientEndpointConfig configuration) returns HttpClient|ClientError {
+function createCircuitBreakerClient(string uri, ClientEndpointConfig configuration) returns HttpClient|error {
     HttpClient cbHttpClient;
     var cbConfig = configuration.circuitBreaker;
     if (cbConfig is CircuitBreakerConfig) {
@@ -460,7 +459,7 @@ function createCircuitBreakerClient(string uri, ClientEndpointConfig configurati
     }
 }
 
-function createRetryClient(string url, ClientEndpointConfig configuration) returns HttpClient|ClientError {
+function createRetryClient(string url, ClientEndpointConfig configuration) returns HttpClient|error {
     var retryConfig = configuration.retryConfig;
     if (retryConfig is RetryConfig) {
         boolean[] statusCodes = populateErrorCodeIndex(retryConfig.statusCodes);

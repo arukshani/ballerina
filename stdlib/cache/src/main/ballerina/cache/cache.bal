@@ -79,13 +79,13 @@ public type Cache object {
 
         var attachCacheCleanerResult = cacheCleanupTimer.attach(cacheCleanupService);
         if (attachCacheCleanerResult is error) {
-            record {| string message?; anydata|error...; |} detail = attachCacheCleanerResult.detail();
+            record {string message?;} detail = attachCacheCleanerResult.detail();
             error e = error("Failed to create the cache cleanup task.", message = <string> detail["message"]);
             panic e;
         }
         var timerStartResult = cacheCleanupTimer.start();
         if (timerStartResult is error) {
-            record {| string message?; anydata|error...; |} detail = timerStartResult.detail();
+            record {string message?;} detail = timerStartResult.detail();
             error e = error("Failed to start the cache cleanup task.", message = <string> detail["message"]);
             panic e;
         }
@@ -142,7 +142,7 @@ public type Cache object {
         // Iterate through the map and remove entries.
         foreach var c in cacheKeys {
             // These cache values are ignred. So it is not needed to check the return value for the remove function.
-            var tempVar = self.entries.remove(c);
+            _ = self.entries.remove(c);
         }
     }
 
@@ -182,7 +182,7 @@ public type Cache object {
     # + key - key of the cache entry which needs to be removed
     public function remove(string key) {
         // Cache might already be removed by the cache clearing task. So no need to check the return value.
-        var tempVar = self.entries.remove(key);
+        _ = self.entries.remove(key);
     }
 
     # Returns all keys from current cache.
@@ -272,7 +272,7 @@ function runCacheExpiry() returns error? {
             while(currentKeyIndex < cachesToBeRemovedIndex) {
                 string key = cachesToBeRemoved[currentKeyIndex];
                 // Remove the cache entry.
-                var tempVar = currentCache.entries.remove(key);
+                _ = currentCache.entries.remove(key);
                 currentKeyIndex += 1;
             }
 
@@ -287,7 +287,7 @@ function runCacheExpiry() returns error? {
 
     // We iterate though all empty cache keys and remove them from the `cacheMap`.
     foreach var emptyCacheKey in emptyCacheKeys {
-        var tempVar = cacheMap.remove(emptyCacheKey);
+        _ = cacheMap.remove(emptyCacheKey);
     }
     return ();
 }

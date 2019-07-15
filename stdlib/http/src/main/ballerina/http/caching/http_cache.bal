@@ -15,7 +15,6 @@
 // under the License.
 
 import ballerina/cache;
-import ballerina/internal;
 
 # Implements a cache for storing HTTP responses. This cache complies with the caching policy set when configuring
 # HTTP caching in the HTTP client endpoint.
@@ -41,30 +40,29 @@ public type HttpCache object {
 
     function put (string key, RequestCacheControl? requestCacheControl, Response inboundResponse) {
         ResponseCacheControl? respCacheControl = inboundResponse.cacheControl;
-        if (respCacheControl is ResponseCacheControl && requestCacheControl is RequestCacheControl) {
-            if ((respCacheControl.noStore) ||
-                (requestCacheControl.noStore) ||
-                ((respCacheControl.isPrivate)  && self.isShared)) {
-                // TODO: Need to consider https://tools.ietf.org/html/rfc7234#section-3.2 as well here
-                return;
-            }
 
-            // Based on https://tools.ietf.org/html/rfc7234#page-6
-            // TODO: Consider cache control extensions as well here
-            if (inboundResponse.hasHeader(EXPIRES) ||
-                (respCacheControl.maxAge) >= 0 ||
-                ((respCacheControl.sMaxAge) >= 0 && self.isShared) ||
-                isCacheableStatusCode(inboundResponse.statusCode) ||
-                !(respCacheControl.isPrivate)) {
+        if ((respCacheControl.noStore ?: false) ||
+            (requestCacheControl.noStore ?: false) ||
+            ((respCacheControl.isPrivate ?: false)  && self.isShared)) {
+            // TODO: Need to consider https://tools.ietf.org/html/rfc7234#section-3.2 as well here
+            return;
+        }
 
-                // IMPT: The call to getBinaryPayload() builds the payload from the stream. If this is not done, the stream
-                // will be read by the client and the response will be after the first cache hit.
-                var binaryPayload = inboundResponse.getBinaryPayload();
-                log:printDebug(function() returns string {
-                    return "Adding new cache entry for: " + key;
-                });
-                addEntry(self.cache, key, inboundResponse);
-            }
+        // Based on https://tools.ietf.org/html/rfc7234#page-6
+        // TODO: Consider cache control extensions as well here
+        if (inboundResponse.hasHeader(EXPIRES) ||
+            (respCacheControl.maxAge ?: -1) >= 0 ||
+            ((respCacheControl.sMaxAge ?: -1) >= 0 && self.isShared) ||
+            isCacheableStatusCode(inboundResponse.statusCode) ||
+            !(respCacheControl.isPrivate ?: false)) {
+
+            // IMPT: The call to getBinaryPayload() builds the payload from the stream. If this is not done, the stream
+            // will be read by the client and the response will be after the first cache hit.
+            var binaryPayload = inboundResponse.getBinaryPayload();
+            log:printDebug(function() returns string {
+                return "Adding new cache entry for: " + key;
+            });
+            addEntry(self.cache, key, inboundResponse);
         }
     }
 
@@ -96,7 +94,7 @@ public type HttpCache object {
         }
 
         foreach var cachedResp in cachedResponses {
-            if (cachedResp.getHeader(ETAG) == etag && !internal:hasPrefix(etag, WEAK_VALIDATOR_TAG)) {
+            if (cachedResp.getHeader(ETAG) == etag && !etag.hasPrefix(WEAK_VALIDATOR_TAG)) {
                 matchingResponses[i] = cachedResp;
                 i = i + 1;
             }
@@ -132,7 +130,8 @@ public type HttpCache object {
 
 function createHttpCache (string name, CacheConfig cacheConfig) returns HttpCache {
     HttpCache httpCache = new;
-    cache:Cache backingCache = new(cacheConfig.expiryTimeMillis, cacheConfig.capacity, cacheConfig.evictionFactor);
+    cache:Cache backingCache = new(expiryTimeMillis = cacheConfig.expiryTimeMillis, capacity = cacheConfig.capacity,
+                                     evictionFactor = cacheConfig.evictionFactor);
     httpCache.cache = backingCache;
     httpCache.policy = cacheConfig.policy;
     httpCache.isShared = cacheConfig.isShared;
@@ -160,8 +159,8 @@ function addEntry (cache:Cache cache, string key, Response inboundResponse) {
 }
 
 function weakValidatorEquals (string etag1, string etag2) returns boolean {
-    string validatorPortion1 = internal:hasPrefix(etag1, WEAK_VALIDATOR_TAG) ? etag1.substring(2, etag1.length()) : etag1;
-    string validatorPortion2 = internal:hasPrefix(etag2, WEAK_VALIDATOR_TAG) ? etag2.substring(2, etag2.length()) : etag2;
+    string validatorPortion1 = etag1.hasPrefix(WEAK_VALIDATOR_TAG) ? etag1.substring(2, etag1.length()) : etag1;
+    string validatorPortion2 = etag2.hasPrefix(WEAK_VALIDATOR_TAG) ? etag2.substring(2, etag2.length()) : etag2;
 
     return validatorPortion1 == validatorPortion2;
 }

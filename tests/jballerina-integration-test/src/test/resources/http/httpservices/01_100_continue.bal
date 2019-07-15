@@ -60,7 +60,7 @@ service helloContinue on new http:Listener(9090) {
             error err = result;
             res.statusCode = 500;
             res.setPayload(<@untainted> err.reason());
-            log:printError("Failed to retrieve payload from request: " + err.reason());
+            log:printError("Failed to retrieve payload from request: " + <string>err.reason());
             var responseError = caller->respond(res);
             if (responseError is error) {
                 log:printError("Error sending response", responseError);
@@ -83,16 +83,18 @@ service helloContinue on new http:Listener(9090) {
                 if (result is string) {
                     replyMsg += " Key:" + contentDisposition.name + " Value: " + result;
                 } else {
-                    replyMsg += " Key:" + contentDisposition.name + " Value: " + result.reason();
+                    replyMsg += " Key:" + contentDisposition.name + " Value: " + <string>result.reason();
                 }
                 i += 1;
             }
             var responseError = caller->respond(<@untainted> replyMsg);
             if (responseError is error) {
-                log:printError(responseError.reason(), responseError);
+                error err = responseError;
+                log:printError(<string>err.reason(), err);
             }
         } else {
-            log:printError(bodyParts.reason(), bodyParts);
+            error err = bodyParts;
+            log:printError(<string>err.reason(), err);
         }
     }
 
@@ -111,7 +113,8 @@ service helloContinue on new http:Listener(9090) {
                 log:printError("Error sending response", responseError);
             }
         } else {
-            log:printError(res.reason(), res);
+            error err = res;
+            log:printError(<string>err.reason(), err);
         }
     }
 }

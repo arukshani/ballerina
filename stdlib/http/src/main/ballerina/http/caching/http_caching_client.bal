@@ -19,8 +19,6 @@ import ballerina/log;
 import ballerina/runtime;
 import ballerina/time;
 import ballerina/io;
-import ballerina/internal;
-import ballerina/'lang\.int as langint;
 
 final string WARNING_AGENT = getWarningAgent();
 
@@ -97,8 +95,7 @@ public type HttpCachingClient client object {
         if (httpSecureClient is HttpClient) {
             self.httpClient = httpSecureClient;
         } else {
-            error clientError = httpSecureClient;
-            panic <error> httpSecureClient;
+            panic httpSecureClient;
         }
         self.cache = createHttpCache("http-cache", cacheConfig);
     }
@@ -109,8 +106,8 @@ public type HttpCachingClient client object {
     # + path - Resource path
     # + message - HTTP request or any payload of type `string`, `xml`, `json`, `byte[]`, `io:ReadableByteChannel`
     #             or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function post(string path, RequestMessage message) returns Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function post(string path, RequestMessage message) returns Response|error {
         Request req = <Request>message;
         setRequestCacheControlHeader(req);
 
@@ -127,8 +124,8 @@ public type HttpCachingClient client object {
     # + path - Resource path
     # + message - An optional HTTP request or any payload of type `string`, `xml`, `json`, `byte[]`, `io:ReadableByteChannel`
     #             or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function head(string path, RequestMessage message = ()) returns @tainted Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function head(string path, RequestMessage message = ()) returns @tainted (Response|error) {
         Request req = <Request>message;
         setRequestCacheControlHeader(req);
         return getCachedResponse(self.cache, self.httpClient, req, HEAD, path, self.cacheConfig.isShared, false);
@@ -140,8 +137,8 @@ public type HttpCachingClient client object {
     # + path - Resource path
     # + message - An optional HTTP request or any payload of type `string`, `xml`, `json`, `byte[]`, `io:ReadableByteChannel`
     #             or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function put(string path, RequestMessage message) returns Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function put(string path, RequestMessage message) returns Response|error {
         Request req = <Request>message;
         setRequestCacheControlHeader(req);
 
@@ -159,9 +156,8 @@ public type HttpCachingClient client object {
     # + path - Resource path
     # + message - An HTTP request or any payload of type `string`, `xml`, `json`, `byte[]`, `io:ReadableByteChannel`
     #             or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function execute(string httpMethod, string path, RequestMessage message) returns @tainted Response|ClientError {
-
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function execute(string httpMethod, string path, RequestMessage message) returns @tainted (Response|error) {
         Request request = <Request>message;
         setRequestCacheControlHeader(request);
 
@@ -183,8 +179,8 @@ public type HttpCachingClient client object {
     # + path - Resource path
     # + message - An HTTP request or any payload of type `string`, `xml`, `json`, `byte[]`, `io:ReadableByteChannel`
     #             or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function patch(string path, RequestMessage message) returns Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function patch(string path, RequestMessage message) returns Response|error {
         Request req = <Request>message;
         setRequestCacheControlHeader(req);
 
@@ -201,8 +197,8 @@ public type HttpCachingClient client object {
     # + path - Resource path
     # + message - An HTTP request or any payload of type `string`, `xml`, `json`, `byte[]`, `io:ReadableByteChannel`
     #             or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function delete(string path, RequestMessage message) returns Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function delete(string path, RequestMessage message) returns Response|error {
         Request req = <Request>message;
         setRequestCacheControlHeader(req);
 
@@ -219,8 +215,8 @@ public type HttpCachingClient client object {
     # + path - Request path
     # + message - An optional HTTP request or any payload of type `string`, `xml`, `json`, `byte[]`, `io:ReadableByteChannel`
     #             or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function get(string path, RequestMessage message = ()) returns @tainted Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function get(string path, RequestMessage message = ()) returns @tainted (Response|error) {
         Request req = <Request>message;
         setRequestCacheControlHeader(req);
         return getCachedResponse(self.cache, self.httpClient, req, GET, path, self.cacheConfig.isShared, false);
@@ -232,8 +228,8 @@ public type HttpCachingClient client object {
     # + path - Request path
     # + message - An optional HTTP request or any payload of type `string`, `xml`, `json`, `byte[]`, `io:ReadableByteChannel`
     #             or `mime:Entity[]`
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function options(string path, RequestMessage message = ()) returns Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function options(string path, RequestMessage message = ()) returns Response|error {
         Request req = <Request>message;
         setRequestCacheControlHeader(req);
 
@@ -249,8 +245,8 @@ public type HttpCachingClient client object {
     #
     # + path - Request path
     # + request - The HTTP request to be forwarded
-    # + return - The response for the request or an `http:ClientError` if failed to establish communication with the upstream server
-    public remote function forward(string path, @tainted Request request) returns @tainted Response|ClientError {
+    # + return - The response for the request or an `error` if failed to establish communication with the upstream server
+    public remote function forward(string path, @tainted Request request) returns @tainted (Response|error) {
         if (request.method == GET || request.method == HEAD) {
             return getCachedResponse(self.cache, self.httpClient, request, request.method, path,
                                      self.cacheConfig.isShared, true);
@@ -270,15 +266,15 @@ public type HttpCachingClient client object {
     # + message - An HTTP request or any payload of type `string`, `xml`, `json`, `byte[]`, `io:ReadableByteChannel`
     #             or `mime:Entity[]`
     # + return - An `HttpFuture` that represents an asynchronous service invocation, or an error if the submission fails
-    public remote function submit(string httpVerb, string path, RequestMessage message) returns HttpFuture|ClientError {
+    public remote function submit(string httpVerb, string path, RequestMessage message) returns HttpFuture|error {
         return self.httpClient->submit(httpVerb, path, <Request>message);
     }
 
     # Retrieves the `Response` for a previously submitted request.
     #
     # + httpFuture - The `HttpFuture` related to a previous asynchronous invocation
-    # + return - An HTTP response message, or an `http:ClientError` if the invocation fails
-    public remote function getResponse(HttpFuture httpFuture) returns Response|ClientError {
+    # + return - An HTTP response message, or an `error` if the invocation fails
+    public remote function getResponse(HttpFuture httpFuture) returns Response|error {
         return self.httpClient->getResponse(httpFuture);
     }
 
@@ -293,16 +289,16 @@ public type HttpCachingClient client object {
     # Retrieves the next available `PushPromise` for a previously submitted request.
     #
     # + httpFuture - The `HttpFuture` relates to a previous asynchronous invocation
-    # + return - An HTTP Push Promise message, or an `http:ClientError` if the invocation fails
-    public remote function getNextPromise(HttpFuture httpFuture) returns PushPromise|ClientError {
+    # + return - An HTTP Push Promise message, or an `error` if the invocation fails
+    public remote function getNextPromise(HttpFuture httpFuture) returns PushPromise|error {
         return self.httpClient->getNextPromise(httpFuture);
     }
 
     # Retrieves the promised server push `Response` message.
     #
     # + promise - The related `PushPromise`
-    # + return - A promised HTTP `Response` message, or an `http:ClientError` if the invocation fails
-    public remote function getPromisedResponse(PushPromise promise) returns Response|ClientError {
+    # + return - A promised HTTP `Response` message, or an `error` if the invocation fails
+    public remote function getPromisedResponse(PushPromise promise) returns Response|error {
         return self.httpClient->getPromisedResponse(promise);
     }
 
@@ -322,7 +318,7 @@ public type HttpCachingClient client object {
 # + cacheConfig - The configurations for the HTTP cache to be used with the caching client
 # + return - An `HttpCachingClient` instance which wraps the base `Client` with a caching layer
 public function createHttpCachingClient(string url, ClientEndpointConfig config, CacheConfig cacheConfig)
-                                                                                      returns HttpClient|ClientError {
+                                                                                      returns HttpClient|error {
     HttpCachingClient httpCachingClient = new(url, config, cacheConfig);
     log:printDebug(function() returns string {
         return "Created HTTP caching client: " + io:sprintf("%s", httpCachingClient);
@@ -331,7 +327,7 @@ public function createHttpCachingClient(string url, ClientEndpointConfig config,
 }
 
 function getCachedResponse(HttpCache cache, HttpClient httpClient, @tainted Request req, string httpMethod, string path,
-                           boolean isShared, boolean forwardRequest) returns @tainted Response|ClientError {
+                           boolean isShared, boolean forwardRequest) returns @tainted (Response|error) {
     time:Time currentT = time:currentTime();
     req.parseCacheControlHeader();
 
@@ -345,24 +341,17 @@ function getCachedResponse(HttpCache cache, HttpClient httpClient, @tainted Requ
         updateResponseTimestamps(cachedResponse, currentT.time, currentT.time);
         setAgeHeader(<@untainted> cachedResponse);
 
-        RequestCacheControl? reqCache = req.cacheControl;
-        ResponseCacheControl? resCache = cachedResponse.cacheControl;
-
-
         if (isFreshResponse(cachedResponse, isShared)) {
             // If the no-cache directive is not set, responses can be served straight from the cache, without
             // validating with the origin server.
-            if (reqCache is RequestCacheControl && resCache is ResponseCacheControl) {
-                if (!(reqCache.noCache) && !(resCache.noCache) && !req.hasHeader(PRAGMA)) {
-                    log:printDebug("Serving a cached fresh response without validating with the origin server");
-                    return cachedResponse;
-                } else {
-                    log:printDebug("Serving a cached fresh response after validating with the origin server");
-                    return getValidationResponse(httpClient, req, cachedResponse, cache, currentT, path, httpMethod, true);
-                }
+            if (!(req.cacheControl.noCache ?: false) && !(cachedResponse.cacheControl.noCache ?: false)
+                                                                                        && !req.hasHeader(PRAGMA)) {
+                log:printDebug("Serving a cached fresh response without validating with the origin server");
+                return cachedResponse;
+            } else {
+                log:printDebug("Serving a cached fresh response after validating with the origin server");
+                return getValidationResponse(httpClient, req, cachedResponse, cache, currentT, path, httpMethod, true);
             }
-            log:printDebug("Serving a cached fresh response after validating with the origin server");
-            return getValidationResponse(httpClient, req, cachedResponse, cache, currentT, path, httpMethod, true);
         }
 
         // If a fresh response is not available, serve a stale response, provided that it is not prohibited by
@@ -371,12 +360,11 @@ function getCachedResponse(HttpCache cache, HttpClient httpClient, @tainted Requ
 
             // If the no-cache directive is not set, responses can be served straight from the cache, without
             // validating with the origin server.
-            if (reqCache is RequestCacheControl && resCache is ResponseCacheControl) {
-                if (!(reqCache.noCache) && ! (resCache.noCache) && !req.hasHeader(PRAGMA)) {
-                    log:printDebug("Serving cached stale response without validating with the origin server");
-                    cachedResponse.setHeader(WARNING, WARNING_110_RESPONSE_IS_STALE);
-                    return cachedResponse;
-                }
+            if (!(req.cacheControl.noCache ?: false) && ! (cachedResponse.cacheControl.noCache ?: false)
+                                                                                            && !req.hasHeader(PRAGMA)) {
+                log:printDebug("Serving cached stale response without validating with the origin server");
+                cachedResponse.setHeader(WARNING, WARNING_110_RESPONSE_IS_STALE);
+                return cachedResponse;
             }
         }
 
@@ -412,7 +400,7 @@ function getCachedResponse(HttpCache cache, HttpClient httpClient, @tainted Requ
 
 function getValidationResponse(HttpClient httpClient, Request req, Response cachedResponse, HttpCache cache,
                                time:Time currentT, string path, string httpMethod, boolean isFreshResponse)
-                                                                                returns @tainted Response|ClientError {
+                                                                                returns @tainted Response|error {
     // If the no-cache directive is set, always validate the response before serving
     Response validationResponse = new; // TODO: May have to make this Response?
 
@@ -466,7 +454,7 @@ function getValidationResponse(HttpClient httpClient, Request req, Response cach
 
 // Based on https://tools.ietf.org/html/rfc7234#section-4.3.4
 function handle304Response(Response validationResponse, Response cachedResponse, HttpCache cache, string path,
-                           string httpMethod) returns @tainted Response|ClientError {
+                           string httpMethod) returns @tainted Response|error {
     if (validationResponse.hasHeader(ETAG)) {
         string etag = validationResponse.getHeader(ETAG);
 
@@ -579,33 +567,27 @@ function isAllowedToBeServedStale(RequestCacheControl? requestCacheControl, Resp
 function isServingStaleProhibited(RequestCacheControl? requestCacheControl,
                                   ResponseCacheControl? responseCacheControl) returns boolean {
     // A cache MUST NOT generate a stale response if it is prohibited by an explicit in-protocol directive
-    if (requestCacheControl is RequestCacheControl && responseCacheControl is ResponseCacheControl) {
-        return (requestCacheControl.noStore) ||
-                (requestCacheControl.noCache) ||
-                (responseCacheControl.mustRevalidate) ||
-                (responseCacheControl.proxyRevalidate) ||
-                ((responseCacheControl.sMaxAge) >= 0);
-    }
-    //TODO:Check whether returning false is valid here
-    return false;
+    return (requestCacheControl.noStore ?: false) ||
+        (requestCacheControl.noCache ?: false) ||
+        (responseCacheControl.mustRevalidate ?: false) ||
+        (responseCacheControl.proxyRevalidate ?: false) ||
+        ((responseCacheControl.sMaxAge ?: -1) >= 0);
 }
 
 // Based on https://tools.ietf.org/html/rfc7234#section-4.2.4
 function isStaleResponseAccepted(RequestCacheControl? requestCacheControl, Response cachedResponse,
                                  boolean isSharedCache) returns boolean {
-    if (requestCacheControl is RequestCacheControl) {
-        if ((requestCacheControl.maxStale) == MAX_STALE_ANY_AGE) {
-            return true;
-        } else if ((requestCacheControl.maxStale) >=
-                                (getResponseAge(cachedResponse) - getFreshnessLifetime(cachedResponse, isSharedCache))) {
-            return true;
-        }
+    if ((requestCacheControl.maxStale ?: -1) == MAX_STALE_ANY_AGE) {
+        return true;
+    } else if ((requestCacheControl.maxStale ?: -1) >=
+                            (getResponseAge(cachedResponse) - getFreshnessLifetime(cachedResponse, isSharedCache))) {
+        return true;
     }
     return false;
 }
 
 // Based https://tools.ietf.org/html/rfc7234#section-4.3.1
-function sendValidationRequest(HttpClient httpClient, string path, Response cachedResponse) returns Response|ClientError {
+function sendValidationRequest(HttpClient httpClient, string path, Response cachedResponse) returns Response|error {
     Request validationRequest = new;
 
     if (cachedResponse.hasHeader(ETAG)) {
@@ -622,7 +604,7 @@ function sendValidationRequest(HttpClient httpClient, string path, Response cach
 }
 
 function sendNewRequest(HttpClient httpClient, Request request, string path, string httpMethod, boolean forwardRequest)
-                                                                                returns Response|ClientError {
+                                                                                returns Response|error {
     if (forwardRequest) {
         return httpClient->forward(path, request);
     }
@@ -631,8 +613,7 @@ function sendNewRequest(HttpClient httpClient, Request request, string path, str
     } else if (httpMethod == HEAD) {
         return httpClient->head(path, message = request);
     } else {
-        string message = "HTTP method not supported in caching client: " + httpMethod;
-        UnsupportedActionError err = error(UNSUPPORTED_ACTION, message = message);
+        error err = error("HTTP method not supported in caching client: " + httpMethod);
         return err;
     }
 }
@@ -678,7 +659,7 @@ function hasAWeakValidator(Response validationResponse, string etag) returns boo
 function isAStrongValidator(string etag) returns boolean {
     // TODO: Consider cases where Last-Modified can also be treated as a strong validator as per
     // https://tools.ietf.org/html/rfc7232#section-2.2.2
-    if (!internal:hasPrefix(etag, WEAK_VALIDATOR_TAG)) {
+    if (!etag.hasPrefix(WEAK_VALIDATOR_TAG)) {
         return true;
     }
 
@@ -706,7 +687,7 @@ function retain2xxWarnings(Response cachedResponse) {
         cachedResponse.removeHeader(WARNING);
         // TODO: Need to handle this in a better way using regex when the required regex APIs are there
         foreach var warningHeader in warningHeaders {
-            if (internal:contains(warningHeader, "214") || internal:contains(warningHeader, "299")) {
+            if (warningHeader.contains("214") || warningHeader.contains("299")) {
                 log:printDebug(function() returns string {
                     return "Adding warning header: " + warningHeader;
                 });
@@ -723,7 +704,7 @@ function getResponseAge(Response cachedResponse) returns @tainted int {
     }
 
     string ageHeaderString = cachedResponse.getHeader(AGE);
-    var ageValue = langint:fromString(ageHeaderString);
+    var ageValue = int.convert(ageHeaderString);
     if (ageValue is int) {
         return ageValue;
     }
