@@ -19,6 +19,7 @@
 package org.ballerinalang.mime.util;
 
 import io.netty.handler.codec.http.HttpHeaderNames;
+import org.ballerinalang.jvm.BallerinaErrors;
 import org.ballerinalang.jvm.JSONParser;
 import org.ballerinalang.jvm.StringUtils;
 import org.ballerinalang.jvm.XMLFactory;
@@ -30,6 +31,7 @@ import org.ballerinalang.jvm.values.ObjectValue;
 import org.ballerinalang.jvm.values.XMLValue;
 import org.ballerinalang.stdlib.io.channels.TempFileIOChannel;
 import org.ballerinalang.stdlib.io.channels.base.Channel;
+import org.ballerinalang.stdlib.io.utils.IOConstants;
 import org.jvnet.mimepull.MIMEPart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +57,7 @@ import static org.ballerinalang.mime.util.MimeConstants.ENTITY_BYTE_CHANNEL;
 import static org.ballerinalang.mime.util.MimeConstants.FIRST_BODY_PART_INDEX;
 import static org.ballerinalang.mime.util.MimeConstants.MESSAGE_DATA_SOURCE;
 import static org.ballerinalang.mime.util.MimeConstants.MULTIPART_AS_PRIMARY_TYPE;
+import static org.ballerinalang.mime.util.MimeConstants.PARSING_ENTITY_BODY_FAILED;
 import static org.ballerinalang.mime.util.MimeUtil.isNotNullAndEmpty;
 
 /**
@@ -91,7 +94,8 @@ public class EntityBodyHandler {
         try {
             fileChannel = (FileChannel) Files.newByteChannel(path, options);
         } catch (IOException e) {
-            throw new BallerinaException("Error occurred while creating a file channel from a temporary file");
+            throw BallerinaErrors.createError(IOConstants.ErrorCode.GenericError.errorCode(),
+                                              "Error occurred while creating a file channel from a temporary file");
         }
         return new TempFileIOChannel(fileChannel, temporaryFilePath);
     }
@@ -165,6 +169,8 @@ public class EntityBodyHandler {
             byteData = MimeUtil.getByteArray(inputStream);
         } catch (IOException ex) {
             throw new BallerinaException("Error occurred while reading input stream :" + ex.getMessage());
+//            throw MimeUtil.createError(PARSING_ENTITY_BODY_FAILED,
+//                                       "Error occurred while reading input stream :" + ex.getMessage());
         }
         return new ArrayValue(byteData);
     }
@@ -183,7 +189,8 @@ public class EntityBodyHandler {
         try {
             return constructJsonDataSource(entityObj, byteChannel.getInputStream());
         } catch (IOException e) {
-            throw new BallerinaException(e.getMessage());
+//            throw new BallerinaException(e.getMessage());
+            throw MimeUtil.createError(PARSING_ENTITY_BODY_FAILED, e.getMessage());
         } finally {
             closeByteChannel(byteChannel);
         }
@@ -221,12 +228,14 @@ public class EntityBodyHandler {
     public static XMLValue constructXmlDataSource(ObjectValue entityObj) {
         Channel byteChannel = getByteChannel(entityObj);
         if (byteChannel == null) {
-            throw new BallerinaException("Empty xml payload");
+            throw MimeUtil.createError(PARSING_ENTITY_BODY_FAILED, "Empty xml payload");
+//            throw new BallerinaException("Empty xml payload");
         }
         try {
             return constructXmlDataSource(entityObj, byteChannel.getInputStream());
         } catch (IOException e) {
-            throw new BallerinaException(e.getMessage());
+            throw MimeUtil.createError(PARSING_ENTITY_BODY_FAILED, e.getMessage());
+//            throw new BallerinaException(e.getMessage());
         } finally {
             closeByteChannel(byteChannel);
         }
@@ -264,12 +273,14 @@ public class EntityBodyHandler {
     public static String constructStringDataSource(ObjectValue entityObj) {
         Channel byteChannel = getByteChannel(entityObj);
         if (byteChannel == null) {
-            throw new BallerinaException("String payload is null");
+//            throw new BallerinaException("String payload is null");
+            throw MimeUtil.createError(PARSING_ENTITY_BODY_FAILED, "String payload is null");
         }
         try {
             return constructStringDataSource(entityObj, byteChannel.getInputStream());
         } catch (IOException e) {
-            throw new BallerinaException(e.getMessage());
+            throw MimeUtil.createError(PARSING_ENTITY_BODY_FAILED, e.getMessage());
+//            throw new BallerinaException(e.getMessage());
         } finally {
             closeByteChannel(byteChannel);
         }

@@ -18,7 +18,6 @@
 
 package org.ballerinalang.mime.nativeimpl;
 
-import org.ballerinalang.jvm.util.exceptions.BallerinaException;
 import org.ballerinalang.jvm.values.ErrorValue;
 import org.ballerinalang.jvm.values.ObjectValue;
 import org.ballerinalang.jvm.values.connector.NonBlockingCallback;
@@ -146,7 +145,8 @@ public abstract class AbstractGetPayloadHandler {
         if (message != null) {
             return message;
         } else {
-            throw new BallerinaException("Empty content");
+//            throw new BallerinaException("Empty content");
+            throw MimeUtil.createError(PARSING_ENTITY_BODY_FAILED, "Empty content");
         }
     }
 
