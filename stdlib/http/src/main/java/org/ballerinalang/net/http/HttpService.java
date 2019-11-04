@@ -26,6 +26,7 @@ import org.ballerinalang.net.uri.DispatcherUtil;
 import org.ballerinalang.net.uri.URITemplate;
 import org.ballerinalang.net.uri.URITemplateException;
 import org.ballerinalang.net.uri.parser.Literal;
+import org.ballerinalang.net.uri.parser.RootLiteral;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.transport.http.netty.message.HttpCarbonMessage;
@@ -181,7 +182,8 @@ public class HttpService implements Cloneable {
 
     public URITemplate<HttpResource, HttpCarbonMessage> getUriTemplate() throws URITemplateException {
         if (uriTemplate == null) {
-            uriTemplate = new URITemplate<>(new Literal<>(new HttpResourceDataElement(), "/"));
+            //TODO:create a new literal type here
+            uriTemplate = new URITemplate<>(new RootLiteral<>(new HttpResourceDataElement(), "/"));
         }
         return uriTemplate;
     }

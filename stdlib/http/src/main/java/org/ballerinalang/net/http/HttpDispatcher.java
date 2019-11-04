@@ -108,6 +108,9 @@ public class HttpDispatcher {
         inboundReqMsg.setProperty(HttpConstants.QUERY_STR, requestUri.getQuery());
         //store query params comes with request as it is
         inboundReqMsg.setProperty(HttpConstants.RAW_QUERY_STR, requestUri.getRawQuery());
+
+        String rawSubPath = URIUtil.getSubPath(requestUri.getRawPath(), basePath);
+        inboundReqMsg.setProperty(HttpConstants.RAW_SUB_PATH, rawSubPath);
     }
 
     public static URI getValidatedURI(String uriStr) {

@@ -21,6 +21,9 @@ package org.ballerinalang.net.uri.parser;
 import org.ballerinalang.net.http.HttpConstants;
 import org.ballerinalang.net.uri.URITemplateException;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -82,6 +85,11 @@ public abstract class Node<DataType, InboundMsgType> {
         for (Node<DataType, InboundMsgType> childNode : childNodesList) {
             if (childNode instanceof Literal) {
                 String regex = childNode.getToken();
+                try {
+                    subPath = URLDecoder.decode(subPath, StandardCharsets.UTF_8.name());
+                } catch (UnsupportedEncodingException e) {
+                    throw new RuntimeException("Error while decoding value: " + subPath, e);
+                }
                 if (regex.equals("*")) {
                     regex = "." + regex;
                     if (!subPath.matches(regex)) {
@@ -98,6 +106,11 @@ public abstract class Node<DataType, InboundMsgType> {
                 if (!subPath.contains(regex)) {
                     continue;
                 }
+//                try {
+//                    subUriFragment = URLDecoder.decode(subUriFragment, StandardCharsets.UTF_8.name());
+//                } catch (UnsupportedEncodingException e) {
+//                    throw new RuntimeException("Error while decoding value: " + subPath, e);
+//                }
                 isFound = childNode.matchAll(subUriFragment, variables, start + matchLength, inboundMsg,
                                              dataReturnAgent);
                 if (isFound) {

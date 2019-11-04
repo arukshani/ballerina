@@ -1,23 +1,4 @@
-/*
-*  Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-*
-*  WSO2 Inc. licenses this file to you under the Apache License,
-*  Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-*  Unless required by applicable law or agreed to in writing,
-*  software distributed under the License is distributed on an
-*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-*  KIND, either express or implied.  See the License for the
-*  specific language governing permissions and limitations
-*  under the License.
-*/
-
 package org.ballerinalang.net.uri.parser;
-
 
 import org.ballerinalang.net.uri.URITemplateException;
 
@@ -27,27 +8,15 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
-/**
- * Literal represents literal path segments in the uri-template.
- *
- * @param <DataType> Type of data which should be stored in the node.
- * @param <InboundMsgType> Inbound message type for additional checks.
- */
-public class Literal<DataType, InboundMsgType> extends Node<DataType, InboundMsgType> {
-
+public class RootLiteral <DataType, InboundMsgType> extends Literal<DataType, InboundMsgType> {
     private int tokenLength = 0;
 
-    public Literal(DataElement<DataType, InboundMsgType> dataElement, String token) throws URITemplateException {
+    public RootLiteral(DataElement<DataType, InboundMsgType> dataElement, String token) throws URITemplateException {
         super(dataElement, token);
         tokenLength = token.length();
         if (tokenLength == 0) {
             throw new URITemplateException("Invalid literal token with zero length");
         }
-    }
-
-    @Override
-    String expand(Map<String, String> variables) {
-        return token;
     }
 
     @Override
@@ -73,14 +42,15 @@ public class Literal<DataType, InboundMsgType> extends Node<DataType, InboundMsg
             if (uriFragment.equals("/") && uriFragment.equals(token) && !this.dataElement.hasData()) {
                 return 0;
             }
-            String encodedToken = null;
-            try {
-                encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8.name());
-            } catch (UnsupportedEncodingException e) {
-                throw new RuntimeException("Error while decoding value: " + encodedToken, e);
-            }
-
-            return encodedToken.length();
+//            String encodedToken = null;
+//            try {
+//                encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8.name());
+//            } catch (UnsupportedEncodingException e) {
+//                throw new RuntimeException("Error while decoding value: " + encodedToken, e);
+//            }
+//
+//            return encodedToken.length();
+            return tokenLength;
         } else {
             if (uriFragment.length() < tokenLength - 1) {
                 return -1;
@@ -95,15 +65,5 @@ public class Literal<DataType, InboundMsgType> extends Node<DataType, InboundMsg
             }
             return uriFragment.length();
         }
-    }
-
-    @Override
-    String getToken() {
-        return token;
-    }
-
-    @Override
-    char getFirstCharacter() {
-        return token.charAt(0);
     }
 }

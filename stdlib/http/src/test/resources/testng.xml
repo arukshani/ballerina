@@ -41,5 +41,8 @@ under the License.
             <package name="org.ballerinalang.stdlib.cachingclient.*"/>
             <package name="org.ballerinalang.stdlib.auth.*"/>
         </packages>
+<!--        <classes>-->
+<!--            <class name="org.ballerinalang.stdlib.services.dispatching.UriMatrixParametersMatchTest"></class>-->
+<!--        </classes>-->
     </test>
 </suite>

@@ -84,7 +84,7 @@ public abstract class Expression<DataType, InboundMsgType> extends Node<DataType
         try {
             return URLDecoder.decode(value.replaceAll("\\+", "%2B"), "UTF-8");
         } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException("Error while encoding value: " + value, e);
+            throw new RuntimeException("Error while decoding value: " + value, e);
         }
     }
 }

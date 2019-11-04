@@ -37,7 +37,8 @@ public class HttpResourceDispatcher {
     public static HttpResource findResource(HttpService service, HttpCarbonMessage inboundRequest) {
 
         String method = (String) inboundRequest.getProperty(HttpConstants.HTTP_METHOD);
-        String subPath = (String) inboundRequest.getProperty(HttpConstants.SUB_PATH);
+//        String subPath = (String) inboundRequest.getProperty(HttpConstants.SUB_PATH);
+        String subPath = (String) inboundRequest.getProperty(HttpConstants.RAW_SUB_PATH);
         subPath = sanitizeSubPath(subPath);
         Map<String, String> resourceArgumentValues = new HashMap<>();
         try {
