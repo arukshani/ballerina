@@ -120,7 +120,7 @@ public class WebSubServicesRegistry extends HTTPServicesRegistry {
         if (servicesMapByHost.get(hostName) == null) {
             servicesByBasePath = new ConcurrentHashMap<>();
             sortedServiceURIs = new CopyOnWriteArrayList<>();
-            servicesMapByHost.put(hostName, new ServicesMapHolder(servicesByBasePath, sortedServiceURIs));
+            servicesMapByHost.put(hostName, new ServicesMapHolder(servicesByBasePath, sortedServiceURIs, null));
         } else {
             servicesByBasePath = getServicesByHost(hostName);
             sortedServiceURIs = getSortedServiceURIsByHost(hostName);

@@ -40,6 +40,8 @@ import org.wso2.transport.http.netty.message.HttpCarbonMessage;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,13 +67,16 @@ public class HttpDispatcher {
         try {
             Map<String, HttpService> servicesOnInterface;
             List<String> sortedServiceURIs;
+            Map<String, String> encodedBasePaths;
             String hostName = inboundReqMsg.getHeader(HttpHeaderNames.HOST.toString());
             if (hostName != null && servicesRegistry.getServicesMapHolder(hostName) != null) {
                 servicesOnInterface = servicesRegistry.getServicesByHost(hostName);
                 sortedServiceURIs = servicesRegistry.getSortedServiceURIsByHost(hostName);
+                encodedBasePaths = servicesRegistry.getEncodedBasePaths(hostName);
             } else {
                 servicesOnInterface = servicesRegistry.getServicesByHost(DEFAULT_HOST);
                 sortedServiceURIs = servicesRegistry.getSortedServiceURIsByHost(DEFAULT_HOST);
+                encodedBasePaths = servicesRegistry.getEncodedBasePaths(DEFAULT_HOST);
             }
 
             String rawUri = (String) inboundReqMsg.getProperty(HttpConstants.TO);
@@ -86,6 +91,8 @@ public class HttpDispatcher {
 
             String basePath = servicesRegistry.findTheMostSpecificBasePath(validatedUri.getPath(),
                     servicesOnInterface, sortedServiceURIs);
+            String encodedBasePath = encodedBasePaths.get(basePath);
+
 
             if (basePath == null) {
                 inboundReqMsg.setProperty(HttpConstants.HTTP_STATUS_CODE, 404);
@@ -94,14 +101,15 @@ public class HttpDispatcher {
             }
 
             HttpService service = servicesOnInterface.get(basePath);
-            setInboundReqProperties(inboundReqMsg, validatedUri, basePath);
+            setInboundReqProperties(inboundReqMsg, validatedUri, basePath, encodedBasePath);
             return service;
         } catch (Exception e) {
             throw new BallerinaConnectorException(e.getMessage());
         }
     }
 
-    private static void setInboundReqProperties(HttpCarbonMessage inboundReqMsg, URI requestUri, String basePath) {
+    private static void setInboundReqProperties(HttpCarbonMessage inboundReqMsg, URI requestUri, String basePath,
+                                                String encodedBasePath) {
         String subPath = URIUtil.getSubPath(requestUri.getPath(), basePath);
         inboundReqMsg.setProperty(HttpConstants.BASE_PATH, basePath);
         inboundReqMsg.setProperty(HttpConstants.SUB_PATH, subPath);
@@ -109,8 +117,16 @@ public class HttpDispatcher {
         //store query params comes with request as it is
         inboundReqMsg.setProperty(HttpConstants.RAW_QUERY_STR, requestUri.getRawQuery());
 
-        String rawSubPath = URIUtil.getSubPath(requestUri.getRawPath(), basePath);
-        inboundReqMsg.setProperty(HttpConstants.RAW_SUB_PATH, rawSubPath);
+//        String rawSubPath = URIUtil.getSubPath(requestUri.getRawPath(), basePath);
+//        String encodedSubPath = null;
+//        try {
+//            encodedSubPath = URLEncoder.encode(subPath, StandardCharsets.UTF_8.name());
+//        } catch (UnsupportedEncodingException e) {
+//            throw new RuntimeException("Error while encoding value: " + subPath, e);
+//        }
+
+        String encodedSubPath = URIUtil.getRawSubPath(requestUri.getRawPath(), encodedBasePath);
+        inboundReqMsg.setProperty(HttpConstants.RAW_SUB_PATH, encodedSubPath);
     }
 
     public static URI getValidatedURI(String uriStr) {

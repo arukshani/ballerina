@@ -52,6 +52,14 @@ public class URIUtil {
         return path.substring(basePath.length());
     }
 
+    public static String getRawSubPath(String rawPath, String encodedBasePath) {
+        if (rawPath.length() == encodedBasePath.length()) {
+            return URI_PATH_DELIMITER;
+        }
+
+        return rawPath.substring(encodedBasePath.length());
+    }
+
     public static void populateQueryParamMap(String queryParamString, BMap<String, BString> queryParamsMap)
             throws UnsupportedEncodingException {
         String[] queryParamVals = queryParamString.split("&");

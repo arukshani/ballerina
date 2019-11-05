@@ -49,6 +49,7 @@ public class HTTPServicesRegistry {
     protected Map<String, ServicesMapHolder> servicesMapByHost = new ConcurrentHashMap<>();
     protected Map<String, HttpService> servicesByBasePath;
     protected List<String> sortedServiceURIs;
+    protected Map<String, String> encodedBasePaths = new ConcurrentHashMap<>();
     private final WebSocketServicesRegistry webSocketServicesRegistry;
 
     public HTTPServicesRegistry(WebSocketServicesRegistry webSocketServicesRegistry) {
@@ -95,6 +96,10 @@ public class HTTPServicesRegistry {
         return servicesMapByHost.get(hostName).sortedServiceURIs;
     }
 
+    public Map<String, String> getEncodedBasePaths(String hostName) {
+        return servicesMapByHost.get(hostName).encodedBasePaths;
+    }
+
     /**
      * Register a service into the map.
      *
@@ -108,7 +113,8 @@ public class HTTPServicesRegistry {
             if (servicesMapByHost.get(hostName) == null) {
                 servicesByBasePath = new ConcurrentHashMap<>();
                 sortedServiceURIs = new CopyOnWriteArrayList<>();
-                servicesMapByHost.put(hostName, new ServicesMapHolder(servicesByBasePath, sortedServiceURIs));
+                encodedBasePaths = new ConcurrentHashMap<>();
+                servicesMapByHost.put(hostName, new ServicesMapHolder(servicesByBasePath, sortedServiceURIs, encodedBasePaths));
             } else {
                 servicesByBasePath = getServicesByHost(hostName);
                 sortedServiceURIs = getSortedServiceURIsByHost(hostName);
@@ -121,6 +127,7 @@ public class HTTPServicesRegistry {
                                                      basePath + errorMessage);
             }
             servicesByBasePath.put(basePath, httpService);
+            encodedBasePaths.put(basePath, httpService.getEncodedBasePath());
             String errLog = String.format("Service deployed : %s with context %s", service.getName(), basePath);
             logger.info(errLog);
 
@@ -188,10 +195,14 @@ public class HTTPServicesRegistry {
     protected class ServicesMapHolder {
         private Map<String, HttpService> servicesByBasePath;
         private List<String> sortedServiceURIs;
+        private Map<String, String> encodedBasePaths;
 
-        public ServicesMapHolder(Map<String, HttpService> servicesByBasePath, List<String> sortedServiceURIs) {
+        public ServicesMapHolder(Map<String, HttpService> servicesByBasePath, List<String> sortedServiceURIs,
+                                 Map<String,
+                                         String> encodedBasePaths) {
             this.servicesByBasePath = servicesByBasePath;
             this.sortedServiceURIs = sortedServiceURIs;
+            this.encodedBasePaths = encodedBasePaths;
         }
     }
 }

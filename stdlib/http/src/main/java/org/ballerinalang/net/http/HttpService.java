@@ -35,7 +35,9 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -70,6 +72,7 @@ public class HttpService implements Cloneable {
     private List<HttpResource> upgradeToWebSocketResources;
     private List<String> allAllowedMethods;
     private String basePath;
+    private String encodedBasePath;
     private CorsHeaders corsHeaders;
     private URITemplate<HttpResource, HttpCarbonMessage> uriTemplate;
     private boolean keepAlive = true; //default behavior
@@ -145,12 +148,24 @@ public class HttpService implements Cloneable {
         return basePath;
     }
 
+    public String getEncodedBasePath() {
+        return encodedBasePath;
+    }
+
     public void setBasePath(String basePath) {
         if (basePath == null || basePath.trim().isEmpty()) {
             this.basePath = DEFAULT_BASE_PATH.concat(this.getName().startsWith(DOLLAR) ? "" : this.getName());
         } else {
             String sanitizedPath = sanitizeBasePath(basePath);
             this.basePath = urlDecode(sanitizedPath);
+        }
+    }
+
+    public void setEncodedBasePath(String basePath) {
+        if (basePath == null || basePath.trim().isEmpty()) {
+            this.encodedBasePath = DEFAULT_BASE_PATH.concat(this.getName().startsWith(DOLLAR) ? "" : this.getName());
+        } else {
+            this.encodedBasePath = sanitizeBasePath(basePath);
         }
     }
 
@@ -191,6 +206,7 @@ public class HttpService implements Cloneable {
     public static List<HttpService> buildHttpService(Service service) {
         List<HttpService> serviceList = new ArrayList<>();
         List<String> basePathList = new ArrayList<>();
+        Map<String, String> encodedBasePathList = new HashMap<String, String>();
         HttpService httpService = new HttpService(service);
         Annotation serviceConfigAnnotation = getHttpServiceConfigAnnotation(service);
         httpService.setInterruptible(hasInterruptibleAnnotation(service));
@@ -244,6 +260,7 @@ public class HttpService implements Cloneable {
         httpService.setAllAllowedMethods(DispatcherUtil.getAllResourceMethods(httpService));
 
         if (basePathList.size() == 1) {
+            httpService.setEncodedBasePath(basePathList.get(0));
             httpService.setBasePath(basePathList.get(0));
             serviceList.add(httpService);
             return serviceList;
@@ -256,6 +273,7 @@ public class HttpService implements Cloneable {
             } catch (CloneNotSupportedException e) {
                 throw new BallerinaConnectorException("Service registration failed");
             }
+            tempHttpService.setEncodedBasePath(basePath);
             tempHttpService.setBasePath(basePath);
             serviceList.add(tempHttpService);
         }
